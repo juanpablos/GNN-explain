@@ -50,8 +50,22 @@ def __generate_random_graph(
 def graph_generator(generator_fn: str,
                     min_nodes: int,
                     max_nodes: int,
-                    seed: Any = None,
+                    seed: int = None,
                     **kwargs) -> Generator[nx.Graph, None, None]:
+    """Generator that creates an unlimited amount of random graphs given a generator function
+
+    Args:
+        generator_fn (str): generation fuction of a graph. Only random is accepted as of now.
+        min_nodes (int): the minimum amount of node in each graph
+        max_nodes (int): the maximum amount of node in each graph
+        seed (int, optional): Defaults to None.
+
+    Raises:
+        ValueError: the generation function is invalid
+
+    Yields:
+        A generated graph
+    """
 
     fn = None
     if generator_fn == "random":
