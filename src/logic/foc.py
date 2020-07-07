@@ -20,11 +20,12 @@ class Concept(ABC):
 
 
 class Property(Concept):
+    # TODO: seach for a better way to do this
     available = {
-        "RED": 0,
-        "BLUE": 1,
-        "GREEN": 2,
-        "BLACK": 3
+        "RED": lambda x: x == 0,
+        "BLUE": lambda x: x == 1,
+        "GREEN": lambda x: x == 2,
+        "BLACK": lambda x: x == 3
     }
 
     def __init__(self, prop, variable):
@@ -36,7 +37,7 @@ class Property(Concept):
         self.variable = variable
 
     def __call__(self, graph, mapping, **kwargs):
-        return graph.node[mapping[self.variable]]['color'] == self.prop
+        return self.prop(graph.node[mapping[self.variable]]['property'])
 
     def __repr__(self):
         return f"{self.name}({self.variable})"
@@ -47,7 +48,7 @@ def edge(node1, node2, graph):
 
 
 class Role(Concept):
-
+    # TODO: seach for a better way to do this
     available = {
         "EDGE": edge
     }
@@ -71,14 +72,14 @@ class Role(Concept):
 
 
 class Operator(Element):
-    def __init__(self, first, second):
+    def __init__(self, first, second=None):
         self.first = first
         self.second = second
 
 
 class NEG(Operator):
     def __init__(self, first):
-        super().__init__(first, None)
+        super().__init__(first)
 
     def __repr__(self):
         return f"¬({self.first})"
@@ -109,7 +110,7 @@ class OR(Operator):
         return self.first(**kwargs) or self.second(**kwargs)
 
 
-class Restriction(Element):
+class Exist(Element):
     def __init__(self, variable, expression, lower=None, upper=None):
         self.variable = variable
         self.expression = expression
@@ -118,6 +119,7 @@ class Restriction(Element):
 
     def __repr__(self):
         s = self.symbol()
+
         if self.lower is None and self.upper is None:
             return f"{s}({self.variable}){self.expression}"
         elif self.lower is not None and self.upper is not None:
@@ -126,15 +128,6 @@ class Restriction(Element):
             return f"{s}({self.lower}<={self.variable}){self.expression}"
         else:
             return f"{s}({self.variable}<={self.upper}){self.expression}"
-
-    @abstractmethod
-    def symbol(self):
-        pass
-
-
-class Exist(Restriction):
-    def __init__(self, variable, expression, lower=None, upper=None):
-        super().__init__(variable, expression, lower=lower, upper=upper)
 
     def __call__(self, graph, mapping, **kwargs):
         # variable and self.variable must be different
@@ -145,15 +138,14 @@ class Exist(Restriction):
         upper = self.upper if self.upper is not None else float("inf")
 
         running_check = 0
-        satisfy = True
         for node in graph:
             mapping[self.variable] = node
             running_check += self.expression(
                 graph=graph, mapping=mapping)
 
             if running_check > upper:
-                satisfy = False
                 break
+
         mapping.pop(self.variable)
         if lower <= running_check <= upper:
             return True
@@ -164,9 +156,14 @@ class Exist(Restriction):
         return "∃"
 
 
-class ForAll(Restriction):
-    def __init__(self, variable, expression, lower=None, upper=None):
-        super().__init__(variable, expression, lower=lower, upper=upper)
+class ForAll(Element):
+    def __init__(self, variable, expression):
+        self.variable = variable
+        self.expression = expression
+
+    def __repr__(self):
+        s = self.symbol()
+        return f"{s}({self.variable}){self.expression}"
 
     def __call__(self, graph, mapping, **kwargs):
         # variable and self.variable must be different
@@ -181,6 +178,7 @@ class ForAll(Restriction):
 
             if not running_check:
                 break
+
         mapping.pop(self.variable)
         if running_check:
             return True
