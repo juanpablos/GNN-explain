@@ -3,6 +3,11 @@ import networkx as nx
 import numpy as np
 
 
+def __populate_graph(graph, values, name="properties"):
+    for n, v in zip(graph, values):
+        graph[n][name] = list(v)
+
+
 # TODO: in the case of mutiple types of properties
 # TODO: what to do when there can be more than one property per node
 def property_generator(graph_generator: Generator[nx.Graph,
@@ -58,8 +63,7 @@ def property_generator(graph_generator: Generator[nx.Graph,
             replace=True,
             p=distribution)
 
-        nx.set_node_attributes(graph, dict(
-            zip(graph, graph_properties)), name="property")
+        __populate_graph(graph, graph_properties, name="properties")
 
         if verbose == 1:
             if it % (number_of_graphs // 10) == 0:
