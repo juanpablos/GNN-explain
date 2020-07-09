@@ -1,6 +1,9 @@
 from abc import ABC, abstractmethod
 from collections import defaultdict
 
+import networkx as nx
+import numpy as np
+
 
 class Element(ABC):
 
@@ -22,10 +25,10 @@ class Concept(ABC):
 class Property(Concept):
     # TODO: seach for a better way to do this
     available = {
-        "RED": lambda x: x == 0,
-        "BLUE": lambda x: x == 1,
-        "GREEN": lambda x: x == 2,
-        "BLACK": lambda x: x == 3
+        "RED": 0,
+        "BLUE": 1,
+        "GREEN": 2,
+        "BLACK": 3
     }
 
     def __init__(self, prop, variable):
@@ -36,36 +39,39 @@ class Property(Concept):
         self.name = prop
         self.variable = variable
 
-    def __call__(self, graph, mapping, **kwargs):
-        return self.prop(graph.node[mapping[self.variable]]['property'])
+    def __call__(self, properties, **kwargs):
+        """Returns a 2d numpy array with 1 for nodes that satisfy the property, and 0 to which does not
+        dimensions are (n_nodes, 1)
+        """
+        # ? here depends in the type of property, for now it is a any()
+        res = [self.prop in node for node in properties]
+        # return self.prop(graph.node[mapping[self.variable]]['property'])
+        return np.array(res, dtype=int)
 
     def __repr__(self):
         return f"{self.name}({self.variable})"
 
 
-def edge(node1, node2, graph):
-    return node2 in graph.neighbors(node1)
-
-
 class Role(Concept):
-    # TODO: seach for a better way to do this
-    available = {
-        "EDGE": edge
-    }
 
     def __init__(self, relation, variable1, variable2):
-        if relation not in self.available:
-            raise Exception("Relation not available")
+        # if relation not in self.available:
+        #     raise Exception("Relation not available")
 
-        self.relation = self.available[relation]
+        # self.relation = self.available[relation]
         self.name = relation
         self.variable1 = variable1
         self.variable2 = variable2
 
-    def __call__(self, graph, mapping, **kwargs):
-        return self.relation(node1=mapping[self.variable1],
-                             node2=mapping[self.variable2],
-                             graph=graph)
+    def __call__(self, graph, adjacency, **kwargs):
+        """Returns an adjacency matrix for a graph
+        """
+        # return self.relation(node1=mapping[self.variable1],
+        #                      node2=mapping[self.variable2],
+        #                      graph=graph)
+        if adjacency["value"] is None:
+            adjacency["value"] = nx.adjacency_matrix(graph).toarray()
+        return adjacency["value"]
 
     def __repr__(self):
         return f"{self.name}({self.variable1}, {self.variable2})"
@@ -85,7 +91,7 @@ class NEG(Operator):
         return f"¬({self.first})"
 
     def __call__(self, **kwargs):
-        return not self.first(**kwargs)
+        return np.logical_not(self.first(**kwargs))
 
 
 class AND(Operator):
@@ -96,7 +102,7 @@ class AND(Operator):
         return f"({self.first} ∧ {self.second})"
 
     def __call__(self, **kwargs):
-        return self.first(**kwargs) and self.second(**kwargs)
+        return np.logical_and(self.first(**kwargs), self.second(**kwargs))
 
 
 class OR(Operator):
@@ -107,7 +113,7 @@ class OR(Operator):
         return f"({self.first} ∨ {self.second})"
 
     def __call__(self, **kwargs):
-        return self.first(**kwargs) or self.second(**kwargs)
+        return np.logical_or(self.first(**kwargs), self.second(**kwargs))
 
 
 class Exist(Element):
@@ -129,28 +135,37 @@ class Exist(Element):
         else:
             return f"{s}({self.variable}<={self.upper}){self.expression}"
 
-    def __call__(self, graph, mapping, **kwargs):
+    def __call__(self, **kwargs):
         # variable and self.variable must be different
         # self.variable must not have been used yet
-        assert self.variable not in mapping
+        # assert self.variable not in mapping
 
         lower = self.lower if self.lower is not None else 1
         upper = self.upper if self.upper is not None else float("inf")
 
-        running_check = 0
-        for node in graph:
-            mapping[self.variable] = node
-            running_check += self.expression(
-                graph=graph, mapping=mapping)
+        res = self.expression(**kwargs)
+        if res.ndim == 1:
+            raise Exception(
+                "Cannot have a restriction property with single values")
 
-            if running_check > upper:
-                break
+        per_node = np.sum(res, axis=1)
 
-        mapping.pop(self.variable)
-        if lower <= running_check <= upper:
-            return True
-        else:
-            return False
+        # running_check = 0
+        # for node in graph:
+        #     mapping[self.variable] = node
+        #     running_check += self.expression(
+        #         graph=graph, mapping=mapping)
+
+        #     if running_check > upper:
+        #         break
+
+        # mapping.pop(self.variable)
+        # if lower <= running_check <= upper:
+        #     return True
+        # else:
+        #     return False
+
+        return (per_node >= lower) & (per_node <= upper)
 
     def symbol(self):
         return "∃"
@@ -165,25 +180,31 @@ class ForAll(Element):
         s = self.symbol()
         return f"{s}({self.variable}){self.expression}"
 
-    def __call__(self, graph, mapping, **kwargs):
-        # variable and self.variable must be different
-        # self.variable must not have been used yet
-        assert self.variable not in mapping
+    def __call__(self, **kwargs):
+        # # variable and self.variable must be different
+        # # self.variable must not have been used yet
+        # assert self.variable not in mapping
 
-        running_check = True
-        for node in graph:
-            mapping[self.variable] = node
-            running_check &= self.expression(
-                graph=graph, mapping=mapping)
+        # running_check = True
+        # for node in graph:
+        #     mapping[self.variable] = node
+        #     running_check &= self.expression(
+        #         graph=graph, mapping=mapping)
 
-            if not running_check:
-                break
+        #     if not running_check:
+        #         break
 
-        mapping.pop(self.variable)
-        if running_check:
-            return True
-        else:
-            return False
+        # mapping.pop(self.variable)
+        # if running_check:
+        #     return True
+        # else:
+        #     return False
+        res = self.expression(**kwargs)
+        if res.ndim == 1:
+            raise Exception(
+                "Cannot have a restriction property with single values")
+
+        return np.all(res, axis=1)
 
     def symbol(self):
         return "∀"
@@ -193,18 +214,30 @@ class FOC:
     def __init__(self, expression):
         self.expression = expression
 
-    def __call__(self, graph, variable):
-        labels = []
-        mapping = {}
-        for node in graph:
-            mapping[variable] = node
-            if self.expression(
-                    graph=graph,
-                    mapping=mapping):
-                labels.append(1)
-            else:
-                labels.append(0)
-        return labels
+    def __call__(self, graph):
+        adjacency = {"value": None}
+        properties = np.array(nx.get_node_attributes(graph, "properties"))
+
+        # labels = []
+        # mapping = {}
+        # for node in graph:
+        #     mapping[variable] = node
+        #     if self.expression(
+        #             graph=graph,
+        #             mapping=mapping):
+        #         labels.append(1)
+        #     else:
+        #         labels.append(0)
+        # return labels
+        res = self.expression(
+            graph=graph,
+            adjacency=adjacency,
+            properties=properties)
+
+        if res.ndim > 1:
+            res = np.squeeze(res)
+
+        return res.astype(int)
 
     def __repr__(self):
         return repr(self.expression)
