@@ -3,11 +3,6 @@ import networkx as nx
 import numpy as np
 
 
-def __populate_graph(graph, values, name="properties"):
-    for n, v in zip(graph, values):
-        graph[n][name] = list(v)
-
-
 # TODO: in the case of mutiple types of properties
 # TODO: what to do when there can be more than one property per node
 def property_generator(graph_generator: Generator[nx.Graph,
@@ -15,6 +10,7 @@ def property_generator(graph_generator: Generator[nx.Graph,
                                                   None],
                        number_of_graphs: int,
                        n_properties: int = 10,
+                       n_property_types: int = 1,
                        property_distribution: str = "uniform",
                        distribution: List[float] = None,
                        seed: int = None,
@@ -28,6 +24,7 @@ def property_generator(graph_generator: Generator[nx.Graph,
         graph_generator (Generator[nx.Graph, None, None]): the graph generator
         number_of_graphs (int): the number of graphs required
         n_properties (int, optional): the number of properties to be assigned to the graph batch. Defaults to 10.
+        n_property_types (int, optional): number of different entries in the property attribute.
         property_distribution (str, optional): uniform states for each property choosen with an uniform distribution. Otherwise the distribution is in distribution is used. Defaults to "uniform".
         distribution (List[float], optional): the distribution used for each property, must be the same length as the number of properties. Defaults to None.
         seed (int, optional): Defaults to None.
@@ -47,6 +44,9 @@ def property_generator(graph_generator: Generator[nx.Graph,
         assert 0 <= 1 - \
             sum(distribution) < 1e5, "probabilities do not sum to 1"
 
+    if n_property_types != 1:
+        raise NotImplementedError
+
     # ! representation of properties as intergers
     # TODO: check if we need to change this
     properties = list(range(n_properties))
@@ -59,11 +59,12 @@ def property_generator(graph_generator: Generator[nx.Graph,
 
         graph_properties = rand.choice(
             properties,
-            size=len(graph),
+            size=(len(graph), n_property_types),
             replace=True,
             p=distribution)
 
-        __populate_graph(graph, graph_properties, name="properties")
+        nx.set_node_attributes(graph, dict(
+            zip(graph, graph_properties)), name="properties")
 
         if verbose == 1:
             if it % (number_of_graphs // 10) == 0:
