@@ -1,4 +1,6 @@
-from typing import Generator, List, Any
+from itertools import repeat
+from typing import Any, Generator, List
+
 import networkx as nx
 import numpy as np
 
@@ -8,7 +10,7 @@ import numpy as np
 def property_generator(graph_generator: Generator[nx.Graph,
                                                   None,
                                                   None],
-                       number_of_graphs: int,
+                       number_of_graphs: int = None,
                        n_properties: int = 10,
                        n_property_types: int = 1,
                        property_distribution: str = "uniform",
@@ -22,7 +24,7 @@ def property_generator(graph_generator: Generator[nx.Graph,
 
     Args:
         graph_generator (Generator[nx.Graph, None, None]): the graph generator
-        number_of_graphs (int): the number of graphs required
+        number_of_graphs (int, optional): the number of graphs required. If None generate an infinite number of graphs.
         n_properties (int, optional): the number of properties to be assigned to the graph batch. Defaults to 10.
         n_property_types (int, optional): number of different entries in the property attribute.
         property_distribution (str, optional): uniform states for each property choosen with an uniform distribution. Otherwise the distribution is in distribution is used. Defaults to "uniform".
@@ -53,7 +55,13 @@ def property_generator(graph_generator: Generator[nx.Graph,
 
     rand = np.random.default_rng(seed)
 
-    for it in range(number_of_graphs):
+    if number_of_graphs is None:
+        times = repeat(None)
+        verbose = 0
+    else:
+        times = range(number_of_graphs)
+
+    for it in times:
         # get the next graph
         graph = next(graph_generator)
 
