@@ -67,16 +67,17 @@ def graph_generator(generator_fn: str,
         A generated graph
     """
 
+    rand = random.Random(seed)
+
     fn = None
     if generator_fn == "random":
-        fn = partial(__generate_random_graph, **kwargs)
+        fn = partial(__generate_random_graph, seed=rand, **kwargs)
     else:
         raise ValueError("Generator function not supported")
 
-    print("Start graph generation")
+    # print("Start graph generation")
 
-    rand = random.Random(seed)
     while True:
         # randomdly choose the number of nodes in the graph
         n_nodes = rand.randint(min_nodes, max_nodes)
-        yield fn(n_nodes=n_nodes, seed=rand, **kwargs)
+        yield fn(n_nodes=n_nodes)
