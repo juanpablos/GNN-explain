@@ -1,5 +1,5 @@
 import networkx as nx
-
+import numpy as np
 from logic.foc import *
 
 # available = {
@@ -23,13 +23,18 @@ a4 = Exist(variable="y", expression=a3, lower=1, upper=1)
 a5 = AND(a0, a4)
 
 G = nx.path_graph(5)
+ps = np.array([[1],
+               [0],
+               [1],
+               [0],
+               [0]])
 
 nx.set_node_attributes(
-    G, dict(zip(G, [1, 0, 1, 0, 0])), name="color")
+    G, dict(zip(G, ps)), name="properties")
 
 
 # print(G.nodes(data=True))
 
 formula = FOC(a5)
 print(formula)
-print(formula(G, variable="x"))
+print(formula(G))

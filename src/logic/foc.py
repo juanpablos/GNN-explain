@@ -216,7 +216,8 @@ class FOC:
 
     def __call__(self, graph):
         adjacency = {"value": None}
-        properties = np.array(nx.get_node_attributes(graph, "properties"))
+        properties = list(nx.get_node_attributes(graph, "properties").values())
+        properties = np.array(properties)
 
         # labels = []
         # mapping = {}
