@@ -1,14 +1,26 @@
 import networkx as nx
 from torch_geometric.data import Data
 import torch
+from typing import List, Any
 
 
-def graph_loader(graph,
-                 node_labels,
-                 n_node_features=2,
+def graph_loader(graph: nx.Graph,
+                 node_labels: List[List[Any]],
+                 n_node_features: int = 2,
                  #  n_node_feature_types=1,
                  #  n_node_labels=2,
-                 feature_type="categorical"):
+                 feature_type: str = "categorical"):
+    """Generates a stream of torch_geometric:Data objects containing the generated graph and the label associated with each node.
+
+    Args:
+        graph (nx.Graph): the graph to work on
+        node_labels (List[List[Any]]): the list of labels for each node
+        n_node_features (int, optional): the number of features available. Choose from 2 by default. Defaults to 2.
+        feature_type (str, optional): whether the features are cathegorical or numerical. Defaults to "categorical".
+
+    Returns:
+        torch_geometric.Data: a Data object representing a single graph to train on.
+    """
 
     edges = torch.tensor(list(graph.edges), dtype=torch.long)
     labels = torch.tensor(node_labels)

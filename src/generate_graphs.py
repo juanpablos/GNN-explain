@@ -2,22 +2,40 @@ import torch
 
 from graphs import *
 from utils.data_loader import graph_loader
+from typing import List
 
 # from timeit import default_timer as timer
 # temp = 0
 
 
-def graph_stream(formula,
-                 generator_fn,
-                 min_nodes,
-                 max_nodes,
-                 seed,
-                 n_properties,
-                 n_property_types,
-                 property_distribution,
-                 distribution,
-                 verbose,
+def graph_stream(formula: FOC,
+                 generator_fn: str,
+                 min_nodes: int,
+                 max_nodes: int,
+                 seed: int = None,
+                 n_properties: int = 10,
+                 n_property_types: int = 1,
+                 property_distribution: str = "uniform",
+                 distribution: List[float] = None,
+                 verbose: int = 0,
                  **kwargs):
+    """
+
+    Args:
+        formula (FOC): the formula used to label each node of the graph
+        generator_fn (str): generation fuction of a graph. Only random is accepted as of now.
+        min_nodes (int): the minimum amount of node in each graph
+        max_nodes (int): the maximum amount of node in each graph
+        seed (int, optional): Defaults to None.
+        n_properties (int, optional): the number of properties to be assigned to the graph batch. Defaults to 10.
+        n_property_types (int, optional): number of different entries in the property attribute.
+        property_distribution (str, optional): uniform states for each property choosen with an uniform distribution. Otherwise the distribution is in distribution is used. Defaults to "uniform".
+        distribution (List[float], optional): the distribution used for each property, must be the same length as the number of properties. Defaults to None.
+        verbose (int, optional): 0 is silent, 1 is only 10 messages, 2 is a message for each graph. Defaults to 0.
+
+    Yields:
+        torch_geometric.Data: a single data object representing a graph and its labels
+    """
 
     # TODO: generate directed graphs
     _generator = graph_generator(
