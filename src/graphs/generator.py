@@ -1,6 +1,6 @@
 import random
 from functools import partial
-from typing import Any, Generator
+from typing import Any, Iterable
 
 import networkx as nx
 
@@ -52,7 +52,7 @@ def graph_generator(generator_fn: str,
                     min_nodes: int,
                     max_nodes: int,
                     seed: int = None,
-                    **kwargs) -> Generator[nx.Graph, None, None]:
+                    **kwargs) -> Iterable[nx.Graph]:
     """Generator that creates an unlimited amount of random graphs given a generator function
 
     Args:

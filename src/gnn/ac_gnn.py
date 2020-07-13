@@ -1,3 +1,5 @@
+from typing import Tuple
+
 import torch
 import torch.nn as nn
 
@@ -18,7 +20,7 @@ class ACGNN(torch.nn.Module):
             combine_layers: int,
             num_mlp_layers: int,
             task: str,
-            truncated_fn=None,
+            truncated_fn: Tuple[int, int] = None,
             **kwargs
     ):
         super(ACGNN, self).__init__()
