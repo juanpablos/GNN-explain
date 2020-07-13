@@ -1,5 +1,5 @@
 from itertools import repeat
-from typing import Any, Generator, List
+from typing import Generator, List
 
 import networkx as nx
 import numpy as np

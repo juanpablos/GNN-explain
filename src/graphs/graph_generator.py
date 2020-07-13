@@ -1,7 +1,8 @@
-import networkx as nx
-from functools import partial
-from typing import Generator, Any
 import random
+from functools import partial
+from typing import Any, Generator
+
+import networkx as nx
 
 # TODO: support different types of graphs and configurations
 

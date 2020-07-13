@@ -1,7 +1,8 @@
+from typing import Any, List
+
 import networkx as nx
-from torch_geometric.data import Data
 import torch
-from typing import List, Any
+from torch_geometric.data import Data
 
 
 def graph_loader(graph: nx.Graph,

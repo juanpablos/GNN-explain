@@ -1,8 +1,9 @@
+from typing import List
+
 import torch
 
 from graphs import *
 from utils.data_loader import graph_loader
-from typing import List
 
 # from timeit import default_timer as timer
 # temp = 0
@@ -94,6 +95,7 @@ def generate_graphs(formula,
         seed=seed,
         verbose=0)
 
+    # TODO: off line graph reading
     raise NotImplementedError
 
 
@@ -114,7 +116,7 @@ if __name__ == "__main__":
                           generator_fn="random",
                           min_nodes=40,
                           max_nodes=50,
-                          seed=10,
+                          seed=_seed,
                           n_properties=5,
                           n_property_types=1,
                           property_distribution="uniform",

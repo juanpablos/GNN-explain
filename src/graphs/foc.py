@@ -1,5 +1,4 @@
-from abc import ABC, abstractmethod
-from collections import defaultdict
+from abc import ABC
 
 import networkx as nx
 import numpy as np
