@@ -50,14 +50,14 @@ class ACGNN(torch.nn.Module):
                                          aggregate_type=aggregate_type,
                                          combine_type=combine_type,
                                          combine_layers=combine_layers,
-                                         num_mlp_layers=num_mlp_layers))
+                                         mlp_layers=num_mlp_layers))
             else:
                 self.convs.append(ACConv(input_dim=hidden_dim,
                                          output_dim=hidden_dim,
                                          aggregate_type=aggregate_type,
                                          combine_type=combine_type,
                                          combine_layers=combine_layers,
-                                         num_mlp_layers=num_mlp_layers))
+                                         mlp_layers=num_mlp_layers))
 
             self.batch_norms.append(nn.BatchNorm1d(hidden_dim))
 

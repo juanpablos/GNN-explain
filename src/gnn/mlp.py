@@ -26,7 +26,7 @@ class MLP(nn.Module):
             self.linears.append(nn.Identity())
         elif num_layers == 1:
             # linear model
-            self.linears.apend(nn.linear(input_dim, output_dim))
+            self.linears.append(nn.Linear(input_dim, output_dim))
         else:
             # multi layer model
             self.is_linear = False

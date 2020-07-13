@@ -10,7 +10,7 @@ def graph_loader(graph: nx.Graph,
                  n_node_features: int = 2,
                  #  n_node_feature_types=1,
                  #  n_node_labels=2,
-                 feature_type: str = "categorical"):
+                 feature_type: str = "categorical") -> Data:
     """Generates a stream of torch_geometric:Data objects containing the generated graph and the label associated with each node.
 
     Args:

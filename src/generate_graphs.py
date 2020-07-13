@@ -53,7 +53,7 @@ def graph_stream(formula: FOC,
         property_distribution=property_distribution,
         distribution=distribution,
         seed=seed,
-        verbose=0)
+        verbose=verbose)
 
     for graph in _properties:
         # t = timer()
