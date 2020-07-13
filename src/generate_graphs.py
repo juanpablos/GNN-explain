@@ -1,7 +1,5 @@
 from typing import List
 
-import torch
-
 from graphs import *
 from utils.data_loader import graph_loader
 
@@ -131,20 +129,29 @@ if __name__ == "__main__":
     #     aa.append(next(stream))
     # print("total", timer() - a)
     # print("label", temp)
+    # import torch
+    # class Iterable(torch.utils.data.IterableDataset):
+    #     def __init__(self, iterable):
+    #         self.data = iterable
 
-    class Iterable(torch.utils.data.IterableDataset):
-        def __init__(self, iterable):
-            self.data = iterable
+    #     def __iter__(self):
+    #         return self.data
 
-        def __iter__(self):
-            return self.data
+    # from torch_geometric.data import DataLoader
+    # import time
 
-    from torch_geometric.data import DataLoader
-    import time
+    # d = DataLoader(Iterable(stream), batch_size=512, num_workers=0)
 
-    d = DataLoader(Iterable(stream), batch_size=512, num_workers=0)
+    # a = time.time()
+    # for i, data in enumerate(d):
+    #     print(time.time() - a)
+    #     a = time.time()
 
-    a = time.time()
-    for i, data in enumerate(d):
-        print(time.time() - a)
-        a = time.time()
+    dt = next(stream)
+
+    print(dt.y)
+    print(dt.y.unsqueeze(1))
+
+    print(dt.x.dtype)
+    print(dt.edge_index.dtype)
+    print(dt.y.dtype)

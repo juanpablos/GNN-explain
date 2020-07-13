@@ -24,16 +24,16 @@ def graph_loader(graph: nx.Graph,
     """
 
     edges = torch.tensor(list(graph.edges), dtype=torch.long)
-    labels = torch.tensor(node_labels)
+    labels = torch.tensor(node_labels, dtype=torch.long)
     features = torch.tensor(
         list(
             nx.get_node_attributes(
                 graph,
-                "properties").values()), dtype=torch.int64).squeeze()
+                "properties").values()), dtype=torch.long).squeeze()
 
     if feature_type == "categorical":
         x = torch.nn.functional.one_hot(
-            features, n_node_features).type(torch.FloatTensor)
+            features, n_node_features).float()
     else:
         x = features
 
