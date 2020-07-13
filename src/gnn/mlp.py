@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-from utils import reset
+from .utils import reset
 
 
 class MLP(nn.Module):
@@ -16,16 +16,19 @@ class MLP(nn.Module):
         self.layers = num_layers
         self.is_linear = True
 
+        # the reason this is defined here is so that the weight parsing is
+        # easier
+        self.linears = nn.ModuleList()
+
         if num_layers < 1:
             # do nothing
-            self.linear = nn.Identity()
+            self.linears.append(nn.Identity())
         elif num_layers == 1:
             # linear model
-            self.linear = nn.Linear(input_dim, output_dim)
+            self.linears.apend(nn.linear(input_dim, output_dim))
         else:
             # multi layer model
             self.is_linear = False
-            self.linears = nn.ModuleList()
             self.batch_norms = nn.ModuleList()
 
             self.linears.append(nn.Linear(input_dim, hidden_dim))
@@ -38,7 +41,7 @@ class MLP(nn.Module):
 
     def forward(self, x):
         if self.is_linear:
-            return self.linear(x)
+            return self.linears[0](x)
         else:
             h = x
             for layer in range(self.layers - 1):
@@ -46,8 +49,6 @@ class MLP(nn.Module):
             return self.linears[self.layers - 1](h)
 
     def reset_parameters(self):
-        if self.is_linear:
-            reset(self.linear)
-        else:
-            reset(self.linears)
+        reset(self.linears)
+        if not self.is_linear:
             reset(self.batch_norms)

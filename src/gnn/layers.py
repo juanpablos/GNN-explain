@@ -7,10 +7,10 @@ class ACConv(MessagePassing):
             self,
             input_dim: int,
             output_dim: int,
-            aggregate_type: str = "add",
-            combine_type: str = None,
-            combine_layers: int = 1,
-            mlp_layers: int = 1,
+            aggregate_type: str,
+            combine_type: str,
+            combine_layers: int,
+            mlp_layers: int,
             **kwargs):
 
         assert aggregate_type in ["add", "mean", "max"]
@@ -35,7 +35,7 @@ class ACConv(MessagePassing):
         else:
             # to have an Identity layer
             self.combine = MLP(
-                num_layers=-mlp_layers,
+                num_layers=-1,
                 input_dim=output_dim,
                 hidden_dim=output_dim,
                 output_dim=output_dim
@@ -44,7 +44,7 @@ class ACConv(MessagePassing):
         self.V = MLP(**_args)
         self.A = MLP(**_args)
 
-    def forward(self, h, edge_index):
+    def forward(self, h, edge_index, batch):
         return self.propagate(
             edge_index=edge_index,
             h=h
