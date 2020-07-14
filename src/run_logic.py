@@ -94,7 +94,7 @@ def run(
     scheduler = optim.lr_scheduler.StepLR(
         optimizer, step_size=50, gamma=0.5)
 
-    for it in range(iterations):
+    for it in range(1, iterations + 1):
 
         train_loss = train(
             model=model,
@@ -106,14 +106,14 @@ def run(
             binary_prediction=True
         )
 
-        _, train_micro_acc, train_macro_acc = evaluate(
-            model=model,
-            test_data=train_loader,
-            criterion=criterion,
-            device=device,
-            binary_prediction=True)
+        # _, train_micro_acc, train_macro_acc = evaluate(
+        #     model=model,
+        #     test_data=train_loader,
+        #     criterion=criterion,
+        #     device=device,
+        #     binary_prediction=True)
 
-        _, test_micro_acc, test_macro_acc = evaluate(
+        test_loss, test_micro_acc, test_macro_acc = evaluate(
             model=model,
             test_data=test_loader,
             criterion=criterion,
@@ -121,10 +121,12 @@ def run(
             binary_prediction=True)
 
         # TODO: remove
-        print(
-            it +
-            1,
-            f"loss {train_loss:.6f} micro {test_micro_acc:.4f} macro {test_macro_acc:.4f}")
+        if it == iterations:
+            print(
+                it,
+                f"loss {train_loss:.6f} test_loss {test_loss:.6f} micro {test_micro_acc:.4f} macro {test_macro_acc:.4f}")
+
+        # TODO: better way to handle when the model is not perfect
 
         # TODO: implement a logger (do not need the logger for the training
         # GNN)

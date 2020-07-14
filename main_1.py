@@ -23,6 +23,13 @@ a5 = AND(a0, a4)
 f = FOC(a5)
 """
 
+"""
+"RED": 0,
+"BLUE": 1,
+"GREEN": 2,
+"BLACK": 3
+"""
+
 
 def get_formula():
     f = FOC(Property("RED", "x"))
@@ -105,7 +112,7 @@ def main():
     seed = 10
     seed_everything(seed)
 
-    n_models = 1000
+    n_models = 2000
     model_name = "acgnn"
 
     input_dim = 2
@@ -154,7 +161,7 @@ def main():
     # TODO: check if file already exists
     save_path = f"data/gnns/{file_name}.pt"
 
-    iterations = 5
+    iterations = 20
 
     train_batch = 64
     test_batch = 512
@@ -162,12 +169,12 @@ def main():
     """number of graphs in the train dataset
     total number will be _train_length * batch_size"""
     # 100 * 64 = 6.400
-    train_length = 100
+    train_length = 40
     """number of graphs in the test dataset
     total number will be _test_length * batch_size"""
     # test will be 10 times smaller than train
     # X * 512 -> train * train_batch // 10 // 512
-    test_length = train_length * train_batch // test_batch // 10
+    test_length = train_length * train_batch // test_batch // 10 or 1
 
     _write_metadata(
         destination="data/gnns/.meta.csv",
