@@ -1,7 +1,7 @@
 from typing import List
 
-from graphs import *
-from utils.data_loader import graph_loader
+from .graphs import *
+from .utils.data_loader import graph_loader
 
 # from timeit import default_timer as timer
 # temp = 0

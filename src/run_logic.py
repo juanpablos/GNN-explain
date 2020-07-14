@@ -62,11 +62,12 @@ def run(
     gpu_num: int,
     data_workers: int,
     batch_size: int = 64,
+    test_batch_size: int = 512,
     lr: float = 0.01
 ):
 
     if torch.cuda.is_available():
-        device = torch.device("cuda:" + gpu_num)
+        device = torch.device(f"cuda:{gpu_num}")
     else:
         device = torch.device("cpu")
 
@@ -80,7 +81,7 @@ def run(
         num_workers=data_workers)
     test_loader = DataLoader(
         test_graphs,
-        batch_size=512,
+        batch_size=test_batch_size,
         pin_memory=True,
         num_workers=data_workers)
 
@@ -93,9 +94,9 @@ def run(
     scheduler = optim.lr_scheduler.StepLR(
         optimizer, step_size=50, gamma=0.5)
 
-    for _ in range(iterations):
+    for it in range(iterations):
 
-        train_losses = train(
+        train_loss = train(
             model=model,
             training_data=train_loader,
             criterion=criterion,
@@ -118,6 +119,12 @@ def run(
             criterion=criterion,
             device=device,
             binary_prediction=True)
+
+        # TODO: remove
+        print(
+            it +
+            1,
+            f"loss {train_loss:.6f} micro {test_micro_acc:.4f} macro {test_macro_acc:.4f}")
 
         # TODO: implement a logger (do not need the logger for the training
         # GNN)
