@@ -1,5 +1,6 @@
 import hashlib
 import json
+from inspect import getsource
 from typing import Any, Dict
 
 import torch
@@ -11,21 +12,23 @@ from src.utils import LimitedStreamDataset
 from src.utils.gnn_data import clean_state
 
 
+"""
+a0 = Property("RED", "x")
+a1 = Property("BLUE", "y")
+a2 = NEG(Role(relation="EDGE", variable1="x", variable2="y"))
+a3 = AND(a1, a2)
+a4 = Exist(variable="y", expression=a3, lower=2, upper=6)
+a5 = AND(a0, a4)
+f = FOC(a5)
+"""
+
+
 def get_formula():
-    # a0 = Property("RED", "x")
-
-    # a1 = Property("BLUE", "y")
-    # a2 = NEG(Role(relation="EDGE", variable1="x", variable2="y"))
-    # a3 = AND(a1, a2)
-    # a4 = Exist(variable="y", expression=a3, lower=2, upper=6)
-    # a5 = AND(a0, a4)
-    # _formula = FOC(a5)
-
     f = FOC(Property("RED", "x"))
     return f
 
 
-def main(
+def run_experiment(
         n_models: int,
         save_path: str,
         model_config: Dict[str, Any],
@@ -42,44 +45,67 @@ def main(
     stream = graph_stream(**data_config)
     models = []
 
-    for m in range(n_models):
+    m = 0
+    try:
+        for m in range(1, n_models + 1):
 
-        # TODO: remove
-        print("Training model", m + 1)
+            # TODO: remove
+            print("Training model", m)
 
-        train_data = LimitedStreamDataset(stream, train_length)
-        test_data = LimitedStreamDataset(stream, test_length)
+            train_data = LimitedStreamDataset(stream, train_length)
+            test_data = LimitedStreamDataset(stream, test_length)
 
-        model = run(model_config=model_config,
-                    train_graphs=train_data,
-                    test_graphs=test_data,
-                    iterations=iterations,
-                    gpu_num=gpu_num,
-                    data_workers=data_workers,
-                    batch_size=batch_size,
-                    test_batch_size=test_batch_size,
-                    lr=lr)
+            model = run(model_config=model_config,
+                        train_graphs=train_data,
+                        test_graphs=test_data,
+                        iterations=iterations,
+                        gpu_num=gpu_num,
+                        data_workers=data_workers,
+                        batch_size=batch_size,
+                        test_batch_size=test_batch_size,
+                        lr=lr)
 
-        model.cpu()
-        weights = clean_state(model.state_dict())
-        models.append(weights)
+            model.cpu()
+            weights = clean_state(model.state_dict())
+            models.append(weights)
+    except Exception as e:
+        with open(f".error-{save_path}.txt", "w") as o:
+            o.write(f"Problem in file {save_path}\n")
+            o.write(f"Exception encountered: {e}\n")
+            o.write(f"Only {m} models were written\n")
+    finally:
+        torch.save(models, save_path)
 
-    torch.save(models, save_path)
+
+def _write_metadata(
+        destination: str,
+        model_config: Dict,
+        model_config_hash: str,
+        formula: FOC,
+        formula_hash: str,
+        file_name: str):
+    formula_source = getsource(get_formula)
+
+    """
+    format is:
+    file name, model hash, model, formula hash, formula string, formula source
+    """
+    with open(destination, "a") as f:
+        f.write(f"{file_name},{model_config_hash},{json.dumps(model_config)},{formula_hash},{repr(formula)},{formula_source}\n")
 
 
-if __name__ == "__main__":
-    _seed = 10
-    seed_everything(_seed)
+def main():
+    seed = 10
+    seed_everything(seed)
 
-    _n_models = 1000
-    _model_name = "acgnn"
+    n_models = 1000
+    model_name = "acgnn"
 
-    _input_dim = 2
+    input_dim = 2
 
-    # TODO: write the model config to a file
-    _model_config = {
-        "name": _model_name,
-        "input_dim": _input_dim,
+    model_config = {
+        "name": model_name,
+        "input_dim": input_dim,
         "hidden_dim": 16,
         "output_dim": 2,
         "aggregate_type": "max",
@@ -90,22 +116,22 @@ if __name__ == "__main__":
         "task": "node",
         "truncated_fn": None
     }
-    _model_config_hash = hashlib.md5(
+    model_config_hash = hashlib.md5(
         json.dumps(
-            _model_config,
+            model_config,
             sort_keys=True).encode()).hexdigest()[
         :10]
 
-    _formula = get_formula()
-    _formula_hash = hashlib.md5(repr(_formula).encode()).hexdigest()[:10]
-    # TODO: write the formula in a file, the sme file with the model config
-    _data_config = {
-        "formula": _formula,
+    formula = get_formula()
+    formula_hash = hashlib.md5(repr(formula).encode()).hexdigest()[:10]
+
+    data_config = {
+        "formula": formula,
         "generator_fn": "random",
         "min_nodes": 10,
         "max_nodes": 100,
-        "seed": _seed,
-        "n_properties": _input_dim,
+        "seed": seed,
+        "n_properties": input_dim,
         "n_property_types": 1,
         "property_distribution": "uniform",
         "distribution": None,
@@ -117,36 +143,49 @@ if __name__ == "__main__":
     }
 
     # * model_name - number of models - model hash - formula hash
-    _file_name = f"{_model_name}-n{_n_models}-{_model_config_hash}-{_formula_hash}"
+    file_name = f"{model_name}-n{n_models}-{model_config_hash}-{formula_hash}"
     # TODO: check if file already exists
-    _save_path = f"data/gnns/{_file_name}.pt"
+    save_path = f"data/gnns/{file_name}.pt"
 
-    _iterations = 10
+    iterations = 10
 
-    _train_batch = 64
-    _test_batch = 512
+    train_batch = 64
+    test_batch = 512
 
     """number of graphs in the train dataset
     total number will be _train_length * batch_size"""
     # 100 * 64 = 6.400
-    _train_length = 100
+    train_length = 100
     """number of graphs in the test dataset
     total number will be _test_length * batch_size"""
     # test will be 10 times smaller than train
     # X * 512 -> train * train_batch // 10 // 512
-    _test_length = _train_length * _train_batch // _test_batch // 10
+    test_length = train_length * train_batch // test_batch // 10
 
-    main(
-        n_models=_n_models,
-        save_path=_save_path,
-        model_config=_model_config,
-        data_config=_data_config,
-        train_length=_train_length,
-        test_length=_test_length,
-        iterations=_iterations,
+    _write_metadata(
+        destination="data/gnns/.meta.csv",
+        model_config=model_config,
+        model_config_hash=model_config_hash,
+        formula=formula,
+        formula_hash=formula_hash,
+        file_name=file_name
+    )
+
+    run_experiment(
+        n_models=n_models,
+        save_path=save_path,
+        model_config=model_config,
+        data_config=data_config,
+        train_length=train_length,
+        test_length=test_length,
+        iterations=iterations,
         gpu_num=0,
         data_workers=2,
-        batch_size=_train_batch,
-        test_batch_size=_test_batch,
+        batch_size=train_batch,
+        test_batch_size=test_batch,
         lr=0.01
     )
+
+
+if __name__ == "__main__":
+    main()
