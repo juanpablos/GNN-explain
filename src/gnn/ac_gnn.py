@@ -29,7 +29,7 @@ class ACGNN(torch.nn.Module):
         self.task = task
 
         self.bigger_input = input_dim > hidden_dim
-        self.mlp_combine = combine_type == "mlp"
+        # self.mlp_combine = combine_type == "mlp"
 
         if not self.bigger_input:
             self.padding = nn.ConstantPad1d(
