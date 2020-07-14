@@ -1,3 +1,4 @@
+import csv
 import hashlib
 import json
 from inspect import getsource
@@ -68,8 +69,12 @@ def run_experiment(
             model.cpu()
             weights = clean_state(model.state_dict())
             models.append(weights)
+    except KeyboardInterrupt:
+        with open(f"{save_path}.error", "w") as o:
+            o.write(f"Interrupted work in file {save_path}\n")
+            o.write(f"Only {m} models were written\n")
     except Exception as e:
-        with open(f".error-{save_path}.txt", "w") as o:
+        with open(f"{save_path}.error", "w") as o:
             o.write(f"Problem in file {save_path}\n")
             o.write(f"Exception encountered: {e}\n")
             o.write(f"Only {m} models were written\n")
@@ -90,8 +95,10 @@ def _write_metadata(
     format is:
     file name, model hash, model, formula hash, formula string, formula source
     """
-    with open(destination, "a") as f:
-        f.write(f"{file_name},{model_config_hash},{json.dumps(model_config)},{formula_hash},{repr(formula)},{formula_source}\n")
+    with open(destination, "a", newline='') as f:
+        writer = csv.writer(f)
+        writer.writerow([file_name, model_config_hash, json.dumps(
+            model_config), formula_hash, repr(formula), formula_source])
 
 
 def main():
@@ -147,7 +154,7 @@ def main():
     # TODO: check if file already exists
     save_path = f"data/gnns/{file_name}.pt"
 
-    iterations = 10
+    iterations = 5
 
     train_batch = 64
     test_batch = 512
@@ -171,6 +178,8 @@ def main():
         file_name=file_name
     )
 
+    from timeit import default_timer as timer
+    start = timer()
     run_experiment(
         n_models=n_models,
         save_path=save_path,
@@ -185,6 +194,8 @@ def main():
         test_batch_size=test_batch,
         lr=0.01
     )
+    end = timer()
+    print(f"Took {end-start} seconds")
 
 
 if __name__ == "__main__":
