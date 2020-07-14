@@ -15,28 +15,35 @@ class ACConv(MessagePassing):
             **kwargs):
 
         assert aggregate_type in ["add", "mean", "max"]
-        assert combine_type in [None, "mlp"]
+        assert combine_type in ["identity", "linear", "mlp"]
 
         super(ACConv, self).__init__(aggr=aggregate_type, **kwargs)
 
         _args = {
-            "num_layers": combine_layers,
+            "num_layers": mlp_layers,
             "input_dim": input_dim,
             "hidden_dim": output_dim,
             "output_dim": output_dim
         }
 
-        if combine_type is not None:
+        if combine_type == "identity":
+            # to have an Identity layer
             self.combine = MLP(
-                num_layers=mlp_layers,
+                num_layers=0,
+                input_dim=output_dim,
+                hidden_dim=output_dim,
+                output_dim=output_dim
+            )
+        elif combine_type == "linear":
+            self.combine = MLP(
+                num_layers=1,
                 input_dim=output_dim,
                 hidden_dim=output_dim,
                 output_dim=output_dim
             )
         else:
-            # to have an Identity layer
             self.combine = MLP(
-                num_layers=-1,
+                num_layers=combine_layers,
                 input_dim=output_dim,
                 hidden_dim=output_dim,
                 output_dim=output_dim

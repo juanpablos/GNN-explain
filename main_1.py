@@ -28,11 +28,17 @@ f = FOC(a5)
 "BLUE": 1,
 "GREEN": 2,
 "BLACK": 3
+
+a1 = Property("BLUE", "y")
+    a2 = Role(relation="EDGE", variable1="x", variable2="y")
+    a3 = AND(a1, a2)
+    a4 = Exist(variable="y", expression=a3)
+    f = FOC(a4)
 """
 
 
 def get_formula():
-    f = FOC(Property("RED", "x"))
+    f = FOC(Property("BLUE", "x"))
     return f
 
 
@@ -87,6 +93,7 @@ def run_experiment(
             o.write(f"Only {m} models were written\n")
     finally:
         torch.save(models, save_path)
+        pass
 
 
 def _write_metadata(
@@ -102,20 +109,20 @@ def _write_metadata(
     format is:
     file name, model hash, model, formula hash, formula string, formula source
     """
-    with open(destination, "a", newline='') as f:
+    with open(destination, "a", newline='', encoding='utf-8') as f:
         writer = csv.writer(f)
         writer.writerow([file_name, model_config_hash, json.dumps(
             model_config), formula_hash, repr(formula), formula_source])
 
 
 def main():
-    seed = 10
+    seed = 1
     seed_everything(seed)
 
     n_models = 2000
     model_name = "acgnn"
 
-    input_dim = 2
+    input_dim = 4
 
     model_config = {
         "name": model_name,
@@ -123,10 +130,10 @@ def main():
         "hidden_dim": 16,
         "output_dim": 2,
         "aggregate_type": "max",
-        "combine_type": None,
+        "combine_type": "identity",
         "num_layers": 2,
-        "combine_layers": 1,
-        "num_mlp_layers": 2,
+        "mlp_layers": 1,  # the number of layers in A and V
+        "combine_layers": 2,  # layers in the combine MLP if combine_type=mlp
         "task": "node",
         "truncated_fn": None
     }
@@ -143,7 +150,7 @@ def main():
         "formula": formula,
         "generator_fn": "random",
         "min_nodes": 10,
-        "max_nodes": 100,
+        "max_nodes": 60,
         "seed": seed,
         "n_properties": input_dim,
         "n_property_types": 1,
@@ -152,7 +159,7 @@ def main():
         "verbose": 0,
         # --- generator config
         "name": "erdos",
-        "m": 3,
+        "m": 2,
         "p": None
     }
 

@@ -33,7 +33,7 @@ def __get_model(name: str,
                 combine_type: str,
                 num_layers: int,
                 combine_layers: int,
-                num_mlp_layers: int,
+                mlp_layers: int,
                 task: str,
                 truncated_fn: Tuple[int, int]):
 
@@ -46,7 +46,7 @@ def __get_model(name: str,
             combine_type=combine_type,
             num_layers=num_layers,
             combine_layers=combine_layers,
-            num_mlp_layers=num_mlp_layers,
+            mlp_layers=mlp_layers,
             task=task,
             truncated_fn=truncated_fn
         )
@@ -121,10 +121,10 @@ def run(
             binary_prediction=True)
 
         # TODO: remove
-        if it == iterations:
-            print(
-                it,
-                f"loss {train_loss:.6f} test_loss {test_loss:.6f} micro {test_micro_acc:.4f} macro {test_macro_acc:.4f}")
+        # if it == iterations:
+        print(
+            it,
+            f"loss {train_loss:.6f} test_loss {test_loss:.6f} micro {test_micro_acc:.4f} macro {test_macro_acc:.4f}")
 
         # TODO: better way to handle when the model is not perfect
 

@@ -18,7 +18,7 @@ class ACGNN(torch.nn.Module):
             combine_type: str,
             num_layers: int,
             combine_layers: int,
-            num_mlp_layers: int,
+            mlp_layers: int,
             task: str,
             truncated_fn: Tuple[int, int] = None,
             **kwargs
@@ -29,7 +29,7 @@ class ACGNN(torch.nn.Module):
         self.task = task
 
         self.bigger_input = input_dim > hidden_dim
-        # self.mlp_combine = combine_type == "mlp"
+        self.weighted_combine = combine_type != "identity"
 
         if not self.bigger_input:
             self.padding = nn.ConstantPad1d(
@@ -52,14 +52,14 @@ class ACGNN(torch.nn.Module):
                                          aggregate_type=aggregate_type,
                                          combine_type=combine_type,
                                          combine_layers=combine_layers,
-                                         mlp_layers=num_mlp_layers))
+                                         mlp_layers=mlp_layers))
             else:
                 self.convs.append(ACConv(input_dim=hidden_dim,
                                          output_dim=hidden_dim,
                                          aggregate_type=aggregate_type,
                                          combine_type=combine_type,
                                          combine_layers=combine_layers,
-                                         mlp_layers=num_mlp_layers))
+                                         mlp_layers=mlp_layers))
 
             self.batch_norms.append(nn.BatchNorm1d(hidden_dim))
 
@@ -74,10 +74,10 @@ class ACGNN(torch.nn.Module):
         for layer in range(self.num_layers):
             h = self.convs[layer](h=h, edge_index=edge_index, batch=batch)
 
-            # ? should we not be applying relu if MLP combine?
-            # MLP looks like x > Linear > relu > Linear > output (no relu at the end)
-            # if not self.mlp_combine:
-            h = self.activation(h)
+            # we only apply the activation function if no combine function is
+            # selected (eg. identity, that is a noop)
+            if not self.weighted_combine:
+                h = self.activation(h)
 
             h = self.batch_norms[layer](h)
 
