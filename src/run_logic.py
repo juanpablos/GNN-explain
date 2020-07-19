@@ -113,18 +113,18 @@ def run(
         #     device=device,
         #     binary_prediction=True)
 
-        test_loss, test_micro_acc, test_macro_acc = evaluate(
-            model=model,
-            test_data=test_loader,
-            criterion=criterion,
-            device=device,
-            binary_prediction=True)
-
         # TODO: remove
-        # if it == iterations:
-        print(
-            it,
-            f"loss {train_loss:.6f} test_loss {test_loss:.6f} micro {test_micro_acc:.4f} macro {test_macro_acc:.4f}")
+        if it == iterations:
+            test_loss, test_micro_acc, test_macro_acc = evaluate(
+                model=model,
+                test_data=test_loader,
+                criterion=criterion,
+                device=device,
+                binary_prediction=True)
+
+            print(
+                it,
+                f"loss {train_loss: .6f} test_loss {test_loss: .6f} micro {test_micro_acc: .4f} macro {test_macro_acc: .4f}")
 
         # TODO: better way to handle when the model is not perfect
 

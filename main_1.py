@@ -1,6 +1,7 @@
 import csv
 import hashlib
 import json
+import random
 from inspect import getsource
 from typing import Any, Dict
 
@@ -14,31 +15,24 @@ from src.utils.gnn_data import clean_state
 
 
 """
-a0 = Property("RED", "x")
-a1 = Property("BLUE", "y")
-a2 = NEG(Role(relation="EDGE", variable1="x", variable2="y"))
-a3 = AND(a1, a2)
-a4 = Exist(variable="y", expression=a3, lower=2, upper=6)
-a5 = AND(a0, a4)
-f = FOC(a5)
-"""
-
-"""
 "RED": 0,
 "BLUE": 1,
 "GREEN": 2,
 "BLACK": 3
-
-a1 = Property("BLUE", "y")
-    a2 = Role(relation="EDGE", variable1="x", variable2="y")
-    a3 = AND(a1, a2)
-    a4 = Exist(variable="y", expression=a3)
-    f = FOC(a4)
+"""
+"""
+1) FOC(Property("RED", "x")) -> 25%
+2) FOC(Property("BLUE", "x")) -> 25%
+3) FOC(Property("GREEN", "x")) -> 25%
+4) FOC(Property("BLACK", "x")) -> 25%
+5) FOC(OR(Property("BLUE", "x"), Property("GREEN", "x"))) -> 50%
+6) FOC(NEG(Property("BLUE", "x"))) -> 75%
+7) FOC(OR(Property("RED", "x"), Property("GREEN", "x"))) -> 50%
 """
 
 
 def get_formula():
-    f = FOC(Property("BLUE", "x"))
+    f = FOC(Property("BLACK", "x"))
     return f
 
 
@@ -66,8 +60,8 @@ def run_experiment(
             # TODO: remove
             print("Training model", m)
 
-            train_data = LimitedStreamDataset(stream, train_length)
-            test_data = LimitedStreamDataset(stream, test_length)
+            train_data = LimitedStreamDataset(stream, train_length, store=True)
+            test_data = LimitedStreamDataset(stream, test_length, store=False)
 
             model = run(model_config=model_config,
                         train_graphs=train_data,
@@ -102,24 +96,26 @@ def _write_metadata(
         model_config_hash: str,
         formula: FOC,
         formula_hash: str,
+        seed: int,
         file_name: str):
     formula_source = getsource(get_formula)
 
     """
     format is:
-    file name, model hash, model, formula hash, formula string, formula source
+    file name, seed, model hash, model, formula hash, formula string, formula source
     """
     with open(destination, "a", newline='', encoding='utf-8') as f:
         writer = csv.writer(f)
-        writer.writerow([file_name, model_config_hash, json.dumps(
+        writer.writerow([file_name, seed, model_config_hash, json.dumps(
             model_config), formula_hash, repr(formula), formula_source])
 
 
 def main():
-    seed = 1
+    seed = random.randint(1, 1 << 30)
+    # seed = 10
     seed_everything(seed)
 
-    n_models = 2000
+    n_models = 10000
     model_name = "acgnn"
 
     input_dim = 4
@@ -127,11 +123,11 @@ def main():
     model_config = {
         "name": model_name,
         "input_dim": input_dim,
-        "hidden_dim": 16,
+        "hidden_dim": 8,
         "output_dim": 2,
         "aggregate_type": "max",
         "combine_type": "identity",
-        "num_layers": 2,
+        "num_layers": 1,
         "mlp_layers": 1,  # the number of layers in A and V
         "combine_layers": 2,  # layers in the combine MLP if combine_type=mlp
         "task": "node",
@@ -168,20 +164,15 @@ def main():
     # TODO: check if file already exists
     save_path = f"data/gnns/{file_name}.pt"
 
-    iterations = 20
+    iterations = 5
 
     train_batch = 64
-    test_batch = 512
+    test_batch = 100
 
-    """number of graphs in the train dataset
-    total number will be _train_length * batch_size"""
-    # 100 * 64 = 6.400
-    train_length = 40
-    """number of graphs in the test dataset
-    total number will be _test_length * batch_size"""
-    # test will be 10 times smaller than train
-    # X * 512 -> train * train_batch // 10 // 512
-    test_length = train_length * train_batch // test_batch // 10 or 1
+    # I want to be able to retrieve 64 graphs 20 times
+    train_length = 10 * train_batch
+    # I want to be able to retrieve 100 graphs 1 time
+    test_length = 1 * test_batch
 
     _write_metadata(
         destination="data/gnns/.meta.csv",
@@ -189,6 +180,7 @@ def main():
         model_config_hash=model_config_hash,
         formula=formula,
         formula_hash=formula_hash,
+        seed=seed,
         file_name=file_name
     )
 
