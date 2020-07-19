@@ -7,11 +7,11 @@ from typing import Any, Dict
 
 import torch
 
+from src.data.datasets import RandomGraphDataset
+from src.data.gnn_data import clean_state
 from src.generate_graphs import graph_stream
 from src.graphs import *
 from src.run_logic import run, seed_everything
-from src.utils import LimitedStreamDataset
-from src.utils.gnn_data import clean_state
 
 
 """
@@ -60,8 +60,8 @@ def run_experiment(
             # TODO: remove
             print("Training model", m)
 
-            train_data = LimitedStreamDataset(stream, train_length, store=True)
-            test_data = LimitedStreamDataset(stream, test_length, store=False)
+            train_data = RandomGraphDataset(stream, train_length)
+            test_data = RandomGraphDataset(stream, test_length)
 
             model = run(model_config=model_config,
                         train_graphs=train_data,

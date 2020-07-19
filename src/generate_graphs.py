@@ -1,7 +1,7 @@
 from typing import List
 
+from .data.graph_transform import stream_transform
 from .graphs import *
-from .utils.data_loader import graph_loader
 
 # from timeit import default_timer as timer
 # temp = 0
@@ -58,10 +58,10 @@ def graph_stream(formula: FOC,
         labels = formula(graph)
         # global temp
         # temp += timer() - t
-        yield graph_loader(graph=graph,
-                           node_labels=labels,
-                           n_node_features=n_properties,
-                           feature_type="categorical")
+        yield stream_transform(graph=graph,
+                               node_labels=labels,
+                               n_node_features=n_properties,
+                               feature_type="categorical")
 
 
 def generate_graphs(formula,

@@ -78,11 +78,13 @@ def run(
         train_graphs,
         batch_size=batch_size,
         pin_memory=True,
+        shuffle=True,
         num_workers=data_workers)
     test_loader = DataLoader(
         test_graphs,
         batch_size=test_batch_size,
         pin_memory=True,
+        shuffle=True,
         num_workers=data_workers)
 
     model = __get_model(**model_config)
