@@ -33,7 +33,7 @@ from src.training.gnn_training import Training
 
 
 def get_formula():
-    f = FOC(Property("BLACK", "x"))
+    f = FOC(OR(Property("BLUE", "x"), Property("GREEN", "x")))
     return f
 
 

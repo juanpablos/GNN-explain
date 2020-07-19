@@ -10,7 +10,7 @@ from torch_scatter import scatter_mean
 from src.gnn import ACGNN
 
 
-def __loss_aux(output, loss, data, binary):
+def _loss_aux(output, loss, data, binary):
     if binary:
         labels = torch.zeros_like(output).scatter_(dim=1,
                                                    index=data.y.unsqueeze(1),
@@ -22,7 +22,7 @@ def __loss_aux(output, loss, data, binary):
     return loss(output, labels)
 
 
-def __accuracy_aux(node_labels, predicted_labels, batch, device):
+def _accuracy_aux(node_labels, predicted_labels, batch, device):
     results = torch.eq(
         predicted_labels,
         node_labels).float().to(device)
@@ -95,7 +95,7 @@ class Training:
                            edge_index=data.edge_index,
                            batch=data.batch)
 
-            loss = __loss_aux(
+            loss = _loss_aux(
                 output=output,
                 loss=criterion,
                 data=data,
@@ -141,7 +141,7 @@ class Training:
                     batch=data.batch
                 )
 
-            loss = __loss_aux(
+            loss = _loss_aux(
                 output=output,
                 loss=criterion,
                 data=data,
@@ -153,7 +153,7 @@ class Training:
             output = torch.sigmoid(output)
             _, predicted_labels = output.max(dim=1)
 
-            micro, macro = __accuracy_aux(
+            micro, macro = _accuracy_aux(
                 node_labels=data.y,
                 predicted_labels=predicted_labels,
                 batch=data.batch,
