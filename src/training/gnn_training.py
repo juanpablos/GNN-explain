@@ -12,7 +12,7 @@ from src.gnn import ACGNN
 
 def _loss_aux(output, loss, data, binary):
     if binary:
-        # REV: F.one_hot(output, 2).float() should do the same
+        # REV: F.one_hot(output, 2).float().to(device) should do the same
         labels = torch.zeros_like(output).scatter_(dim=1,
                                                    index=data.y.unsqueeze(1),
                                                    value=1.)

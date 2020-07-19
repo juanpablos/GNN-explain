@@ -44,13 +44,12 @@ class Training:
                    output_dim=output_dim)
 
     def get_loss():
-        # ??: what loss should be here
         return nn.BCEWithLogitsLoss(reduction="mean")
 
     def get_optim(model, lr):
         return optim.Adam(model.parameters(), lr=lr)
 
-    def get_scheduler(optimizer, step=50):
+    def get_scheduler(**kwargs):
         pass
 
     def train(
