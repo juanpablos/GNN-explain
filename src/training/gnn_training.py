@@ -12,6 +12,7 @@ from src.gnn import ACGNN
 
 def _loss_aux(output, loss, data, binary):
     if binary:
+        # REV: F.one_hot(output, 2).float() should do the same
         labels = torch.zeros_like(output).scatter_(dim=1,
                                                    index=data.y.unsqueeze(1),
                                                    value=1.)
@@ -90,7 +91,7 @@ class Training:
         for data in training_data:
             data = data.to(device)
 
-            # TODO: for a more generic application, include the edge features
+            # FIX: for a more generic application, include the edge features
             output = model(x=data.x,
                            edge_index=data.edge_index,
                            batch=data.batch)

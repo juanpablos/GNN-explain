@@ -44,7 +44,7 @@ class Training:
                    output_dim=output_dim)
 
     def get_loss():
-        # TODO: think what loss should be here
+        # ??: what loss should be here
         return nn.BCEWithLogitsLoss(reduction="mean")
 
     def get_optim(model, lr):

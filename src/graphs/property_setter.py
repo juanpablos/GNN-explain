@@ -5,8 +5,7 @@ import networkx as nx
 import numpy as np
 
 
-# TODO: in the case of mutiple types of properties
-# TODO: what to do when there can be more than one property per node
+# REV: what to do when there can be more than one property per node
 def property_generator(graph_generator: Iterable[nx.Graph],
                        number_of_graphs: int = None,
                        n_properties: int = 10,
@@ -45,7 +44,7 @@ def property_generator(graph_generator: Iterable[nx.Graph],
         raise NotImplementedError
 
     # ! representation of properties as intergers
-    # TODO: check if we need to change this
+    # ??: do we need to change this if more features?
     properties = list(range(n_properties))
 
     rand = np.random.default_rng(seed)

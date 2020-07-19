@@ -24,7 +24,7 @@ class Concept(ABC):
 
 
 class Property(Concept):
-    # TODO: seach for a better way to do this
+    # REV: seach for a better way to do this
     available = {
         "RED": 0,
         "BLUE": 1,

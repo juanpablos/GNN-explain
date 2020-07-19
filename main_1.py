@@ -33,7 +33,7 @@ from src.training.gnn_training import Training
 
 
 def get_formula():
-    f = FOC(OR(Property("BLUE", "x"), Property("GREEN", "x")))
+    f = FOC(OR(Property("RED", "x"), Property("GREEN", "x")))
     return f
 
 
@@ -58,7 +58,7 @@ def run_experiment(
     try:
         for m in range(1, n_models + 1):
 
-            # TODO: remove
+            # REV: replace with a logger
             print("Training model", m)
 
             train_data = RandomGraphDataset(stream, train_length)

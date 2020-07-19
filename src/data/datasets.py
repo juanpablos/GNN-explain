@@ -40,7 +40,7 @@ class NetworkDataset(Dataset):
     def __init__(self, file, label):
         # the weights in a vector
         self.dataset = []
-        # TODO: the pathm
+        # TODO: the path
         self.__load(file)
 
         self.label = label

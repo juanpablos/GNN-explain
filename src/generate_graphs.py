@@ -93,7 +93,7 @@ def generate_graphs(formula,
         seed=seed,
         verbose=0)
 
-    # TODO: off line graph reading
+    # TODO: offline graph reading
     raise NotImplementedError
 
 

@@ -85,7 +85,7 @@ def run(
         #     device=device,
         #     binary_prediction=True)
 
-        # TODO: remove
+        # !!: remove
         if it == iterations:
             test_loss, test_micro_acc, test_macro_acc = run_config.evaluate(
                 model=model,
@@ -97,8 +97,6 @@ def run(
             print(
                 it,
                 f"loss {train_loss: .6f} test_loss {test_loss: .6f} micro {test_micro_acc: .4f} macro {test_macro_acc: .4f}")
-
-        # TODO: better way to handle when the model is not perfect
 
         # TODO: implement a logger (do not need the logger for the training
         # GNN)
