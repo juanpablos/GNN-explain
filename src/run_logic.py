@@ -27,8 +27,8 @@ def seed_everything(seed):
 def run(
     run_config,
     model_config: Dict[str, Any],
-    train_graphs: Dataset,
-    test_graphs: Dataset,
+    train_data: Dataset,
+    test_data: Dataset,
     iterations: int,
     gpu_num: int,
     data_workers: int,
@@ -46,13 +46,13 @@ def run(
         data_workers = 0
 
     train_loader = DataLoader(
-        train_graphs,
+        train_data,
         batch_size=batch_size,
         pin_memory=True,
         shuffle=True,
         num_workers=data_workers)
     test_loader = DataLoader(
-        test_graphs,
+        test_data,
         batch_size=test_batch_size,
         pin_memory=True,
         shuffle=True,

@@ -7,7 +7,7 @@ import torch.optim as optim
 from torch_geometric.data import DataLoader
 from torch_scatter import scatter_mean
 
-from ..gnn import ACGNN
+from src.gnn import ACGNN
 
 
 def __loss_aux(output, loss, data, binary):
@@ -78,7 +78,8 @@ class Training:
             device,
             optimizer,
             scheduler,
-            binary_prediction: bool) -> float:
+            binary_prediction: bool,
+            **kwargs) -> float:
 
         #!########
         model.train()
@@ -117,7 +118,8 @@ class Training:
             test_data: DataLoader,
             criterion,
             device,
-            binary_prediction: bool = True):
+            binary_prediction: bool = True,
+            **kwargs):
 
         #!########
         model.eval()

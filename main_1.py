@@ -67,8 +67,8 @@ def run_experiment(
             model = run(
                 run_config=Training,
                 model_config=model_config,
-                train_graphs=train_data,
-                test_graphs=test_data,
+                train_data=train_data,
+                test_data=test_data,
                 iterations=iterations,
                 gpu_num=gpu_num,
                 data_workers=data_workers,
