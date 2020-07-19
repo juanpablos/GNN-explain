@@ -12,6 +12,7 @@ from src.data.gnn_data import clean_state
 from src.generate_graphs import graph_stream
 from src.graphs import *
 from src.run_logic import run, seed_everything
+from src.training.gnn_training import Training
 
 
 """
@@ -63,15 +64,17 @@ def run_experiment(
             train_data = RandomGraphDataset(stream, train_length)
             test_data = RandomGraphDataset(stream, test_length)
 
-            model = run(model_config=model_config,
-                        train_graphs=train_data,
-                        test_graphs=test_data,
-                        iterations=iterations,
-                        gpu_num=gpu_num,
-                        data_workers=data_workers,
-                        batch_size=batch_size,
-                        test_batch_size=test_batch_size,
-                        lr=lr)
+            model = run(
+                run_config=Training,
+                model_config=model_config,
+                train_graphs=train_data,
+                test_graphs=test_data,
+                iterations=iterations,
+                gpu_num=gpu_num,
+                data_workers=data_workers,
+                batch_size=batch_size,
+                test_batch_size=test_batch_size,
+                lr=lr)
 
             model.cpu()
             weights = clean_state(model.state_dict())

@@ -1,16 +1,15 @@
 import os
 import random
-from typing import Any, Dict, Tuple
+from typing import Any, Dict
 
 import numpy as np
 import torch
-import torch.nn as nn
-import torch.optim as optim
 from torch.utils.data import Dataset
-from torch_geometric.data import DataLoader
 
-from .gnn import ACGNN
-from .training import evaluate, train
+try:
+    from torch_geometric.data import DataLoader
+except ImportError:
+    from torch.utils.data import DataLoader
 
 
 def seed_everything(seed):
@@ -25,36 +24,8 @@ def seed_everything(seed):
         torch.backends.cudnn.benchmark = False
 
 
-def __get_model(name: str,
-                input_dim: int,
-                hidden_dim: int,
-                output_dim: int,
-                aggregate_type: str,
-                combine_type: str,
-                num_layers: int,
-                combine_layers: int,
-                mlp_layers: int,
-                task: str,
-                truncated_fn: Tuple[int, int]):
-
-    if name == "acgnn":
-        return ACGNN(
-            input_dim=input_dim,
-            hidden_dim=hidden_dim,
-            output_dim=output_dim,
-            aggregate_type=aggregate_type,
-            combine_type=combine_type,
-            num_layers=num_layers,
-            combine_layers=combine_layers,
-            mlp_layers=mlp_layers,
-            task=task,
-            truncated_fn=truncated_fn
-        )
-    else:
-        raise NotImplementedError
-
-
 def run(
+    run_config,
     model_config: Dict[str, Any],
     train_graphs: Dataset,
     test_graphs: Dataset,
@@ -87,18 +58,17 @@ def run(
         shuffle=True,
         num_workers=data_workers)
 
-    model = __get_model(**model_config)
+    model = run_config.get_model(**model_config)
 
     model = model.to(device)
 
-    criterion = nn.BCEWithLogitsLoss(reduction='mean')
-    optimizer = optim.Adam(model.parameters(), lr=lr)
-    scheduler = optim.lr_scheduler.StepLR(
-        optimizer, step_size=50, gamma=0.5)
+    criterion = run_config.get_loss()
+    optimizer = run_config.get_optim(model=model, lr=lr)
+    scheduler = run_config.get_scheduler(optimizer=optimizer)
 
     for it in range(1, iterations + 1):
 
-        train_loss = train(
+        train_loss = run_config.train(
             model=model,
             training_data=train_loader,
             criterion=criterion,
@@ -117,7 +87,7 @@ def run(
 
         # TODO: remove
         if it == iterations:
-            test_loss, test_micro_acc, test_macro_acc = evaluate(
+            test_loss, test_micro_acc, test_macro_acc = run_config.evaluate(
                 model=model,
                 test_data=test_loader,
                 criterion=criterion,
