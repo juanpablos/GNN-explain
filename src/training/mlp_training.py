@@ -105,7 +105,7 @@ class Training:
             with torch.no_grad():
                 output = model(x)
 
-            loss = criterion(output, y)
+            loss = criterion(output, F.one_hot(y, 2).float())
             accum_loss.append(loss.detach().cpu().numpy())
 
             output = torch.sigmoid(output)
