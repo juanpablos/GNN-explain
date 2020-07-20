@@ -37,14 +37,11 @@ class RandomGraphDataset(Dataset):
 
 
 class NetworkDataset(Dataset):
-    def __init__(self, file, label):
+    def __init__(self, file, label, limit: int = None):
         # the weights in a vector
         self.dataset = []
-        # TODO: the path
-        self.__load(file)
-
+        self.__load(file, limit)
         self.label = label
-        pass
 
     def __len__(self):
         return len(self.dataset)
@@ -52,8 +49,11 @@ class NetworkDataset(Dataset):
     def __getitem__(self, idx):
         return self.dataset[idx], self.label
 
-    def __load(self, file_name):
+    def __load(self, file_name, limit):
         networks = torch.load(file_name)
-        for weights in networks:
+        for i, weights in enumerate(networks, start=1):
+            if i == limit:
+                break
+
             self.dataset.append(
                 torch.cat([w.flatten() for w in weights.values()]))
