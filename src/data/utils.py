@@ -1,9 +1,10 @@
 import os
 from typing import Any, Dict
 
-from torch.utils.data.dataset import ConcatDataset
+from sklearn.model_selection import train_test_split as sk_split
+from torch.utils.data.dataset import Dataset, Subset
 
-from .datasets import NetworkDataset
+from .datasets import MergedDataset, NetworkDataset
 
 
 def clean_state(model_dict):
@@ -40,8 +41,30 @@ def load_gnn_files(root: str, model_hash: str,
     datasets = []
     for formula_hash, config in formula_hashes.items():
         file_path = os.path.join(model_path, dir_formulas[formula_hash])
+
         dataset = NetworkDataset(file=file_path, **config)
 
         datasets.append(dataset)
 
-    return ConcatDataset(datasets)
+    return MergedDataset(datasets)
+
+
+def train_test_dataset(
+        dataset: Dataset,
+        test_size: float = 0.25,
+        random_state: int = None,
+        shuffle: bool = True,
+        stratify: bool = True):
+
+    classes = None
+    if stratify:
+        # ?? can we do this better?
+        classes = [data[1] for data in dataset]
+
+    train_idx, test_idx = sk_split(list(range(len(dataset))),
+                                   test_size=test_size,
+                                   random_state=random_state,
+                                   shuffle=shuffle,
+                                   stratify=classes)
+
+    return Subset(dataset, train_idx), Subset(dataset, test_idx)
