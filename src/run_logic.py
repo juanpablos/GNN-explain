@@ -86,17 +86,17 @@ def run(
         #     binary_prediction=True)
 
         # !!: remove
-        if it == iterations:
-            test_loss, test_micro_acc, test_macro_acc = run_config.evaluate(
-                model=model,
-                test_data=test_loader,
-                criterion=criterion,
-                device=device,
-                binary_prediction=True)
+        # if it == iterations:
+        test_loss, test_metric_1, test_metric_2 = run_config.evaluate(
+            model=model,
+            test_data=test_loader,
+            criterion=criterion,
+            device=device,
+            binary_prediction=True)
 
-            print(
-                it,
-                f"loss {train_loss: .6f} test_loss {test_loss: .6f} micro {test_micro_acc: .4f} macro {test_macro_acc: .4f}")
+        print(
+            it,
+            f"loss {train_loss: .6f} test_loss {test_loss: .6f} metric1 {test_metric_1: .4f} metric2 {test_metric_2: .4f}")
 
         # TODO: implement a logger (do not need the logger for the training
         # GNN)

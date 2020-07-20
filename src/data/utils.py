@@ -1,6 +1,7 @@
 import os
 from typing import Any, Dict
 
+import torch
 from sklearn.model_selection import train_test_split as sk_split
 from torch.utils.data.dataset import Dataset, Subset
 
@@ -40,6 +41,8 @@ def load_gnn_files(root: str, model_hash: str,
 
     datasets = []
     for formula_hash, config in formula_hashes.items():
+        # TODO: do proper logging
+        print(f"\tLoading {formula_hash}")
         file_path = os.path.join(model_path, dir_formulas[formula_hash])
 
         dataset = NetworkDataset(file=file_path, **config)
@@ -68,3 +71,16 @@ def train_test_dataset(
                                    stratify=classes)
 
     return Subset(dataset, train_idx), Subset(dataset, test_idx)
+
+
+def get_input_dim(data):
+    datapoint = next(iter(data))
+    if isinstance(datapoint, tuple):
+        x = datapoint[0]
+    else:
+        x = datapoint
+
+    # TODO: add a message
+    assert isinstance(x, torch.Tensor)
+
+    return x.shape
