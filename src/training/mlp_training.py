@@ -12,26 +12,31 @@ from src.gnn import MLP
 
 class Metric:
     def __init__(self):
-        self.correct_true = 0.0
-        self.predicted_true = 0.0
-        self.true_true = 0.0
+        self.tp = 0.0
+        self.tn = 0.0
+        self.fp = 0.0
+        self.fn = 0.0
 
     def __call__(self, y_true, y_pred):
-        self.correct_true += torch.sum(y_pred * y_true).item()
-        self.predicted_true += torch.sum(y_pred).item()
-        self.true_true += torch.sum(y_true).item()
+        self.tp = ((y_true == 1) & (y_pred == 1)).sum().cpu().item()
+        self.tn = ((y_true == 0) & (y_pred == 0)).sum().cpu().item()
+        self.fp = ((y_true == 0) & (y_pred == 1)).sum().cpu().item()
+        self.fn = ((y_true == 1) & (y_pred == 0)).sum().cpu().item()
 
     def precision(self):
-        return self.correct_true / self.predicted_true
+        return self.tp / (self.tp + self.fp)
 
     def recall(self):
-        return self.correct_true / self.true_true
+        return self.tp / (self.tp + self.fn)
 
     def f1(self):
         precision = self.precision()
         recall = self.recall()
 
         return 2 * (precision * recall) / (precision + recall)
+
+    def accuracy(self):
+        return (self.tp + self.tn) / (self.tp + self.tn + self.fp + self.fn)
 
 
 class Training:
@@ -124,9 +129,10 @@ class Training:
         collector["precision"] = metric.precision()
         collector["recall"] = metric.recall()
         collector["f1score"] = metric.f1()
+        collector["acc"] = metric.accuracy()
 
         return average_loss, metric.precision(), metric.recall()
 
     def log(info):
-        return "loss {train_loss: <10.6f} test_loss {test_loss: <10.6f} precision {precision: <10.4f} recall {recall: <10.4f} f1score {f1score:.4f}".format(
+        return "loss {train_loss: <10.6f} test_loss {test_loss: <10.6f} precision {precision: <10.4f} recall {recall: <10.4f} f1score {f1score: <10.4f} accuracy {acc:.4f}".format(
             **info)
