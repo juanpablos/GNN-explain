@@ -23,6 +23,7 @@ def stream_transform(graph: nx.Graph,
         torch_geometric.Data: a Data object representing a single graph to train on.
     """
 
+    graph = graph.to_directed()
     edges = torch.tensor(list(graph.edges), dtype=torch.long)
     labels = torch.tensor(node_labels, dtype=torch.long)
     features = torch.tensor(

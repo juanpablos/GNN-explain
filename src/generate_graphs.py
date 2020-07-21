@@ -36,7 +36,6 @@ def graph_stream(formula: FOC,
         torch_geometric.Data: a single data object representing a graph and its labels
     """
 
-    # TODO: generate directed graphs
     _generator = graph_generator(
         generator_fn=generator_fn,
         min_nodes=min_nodes,
