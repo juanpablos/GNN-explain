@@ -1,4 +1,4 @@
-from typing import Tuple
+from typing import Dict, Tuple
 
 import numpy as np
 import torch
@@ -79,6 +79,7 @@ class Training:
             device,
             optimizer,
             scheduler,
+            collector: Dict,
             binary_prediction: bool,
             **kwargs) -> float:
 
@@ -112,6 +113,8 @@ class Training:
 
         average_loss = np.mean(accum_loss)
 
+        collector["train_loss"] = average_loss
+
         return average_loss
 
     def evaluate(
@@ -119,7 +122,8 @@ class Training:
             test_data: DataLoader,
             criterion,
             device,
-            binary_prediction: bool = True,
+            collector: Dict,
+            binary_prediction: bool,
             **kwargs):
 
         #!########
@@ -171,4 +175,12 @@ class Training:
         micro_avg = micro_avg / n_nodes
         macro_avg = macro_avg / n_graphs
 
+        collector["test_loss"] = average_loss
+        collector["micro"] = micro_avg
+        collector["macro"] = macro_avg
+
         return average_loss, micro_avg, macro_avg
+
+    def log(info):
+        return "loss {train_loss: <10.6f} test_loss {test_loss: <10.6f} micro {micro: <10.4f} macro {macro: .4f}".format(
+            **info)

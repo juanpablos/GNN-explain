@@ -1,3 +1,5 @@
+from typing import Dict
+
 import numpy as np
 import torch
 import torch.nn as nn
@@ -58,6 +60,7 @@ class Training:
             criterion,
             device,
             optimizer,
+            collector: Dict,
             **kwargs) -> float:
 
         #!########
@@ -81,6 +84,8 @@ class Training:
 
         average_loss = np.mean(accum_loss)
 
+        collector["train_loss"] = average_loss
+
         return average_loss
 
     def evaluate(
@@ -88,6 +93,7 @@ class Training:
             test_data: DataLoader,
             criterion,
             device,
+            collector: Dict,
             **kwargs):
 
         #!########
@@ -114,5 +120,13 @@ class Training:
             metric(y, y_pred)
 
         average_loss = np.mean(accum_loss)
+        collector["test_loss"] = average_loss
+        collector["precision"] = metric.presicion()
+        collector["recall"] = metric.recall()
+        collector["f1score"] = metric.f1()
 
         return average_loss, metric.precision(), metric.recall()
+
+    def log(info):
+        return "loss {train_loss: <10.6f} test_loss {test_loss: <10.6f} precision {precision: <10.4f} recall {recall: <10.4f} f1score {f1score:.4f}".format(
+            **info)

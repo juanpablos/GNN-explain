@@ -2,6 +2,7 @@ import csv
 import hashlib
 import json
 import random
+from collections import Counter
 from inspect import getsource
 from typing import Any, Dict
 
@@ -29,11 +30,23 @@ from src.training.gnn_training import Training
 5) FOC(OR(Property("BLUE", "x"), Property("GREEN", "x"))) -> 50%
 6) FOC(NEG(Property("BLUE", "x"))) -> 75%
 7) FOC(OR(Property("RED", "x"), Property("GREEN", "x"))) -> 50%
+
+8) FOC(AND(Property("BLUE", "x"),Exist("y",AND(Role("EDGE", "x", "y"),Property("GREEN", "y"))))) -> 22%
+9) FOC(AND(Property("BLUE", "x"),Exist("y",AND(Role("EDGE", "x", "y"),OR(Property("RED", "y"),Property("GREEN", "y")))))) -> 25%
 """
 
 
 def get_formula():
-    f = FOC(OR(Property("RED", "x"), Property("GREEN", "x")))
+    f = FOC(
+        AND(
+            Property(
+                "BLUE", "x"), Exist(
+                "y", AND(
+                    Role(
+                        "EDGE", "x", "y"), OR(
+                            Property(
+                                "RED", "y"), Property(
+                                    "GREEN", "y"))))))
     return f
 
 
@@ -49,10 +62,13 @@ def run_experiment(
         data_workers: int = 2,
         batch_size: int = 64,
         test_batch_size: int = 512,
-        lr: float = 0.01):
+        lr: float = 0.01,
+        stop_when: Dict = None):
 
     stream = graph_stream(**data_config)
     models = []
+
+    macro_dict, micro_dict = Counter(), Counter()
 
     m = 0
     try:
@@ -64,7 +80,7 @@ def run_experiment(
             train_data = RandomGraphDataset(stream, train_length)
             test_data = RandomGraphDataset(stream, test_length)
 
-            model = run(
+            model, metrics = run(
                 run_config=Training,
                 model_config=model_config,
                 train_data=train_data,
@@ -74,11 +90,16 @@ def run_experiment(
                 data_workers=data_workers,
                 batch_size=batch_size,
                 test_batch_size=test_batch_size,
-                lr=lr)
+                lr=lr,
+                stop_when=stop_when)
 
             model.cpu()
             weights = clean_state(model.state_dict())
             models.append(weights)
+
+            macro_dict[metrics["macro"]] += 1
+            micro_dict[metrics["micro"]] += 1
+
     except KeyboardInterrupt:
         with open(f"{save_path}.error", "w") as o:
             o.write(f"Interrupted work in file {save_path}\n")
@@ -90,7 +111,10 @@ def run_experiment(
             o.write(f"Only {m} models were written\n")
     finally:
         torch.save(models, save_path)
-        pass
+        with open(f"{save_path}.stat", "w") as f:
+            f.write(f"{m} networks\n")
+            f.write(f"{json.dumps(macro_dict, sort_keys=True)}\n")
+            f.write(f"{json.dumps(micro_dict, sort_keys=True)}\n")
 
 
 def _write_metadata(
@@ -99,18 +123,27 @@ def _write_metadata(
         model_config_hash: str,
         formula: FOC,
         formula_hash: str,
+        data_config: Dict,
         seed: int,
-        file_name: str):
+        file_name: str,
+        **kwargs):
     formula_source = getsource(get_formula)
 
     """
     format is:
-    file name, seed, model hash, model, formula hash, formula string, formula source
+    file name, seed, model hash, model, formula hash, formula string, formula source, data config, others
     """
     with open(destination, "a", newline='', encoding='utf-8') as f:
-        writer = csv.writer(f)
-        writer.writerow([file_name, seed, model_config_hash, json.dumps(
-            model_config), formula_hash, repr(formula), formula_source])
+        writer = csv.writer(f, quotechar="|")
+        writer.writerow([file_name,
+                         seed,
+                         model_config_hash,
+                         json.dumps(model_config),
+                         formula_hash,
+                         repr(formula),
+                         formula_source,
+                         json.dumps(data_config),
+                         json.dumps(kwargs)])
 
 
 def main():
@@ -118,7 +151,7 @@ def main():
     # seed = 10
     seed_everything(seed)
 
-    n_models = 10000
+    n_models = 10
     model_name = "acgnn"
 
     input_dim = 4
@@ -126,11 +159,11 @@ def main():
     model_config = {
         "name": model_name,
         "input_dim": input_dim,
-        "hidden_dim": 8,
+        "hidden_dim": 16,
         "output_dim": 2,
         "aggregate_type": "max",
         "combine_type": "identity",
-        "num_layers": 1,
+        "num_layers": 2,
         "mlp_layers": 1,  # the number of layers in A and V
         "combine_layers": 2,  # layers in the combine MLP if combine_type=mlp
         "task": "node",
@@ -146,7 +179,6 @@ def main():
     formula_hash = hashlib.md5(repr(formula).encode()).hexdigest()[:10]
 
     data_config = {
-        "formula": formula,
         "generator_fn": "random",
         "min_nodes": 10,
         "max_nodes": 60,
@@ -158,8 +190,7 @@ def main():
         "verbose": 0,
         # --- generator config
         "name": "erdos",
-        "m": 2,
-        "p": None
+        "m": 4
     }
 
     # * model_name - number of models - model hash - formula hash
@@ -167,15 +198,19 @@ def main():
     # TODO: check if file already exists
     save_path = f"data/gnns/{file_name}.pt"
 
-    iterations = 5
+    iterations = 10
+    stop_when = {
+        "condition": "and",  # and or or
+        "micro": 1,
+        "macro": 1,
+    }
 
-    train_batch = 64
-    test_batch = 100
-
-    # I want to be able to retrieve 64 graphs 20 times
-    train_length = 10 * train_batch
-    # I want to be able to retrieve 100 graphs 1 time
-    test_length = 1 * test_batch
+    # I want to be able to retrieve train_batch graphs N times
+    train_batch = 40
+    train_batch_length = 16
+    # I want to be able to retrieve test_batch graphs N times
+    test_batch = 1
+    test_batch_length = 100
 
     _write_metadata(
         destination="data/gnns/.meta.csv",
@@ -183,9 +218,18 @@ def main():
         model_config_hash=model_config_hash,
         formula=formula,
         formula_hash=formula_hash,
+        data_config=data_config,
+        iterations=iterations,
+        train_batch=train_batch,
+        train_batch_length=train_batch_length,
+        test_batch=test_batch,
+        test_batch_length=test_batch_length,
         seed=seed,
+        stop_when=stop_when,
         file_name=file_name
     )
+
+    data_config["formula"] = formula
 
     from timeit import default_timer as timer
     start = timer()
@@ -194,14 +238,15 @@ def main():
         save_path=save_path,
         model_config=model_config,
         data_config=data_config,
-        train_length=train_length,
-        test_length=test_length,
+        train_length=train_batch * train_batch_length,
+        test_length=test_batch * test_batch_length,
         iterations=iterations,
         gpu_num=0,
         data_workers=2,
         batch_size=train_batch,
         test_batch_size=test_batch,
-        lr=0.01
+        lr=0.01,
+        stop_when=stop_when
     )
     end = timer()
     print(f"Took {end-start} seconds")

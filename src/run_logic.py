@@ -6,6 +6,8 @@ import numpy as np
 import torch
 from torch.utils.data import Dataset
 
+from src.training.utils import StopTraining
+
 try:
     from torch_geometric.data import DataLoader
 except ImportError:
@@ -32,9 +34,11 @@ def run(
     iterations: int,
     gpu_num: int,
     data_workers: int,
+    test_data_workers: int = 1,
     batch_size: int = 64,
     test_batch_size: int = 512,
-    lr: float = 0.01
+    lr: float = 0.01,
+    stop_when: Dict = None
 ):
 
     if torch.cuda.is_available():
@@ -44,6 +48,7 @@ def run(
 
     if os.name == "nt":
         data_workers = 0
+        test_data_workers = 0
 
     train_loader = DataLoader(
         train_data,
@@ -56,16 +61,17 @@ def run(
         batch_size=test_batch_size,
         pin_memory=True,
         shuffle=True,
-        num_workers=data_workers)
+        num_workers=test_data_workers)
 
     model = run_config.get_model(**model_config)
-
     model = model.to(device)
 
     criterion = run_config.get_loss()
     optimizer = run_config.get_optim(model=model, lr=lr)
     scheduler = run_config.get_scheduler(optimizer=optimizer)
 
+    stop = StopTraining(stop_when)
+    info = {}
     for it in range(1, iterations + 1):
 
         train_loss = run_config.train(
@@ -75,7 +81,8 @@ def run(
             device=device,
             optimizer=optimizer,
             scheduler=scheduler,
-            binary_prediction=True
+            binary_prediction=True,
+            collector=info
         )
 
         # _, train_micro_acc, train_macro_acc = evaluate(
@@ -85,20 +92,19 @@ def run(
         #     device=device,
         #     binary_prediction=True)
 
-        # !!: remove
-        # if it == iterations:
-        test_loss, test_metric_1, test_metric_2 = run_config.evaluate(
+        test_metrics = run_config.evaluate(
             model=model,
             test_data=test_loader,
             criterion=criterion,
             device=device,
-            binary_prediction=True)
+            binary_prediction=True,
+            collector=info)
 
-        print(
-            it,
-            f"loss {train_loss: .6f} test_loss {test_loss: .6f} metric1 {test_metric_1: .4f} metric2 {test_metric_2: .4f}")
+        # TODO: implement a logger
+        if stop(info):
+            print(it, run_config.log(info))
+            break
+        elif it == iterations:
+            print(it, run_config.log(info))
 
-        # TODO: implement a logger (do not need the logger for the training
-        # GNN)
-
-    return model
+    return model, info

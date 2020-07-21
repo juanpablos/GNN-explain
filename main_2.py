@@ -35,7 +35,7 @@ def run_experiment(
     model_config["input_dim"] = input_shape[0]
 
     print("Running")
-    model = run(
+    model, metrics = run(
         run_config=Training,
         model_config=model_config,
         train_data=train_data,
