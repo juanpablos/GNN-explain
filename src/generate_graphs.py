@@ -3,9 +3,6 @@ from typing import List
 from .data.graph_transform import stream_transform
 from .graphs import *
 
-# from timeit import default_timer as timer
-# temp = 0
-
 
 def graph_stream(formula: FOC,
                  generator_fn: str,
@@ -53,10 +50,7 @@ def graph_stream(formula: FOC,
         verbose=verbose)
 
     for graph in _properties:
-        # t = timer()
         labels = formula(graph)
-        # global temp
-        # temp += timer() - t
         yield stream_transform(graph=graph,
                                node_labels=labels,
                                n_node_features=n_properties,
@@ -94,63 +88,3 @@ def generate_graphs(formula,
 
     # TODO: offline graph reading
     raise NotImplementedError
-
-
-if __name__ == "__main__":
-
-    a0 = Property("RED", "x")
-
-    a1 = Property("BLUE", "y")
-    a2 = NEG(Role(relation="EDGE", variable1="x", variable2="y"))
-    a3 = AND(a1, a2)
-    a4 = Exist(variable="y", expression=a3, lower=2, upper=6)
-    a5 = AND(a0, a4)
-    _formula = FOC(a5)
-
-    _seed = 11
-
-    stream = graph_stream(formula=_formula,
-                          generator_fn="random",
-                          min_nodes=40,
-                          max_nodes=50,
-                          seed=_seed,
-                          n_properties=5,
-                          n_property_types=1,
-                          property_distribution="uniform",
-                          distribution=None,
-                          verbose=0,
-                          m=8)
-
-    # aa = []
-    # from timeit import default_timer as timer
-    # a = timer()
-    # for _ in range(1024):
-    #     aa.append(next(stream))
-    # print("total", timer() - a)
-    # print("label", temp)
-    # import torch
-    # class Iterable(torch.utils.data.IterableDataset):
-    #     def __init__(self, iterable):
-    #         self.data = iterable
-
-    #     def __iter__(self):
-    #         return self.data
-
-    # from torch_geometric.data import DataLoader
-    # import time
-
-    # d = DataLoader(Iterable(stream), batch_size=512, num_workers=0)
-
-    # a = time.time()
-    # for i, data in enumerate(d):
-    #     print(time.time() - a)
-    #     a = time.time()
-
-    dt = next(stream)
-
-    print(dt.y)
-    print(dt.y.unsqueeze(1))
-
-    print(dt.x.dtype)
-    print(dt.edge_index.dtype)
-    print(dt.y.dtype)

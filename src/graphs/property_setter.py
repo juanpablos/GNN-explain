@@ -41,9 +41,9 @@ def property_generator(graph_generator: Iterable[nx.Graph],
             sum(distribution) < 1e5, "probabilities do not sum to 1"
 
     if n_property_types != 1:
-        raise NotImplementedError
+        raise NotImplementedError(
+            f"n_property_types is not implemented when different than 1")
 
-    # ! representation of properties as intergers
     # ??: do we need to change this if more features?
     properties = list(range(n_properties))
 

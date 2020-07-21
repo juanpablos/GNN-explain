@@ -46,7 +46,6 @@ class Property(Concept):
         """
         # ? here depends in the type of property, for now it is a any()
         res = [self.prop in node for node in properties]
-        # return self.prop(graph.node[mapping[self.variable]]['property'])
         return np.array(res, dtype=int)
 
     def __repr__(self):
@@ -56,10 +55,6 @@ class Property(Concept):
 class Role(Concept):
 
     def __init__(self, relation, variable1, variable2):
-        # if relation not in self.available:
-        #     raise Exception("Relation not available")
-
-        # self.relation = self.available[relation]
         self.name = relation
         self.variable1 = variable1
         self.variable2 = variable2
@@ -67,9 +62,6 @@ class Role(Concept):
     def __call__(self, graph, adjacency, **kwargs):
         """Returns an adjacency matrix for a graph
         """
-        # return self.relation(node1=mapping[self.variable1],
-        #                      node2=mapping[self.variable2],
-        #                      graph=graph)
         if adjacency["value"] is None:
             adjacency["value"] = nx.adjacency_matrix(graph).toarray()
         return adjacency["value"]
@@ -137,10 +129,6 @@ class Exist(Element):
             return f"{s}({self.variable}<={self.upper}){self.expression}"
 
     def __call__(self, **kwargs):
-        # variable and self.variable must be different
-        # self.variable must not have been used yet
-        # assert self.variable not in mapping
-
         lower = self.lower if self.lower is not None else 1
         upper = self.upper if self.upper is not None else float("inf")
 
@@ -150,22 +138,6 @@ class Exist(Element):
                 "Cannot have a restriction property with single values")
 
         per_node = np.sum(res, axis=1)
-
-        # running_check = 0
-        # for node in graph:
-        #     mapping[self.variable] = node
-        #     running_check += self.expression(
-        #         graph=graph, mapping=mapping)
-
-        #     if running_check > upper:
-        #         break
-
-        # mapping.pop(self.variable)
-        # if lower <= running_check <= upper:
-        #     return True
-        # else:
-        #     return False
-
         return (per_node >= lower) & (per_node <= upper)
 
     def symbol(self):
@@ -182,24 +154,6 @@ class ForAll(Element):
         return f"{s}({self.variable}){self.expression}"
 
     def __call__(self, **kwargs):
-        # # variable and self.variable must be different
-        # # self.variable must not have been used yet
-        # assert self.variable not in mapping
-
-        # running_check = True
-        # for node in graph:
-        #     mapping[self.variable] = node
-        #     running_check &= self.expression(
-        #         graph=graph, mapping=mapping)
-
-        #     if not running_check:
-        #         break
-
-        # mapping.pop(self.variable)
-        # if running_check:
-        #     return True
-        # else:
-        #     return False
         res = self.expression(**kwargs)
         if res.ndim == 1:
             raise Exception(
@@ -219,18 +173,6 @@ class FOC:
         adjacency = {"value": None}
         properties = list(nx.get_node_attributes(graph, "properties").values())
         properties = np.array(properties)
-
-        # labels = []
-        # mapping = {}
-        # for node in graph:
-        #     mapping[variable] = node
-        #     if self.expression(
-        #             graph=graph,
-        #             mapping=mapping):
-        #         labels.append(1)
-        #     else:
-        #         labels.append(0)
-        # return labels
         res = self.expression(
             graph=graph,
             adjacency=adjacency,
