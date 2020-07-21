@@ -196,7 +196,7 @@ def main():
             "micro": 1,
             "macro": 1
         },
-        "stay": 2
+        "stay": 1
     }
 
     # I want to be able to retrieve train_batch graphs N times

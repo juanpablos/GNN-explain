@@ -33,4 +33,4 @@ class StopTraining:
         else:
             self.stay = self.original_stay
 
-        return self.stay <= 0
+        return self.stay < 0
