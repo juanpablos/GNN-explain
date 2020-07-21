@@ -121,7 +121,7 @@ class Training:
 
         average_loss = np.mean(accum_loss)
         collector["test_loss"] = average_loss
-        collector["precision"] = metric.presicion()
+        collector["precision"] = metric.precision()
         collector["recall"] = metric.recall()
         collector["f1score"] = metric.f1()
 
