@@ -2,21 +2,22 @@
 class StopTraining:
     def __init__(self, conditions):
         if conditions is None:
-            self.operate = None
+            self.operation = None
         else:
-            assert "condition" in conditions, "conditions must have value condition"
+            assert "operation" in conditions, "conditions must have value 'operation'"
 
-            condition = conditions.pop("condition")
+            assert conditions["operation"] in [
+                "and", "or"], "operation must be either and or or"
 
-            assert condition.lower() in [
-                "and", "or"], "condition must be either and or or"
-
-            self.operate = all if condition == "and" else any
-            self.conditions = conditions
+            self.operation = all if conditions["operation"] == "and" else any
+            self.conditions = conditions["conditions"]
             self.check = True
+            self.stop = False
+            self.stay = conditions.get("stay", 1)
+            self.original_stay = conditions.get("stay", 1)
 
     def __call__(self, **kwargs):
-        if self.operate is None:
+        if self.operation is None:
             return False
 
         if self.check:
@@ -27,4 +28,9 @@ class StopTraining:
             kwargs[cond] >= value for cond,
             value in self.conditions.items()]
 
-        return self.operate(current_state)
+        if self.operation(current_state):
+            self.stay -= 1
+        else:
+            self.stay = self.original_stay
+
+        return self.stay <= 0

@@ -37,16 +37,7 @@ from src.training.gnn_training import Training
 
 
 def get_formula():
-    f = FOC(
-        AND(
-            Property(
-                "BLUE", "x"), Exist(
-                "y", AND(
-                    Role(
-                        "EDGE", "x", "y"), OR(
-                            Property(
-                                "RED", "y"), Property(
-                                    "GREEN", "y"))))))
+    f = FOC(Property("RED", "x"))
     return f
 
 
@@ -74,7 +65,7 @@ def run_experiment(
     try:
         for m in range(1, n_models + 1):
 
-            # REV: replace with a logger
+            # REV: replace with a proper logger
             print("Training model", m)
 
             train_data = RandomGraphDataset(stream, train_length)
@@ -113,8 +104,8 @@ def run_experiment(
         torch.save(models, save_path)
         with open(f"{save_path}.stat", "w") as f:
             f.write(f"{m} networks\n")
-            f.write(f"{json.dumps(macro_dict, sort_keys=True)}\n")
-            f.write(f"{json.dumps(micro_dict, sort_keys=True)}\n")
+            f.write(f"macro {json.dumps(macro_dict, sort_keys=True)}\n")
+            f.write(f"micro {json.dumps(micro_dict, sort_keys=True)}\n")
 
 
 def _write_metadata(
@@ -198,11 +189,14 @@ def main():
     # TODO: check if file already exists
     save_path = f"data/gnns/{file_name}.pt"
 
-    iterations = 10
+    iterations = 20
     stop_when = {
-        "condition": "and",  # and or or
-        "micro": 1,
-        "macro": 1,
+        "operation": "and",  # and or or
+        "conditions": {
+            "micro": 1,
+            "macro": 1
+        },
+        "stay": 2
     }
 
     # I want to be able to retrieve train_batch graphs N times

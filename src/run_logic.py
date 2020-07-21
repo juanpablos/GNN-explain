@@ -101,7 +101,7 @@ def run(
             collector=info)
 
         # TODO: implement a logger
-        if stop(info):
+        if stop(**info):
             print(it, run_config.log(info))
             break
         elif it == iterations:
