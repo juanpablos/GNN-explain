@@ -37,7 +37,8 @@ from src.training.gnn_training import Training
 
 
 def get_formula():
-    f = FOC(Property("RED", "x"))
+    f = FOC(AND(Property("BLUE", "x"), Exist(
+        "y", AND(Role("EDGE", "x", "y"), Property("GREEN", "y")))))
     return f
 
 
@@ -88,8 +89,8 @@ def run_experiment(
             weights = clean_state(model.state_dict())
             models.append(weights)
 
-            macro_dict[metrics["macro"]] += 1
-            micro_dict[metrics["micro"]] += 1
+            macro_dict[round(metrics["macro"], 3)] += 1
+            micro_dict[round(metrics["micro"], 3)] += 1
 
     except KeyboardInterrupt:
         with open(f"{save_path}.error", "w") as o:
@@ -142,7 +143,7 @@ def main():
     # seed = 10
     seed_everything(seed)
 
-    n_models = 10
+    n_models = 2000
     model_name = "acgnn"
 
     input_dim = 4
@@ -193,8 +194,8 @@ def main():
     stop_when = {
         "operation": "and",  # and or or
         "conditions": {
-            "micro": 1,
-            "macro": 1
+            "micro": 0.995,
+            "macro": 0.995
         },
         "stay": 1
     }

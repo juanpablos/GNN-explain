@@ -17,7 +17,8 @@ def run_experiment(
         data_workers: int = 2,
         batch_size: int = 64,
         test_batch_size: int = 512,
-        lr: float = 0.01
+        lr: float = 0.01,
+        verbose: int = 0
 ):
 
     print("Loading Files")
@@ -35,6 +36,7 @@ def run_experiment(
     model_config["input_dim"] = input_shape[0]
 
     print("Running")
+    print(f"Input size is {input_shape[0]}")
     model, metrics = run(
         run_config=Training,
         model_config=model_config,
@@ -45,7 +47,8 @@ def run_experiment(
         data_workers=data_workers,
         batch_size=batch_size,
         test_batch_size=test_batch_size,
-        lr=lr)
+        lr=lr,
+        verbose=verbose)
 
 
 def main():
@@ -53,27 +56,19 @@ def main():
     seed_everything(seed)
 
     model_config = {
-        "num_layers": 2,
+        "num_layers": 3,
         "input_dim": ...,
-        "hidden_dim": 64,
+        "hidden_dim": 2048,
         "output_dim": 2
     }
     data_config = {
         "root": "data/gnns",
-        "model_hash": "1dd2071cd3",
+        "model_hash": "9100982dba",
         "formula_hashes": {
-            "e7901521fb": {  # red
-                "limit": None,
-                "label": 0
-            },
-            "bc152d5133": {  # green
-                "limit": None,
-                "label": 0
-            },
-            "81c2571aae": {  # black
-                "limit": None,
-                "label": 0
-            },
+            # "e7901521fb": {  # red
+            #     "limit": None,
+            #     "label": 0
+            # },
             "ff2e1a9328": {  # blue or green
                 "limit": None,
                 "label": 0
@@ -82,20 +77,16 @@ def main():
                 "limit": None,
                 "label": 0
             },
-            "5015e55dc6": {  # red or green
+            "d747ceb5a2": {  # blue and green neighbor
                 "limit": None,
                 "label": 1
-            },
-            "8bd614c47b": {  # blue
-                "limit": None,
-                "label": 0
             }
         }
     }
 
     iterations = 100
-    train_batch = 128
-    test_batch = 1024
+    train_batch = 16
+    test_batch = 512
 
     from timeit import default_timer as timer
     start = timer()
@@ -105,12 +96,13 @@ def main():
         iterations=iterations,
         gpu_num=0,
         seed=seed,
-        test_size=0.25,
+        test_size=0.20,
         stratify=True,
         data_workers=2,
         batch_size=train_batch,
         test_batch_size=test_batch,
-        lr=0.01
+        lr=0.01,
+        verbose=1
     )
     end = timer()
     print(f"Took {end - start} seconds")

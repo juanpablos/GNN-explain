@@ -38,7 +38,8 @@ def run(
     batch_size: int = 64,
     test_batch_size: int = 512,
     lr: float = 0.01,
-    stop_when: Dict = None
+    stop_when: Dict = None,
+    verbose: int = 0
 ):
 
     if torch.cuda.is_available():
@@ -104,7 +105,7 @@ def run(
         if stop(**info):
             print(it, run_config.log(info))
             break
-        elif it == iterations:
+        elif it == iterations or verbose > 0:
             print(it, run_config.log(info))
 
     return model, info
