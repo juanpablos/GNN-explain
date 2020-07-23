@@ -94,7 +94,7 @@ class Training(Trainer):
         for data in training_data:
             data = data.to(device)
 
-            # FIX: for a more generic application, include the edge features
+            # ??: for a more generic application, include the edge features
             output = model(x=data.x,
                            edge_index=data.edge_index,
                            batch=data.batch)

@@ -44,6 +44,7 @@ def property_generator(graph_generator: Iterator[nx.Graph],
         raise NotImplementedError(
             f"n_property_types is not implemented when different than 1")
 
+    # !! remove multiple property type support
     # ??: do we need to change this if more features?
     properties = list(range(n_properties))
 

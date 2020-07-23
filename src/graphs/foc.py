@@ -84,7 +84,7 @@ class NEG(Operator):
         return f"¬({self.first})"
 
     def __call__(self, **kwargs):
-        return np.logical_not(self.first(**kwargs))
+        return np.logical_not(self.first(**kwargs))  # type: ignore
 
 
 class AND(Operator):
@@ -95,7 +95,9 @@ class AND(Operator):
         return f"({self.first} ∧ {self.second})"
 
     def __call__(self, **kwargs):
-        return np.logical_and(self.first(**kwargs), self.second(**kwargs))
+        first = self.first(**kwargs)
+        second = self.second(**kwargs)
+        return np.logical_and(first, second)  # type: ignore
 
 
 class OR(Operator):
@@ -106,7 +108,9 @@ class OR(Operator):
         return f"({self.first} ∨ {self.second})"
 
     def __call__(self, **kwargs):
-        return np.logical_or(self.first(**kwargs), self.second(**kwargs))
+        first = self.first(**kwargs)
+        second = self.second(**kwargs)
+        return np.logical_or(first, second)  # type: ignore
 
 
 class Exist(Element):

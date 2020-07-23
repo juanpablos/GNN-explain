@@ -55,6 +55,7 @@ def load_gnn_files(root: str, model_hash: str,
 
 
 def train_test_dataset(
+        # !! T must be something with [1], if answered remove ?? below
         dataset: DatasetType[T],
         test_size: float = 0.25,
         random_state: int = None,

@@ -187,7 +187,7 @@ def main():
 
     # * model_name - number of models - model hash - formula hash
     file_name = f"{model_name}-n{n_models}-{model_config_hash}-{formula_hash}"
-    # TODO: check if file already exists
+    # !! TODO: check if file already exists
     save_path = f"data/gnns/{file_name}.pt"
 
     iterations = 20

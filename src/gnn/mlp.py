@@ -14,7 +14,7 @@ class MLP(nn.Module):
             output_dim: int,
             hidden_layers: Optional[List[int]] = None):
 
-        # TODO: implement hidden_layers
+        # !! TODO: implement hidden_layers
         super(MLP, self).__init__()
 
         self.layers = num_layers
