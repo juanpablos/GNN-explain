@@ -1,14 +1,14 @@
 import random
-from typing import Any, Dict
 
 from src.data.utils import get_input_dim, load_gnn_files, train_test_dataset
 from src.run_logic import run, seed_everything
 from src.training.mlp_training import Training
+from src.typing import MinModelConfig, NetworkDataConfig
 
 
 def run_experiment(
-        model_config: Dict[str, Any],
-        data_config: Dict[str, Any],
+        model_config: MinModelConfig,
+        data_config: NetworkDataConfig,
         iterations: int = 100,
         gpu_num: int = 0,
         seed: int = 10,
@@ -25,7 +25,7 @@ def run_experiment(
     dataset = load_gnn_files(**data_config)
 
     print("Splitting data")
-    train_data, test_data = train_test_dataset(dataset,
+    train_data, test_data = train_test_dataset(dataset=dataset,
                                                test_size=test_size,
                                                random_state=seed,
                                                shuffle=True,
@@ -38,7 +38,7 @@ def run_experiment(
     print("Running")
     print(f"Input size is {input_shape[0]}")
     model, metrics = run(
-        run_config=Training,
+        run_config=Training(),
         model_config=model_config,
         train_data=train_data,
         test_data=test_data,
@@ -55,13 +55,15 @@ def main():
     seed = random.randint(1, 1 << 30)
     seed_everything(seed)
 
-    model_config = {
+    model_config: MinModelConfig = {
         "num_layers": 3,
-        "input_dim": ...,
+        "input_dim": None,
         "hidden_dim": 2048,
+        "hidden_layers": None,
         "output_dim": 2
     }
-    data_config = {
+
+    data_config: NetworkDataConfig = {
         "root": "data/gnns",
         "model_hash": "9100982dba",
         "formula_hashes": {

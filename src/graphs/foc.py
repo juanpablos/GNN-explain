@@ -169,7 +169,7 @@ class FOC:
     def __init__(self, expression):
         self.expression = expression
 
-    def __call__(self, graph):
+    def __call__(self, graph: nx.Graph) -> np.ndarray:
         adjacency = {"value": None}
         properties = list(nx.get_node_attributes(graph, "properties").values())
         properties = np.array(properties)

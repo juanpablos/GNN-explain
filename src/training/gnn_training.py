@@ -1,13 +1,13 @@
-from typing import Dict, Tuple
+from typing import Tuple
 
 import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from torch_geometric.data import DataLoader
 from torch_scatter import scatter_mean
 
 from src.gnn import ACGNN
+from src.typing import Trainer
 
 
 def _loss_aux(output, loss, data, binary):
@@ -34,8 +34,9 @@ def _accuracy_aux(node_labels, predicted_labels, batch, device):
     return micro, macro
 
 
-class Training:
-    def get_model(name: str,
+class Training(Trainer):
+    def get_model(self,
+                  name: str,
                   input_dim: int,
                   hidden_dim: int,
                   output_dim: int,
@@ -45,7 +46,8 @@ class Training:
                   combine_layers: int,
                   mlp_layers: int,
                   task: str,
-                  truncated_fn: Tuple[int, int]):
+                  truncated_fn: Tuple[int, int] = None,
+                  **kwargs):
 
         if name == "acgnn":
             return ACGNN(
@@ -63,25 +65,25 @@ class Training:
         else:
             raise NotImplementedError
 
-    def get_loss():
+    def get_loss(self):
         return nn.BCEWithLogitsLoss(reduction="mean")
 
-    def get_optim(model, lr):
+    def get_optim(self, model, lr):
         return optim.Adam(model.parameters(), lr=lr)
 
-    def get_scheduler(optimizer, step=50):
+    def get_scheduler(self, optimizer, step=50):
         return optim.lr_scheduler.StepLR(optimizer, step_size=step, gamma=0.5)
 
-    def train(
-            model: nn.Module,
-            training_data: DataLoader,
-            criterion,
-            device,
-            optimizer,
-            scheduler,
-            collector: Dict,
-            binary_prediction: bool,
-            **kwargs) -> float:
+    def train(self,
+              model,
+              training_data,
+              criterion,
+              device,
+              optimizer,
+              collector,
+              scheduler,
+              binary_prediction: bool,
+              **kwargs):
 
         #!########
         model.train()
@@ -117,14 +119,14 @@ class Training:
 
         return average_loss
 
-    def evaluate(
-            model: nn.Module,
-            test_data: DataLoader,
-            criterion,
-            device,
-            collector: Dict,
-            binary_prediction: bool,
-            **kwargs):
+    def evaluate(self,
+                 model,
+                 test_data,
+                 criterion,
+                 device,
+                 collector,
+                 binary_prediction: bool,
+                 **kwargs):
 
         #!########
         model.eval()
@@ -181,6 +183,6 @@ class Training:
 
         return average_loss, micro_avg, macro_avg
 
-    def log(info):
+    def log(self, info):
         return "loss {train_loss: <10.6f} test_loss {test_loss: <10.6f} micro {micro: <10.4f} macro {macro: .4f}".format(
             **info)

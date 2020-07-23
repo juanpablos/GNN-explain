@@ -1,20 +1,24 @@
 from itertools import chain
+from typing import Any, Iterable, Iterator, List, Sequence, Tuple
 
 import numpy as np
 import torch
-from torch.utils.data import Dataset, IterableDataset
+from torch.utils.data import IterableDataset
+
+from src.typing import DatasetType, T
 
 
 class LimitedStreamDataset(IterableDataset):
-    def __init__(self, data, limit: int, store: bool = False):
+    def __init__(self, data, limit: int, store: bool = False, seed=None):
         self.data = data
         self.limit = limit
         self.store = store
         self.dataset = []
+        self.rand = np.random.default_rng(seed)
 
     def __iter__(self):
         if self.dataset:
-            np.random.shuffle(self.dataset)
+            self.rand.shuffle(self.dataset)
             yield from self.dataset
         else:
             for _ in range(self.limit):
@@ -26,30 +30,41 @@ class LimitedStreamDataset(IterableDataset):
                 yield datapoint
 
 
-class RandomGraphDataset(Dataset):
-    def __init__(self, generator, limit: int):
-        self.generator = generator
-        self.dataset = [next(self.generator) for _ in range(limit)]
+class RandomGraphDataset(DatasetType[T]):
+    """A Pytorch dataset that takes a (infinite) generator and stores 'limit' elements of it.
+    """
+
+    def __init__(self, generator: Iterator[T], limit: int):
+        self.dataset = [next(generator) for _ in range(limit)]
 
     def __len__(self):
         return len(self.dataset)
 
-    def __getitem__(self, idx):
+    def __getitem__(self, idx: int):
         return self.dataset[idx]
 
+    def __iter__(self):
+        return iter(self.dataset)
 
-class NetworkDataset(Dataset):
-    def __init__(self, file, label, limit: int = None):
+
+class NetworkDataset(DatasetType[Tuple[torch.Tensor, Any]]):
+    """A Pytorch dataset that loads a pickle file storing a list of the outputs of torch.nn.Module.state_dict(), that is basically a Dict[str, Tensor]. This dataset loads that file, for each network it flattens the tensors into a single vector and stores a tuple (flattened vector, label). Stores exactly the first 'limit' elements of the list.
+    """
+
+    def __init__(self, file: str, label: Any, limit: int = None):
         # the weights in a vector
-        self.dataset = []
+        self.dataset: List[Tuple[torch.Tensor, Any]] = []
         self.__load(file, limit, label)
 
     def __len__(self):
         return len(self.dataset)
 
-    def __getitem__(self, idx):
+    def __getitem__(self, idx: int):
         # REV: improve memory by only storing the label once
         return self.dataset[idx]
+
+    def __iter__(self):
+        return iter(self.dataset)
 
     def __load(self, file_name, limit, label):
         networks = torch.load(file_name)
@@ -70,12 +85,34 @@ class NetworkDataset(Dataset):
                 break
 
 
-class MergedDataset(Dataset):
-    def __init__(self, datasets):
-        self.data = list(chain.from_iterable(datasets))
+class MergedDataset(DatasetType[T]):
+    """A Pytorch dataset that merges a sequence of iterables, or other Datasets physically.
+    """
+
+    def __init__(self, datasets: Sequence[Iterable[T]]):
+        self.dataset = list(chain.from_iterable(datasets))
 
     def __len__(self):
-        return len(self.data)
+        return len(self.dataset)
 
-    def __getitem__(self, idx):
-        return self.data[idx]
+    def __getitem__(self, idx: int):
+        return self.dataset[idx]
+
+    def __iter__(self):
+        return iter(self.dataset)
+
+
+class Subset(DatasetType[T]):
+
+    def __init__(self, dataset: DatasetType[T], indices: Sequence[int]):
+        self.dataset = dataset
+        self.indices = indices
+
+    def __getitem__(self, idx: int):
+        return self.dataset[self.indices[idx]]
+
+    def __len__(self):
+        return len(self.indices)
+
+    def __iter__(self):
+        return iter(self.dataset)

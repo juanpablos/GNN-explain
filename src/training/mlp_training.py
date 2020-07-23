@@ -1,13 +1,13 @@
-from typing import Dict
+from typing import List
 
 import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
-from torch.utils.data import DataLoader
 
 from src.gnn import MLP
+from src.typing import Trainer
 
 
 class Metric:
@@ -39,34 +39,37 @@ class Metric:
         return (self.tp + self.tn) / (self.tp + self.tn + self.fp + self.fn)
 
 
-class Training:
-    def get_model(
-            num_layers: int,
-            input_dim: int,
-            hidden_dim: int,
-            output_dim: int):
+class Training(Trainer):
+    def get_model(self,
+                  num_layers: int,
+                  input_dim: int,
+                  hidden_dim: int,
+                  output_dim: int,
+                  hidden_layers: List[int] = None,
+                  **kwargs):
         return MLP(num_layers=num_layers,
                    input_dim=input_dim,
                    hidden_dim=hidden_dim,
+                   hidden_layers=hidden_layers,
                    output_dim=output_dim)
 
-    def get_loss():
+    def get_loss(self):
         return nn.BCEWithLogitsLoss(reduction="mean")
 
-    def get_optim(model, lr):
+    def get_optim(self, model, lr):
         return optim.Adam(model.parameters(), lr=lr)
 
-    def get_scheduler(**kwargs):
+    def get_scheduler(self, **kwargs):
         pass
 
-    def train(
-            model: nn.Module,
-            training_data: DataLoader,
-            criterion,
-            device,
-            optimizer,
-            collector: Dict,
-            **kwargs) -> float:
+    def train(self,
+              model,
+              training_data,
+              criterion,
+              device,
+              optimizer,
+              collector,
+              **kwargs):
 
         #!########
         model.train()
@@ -93,13 +96,13 @@ class Training:
 
         return average_loss
 
-    def evaluate(
-            model: nn.Module,
-            test_data: DataLoader,
-            criterion,
-            device,
-            collector: Dict,
-            **kwargs):
+    def evaluate(self,
+                 model,
+                 test_data,
+                 criterion,
+                 device,
+                 collector,
+                 **kwargs):
 
         #!########
         model.eval()
@@ -133,6 +136,6 @@ class Training:
 
         return average_loss, metric.precision(), metric.recall()
 
-    def log(info):
+    def log(self, info):
         return "loss {train_loss: <10.6f} test_loss {test_loss: <10.6f} precision {precision: <10.4f} recall {recall: <10.4f} f1score {f1score: <10.4f} accuracy {acc:.4f}".format(
             **info)

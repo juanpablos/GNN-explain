@@ -1,19 +1,21 @@
 import os
-from typing import Any, Dict
+from typing import Any, Dict, List
 
 import torch
 from sklearn.model_selection import train_test_split as sk_split
-from torch.utils.data.dataset import Dataset, Subset
 
-from .datasets import MergedDataset, NetworkDataset
+from src.typing import DatasetType, FormulaHash, T
+
+from .datasets import MergedDataset, NetworkDataset, Subset
 
 
-def clean_state(model_dict):
+def clean_state(model_dict: Dict[str, Any]):
+    """Removes the weights associated with batchnorm"""
     return {k: v for k, v in model_dict.items() if "batch" not in k}
 
 
 def load_gnn_files(root: str, model_hash: str,
-                   formula_hashes: Dict[str, Dict[str, Any]]):
+                   formula_hashes: FormulaHash):
     """
     formula hashes has the following format
     hash: {
@@ -22,8 +24,8 @@ def load_gnn_files(root: str, model_hash: str,
     }
     """
 
-    def _prepare_files(path):
-        files = {}
+    def _prepare_files(path: str):
+        files: Dict[str, str] = {}
         for file in os.listdir(path):
             if file.endswith(".pt"):
                 _hash = file.split(".")[0].split("-")[-1]
@@ -39,7 +41,7 @@ def load_gnn_files(root: str, model_hash: str,
     assert all(
         f in dir_formulas for f in formula_hashes), "Not all formula hashes are present"
 
-    datasets = []
+    datasets: List[NetworkDataset] = []
     for formula_hash, config in formula_hashes.items():
         # TODO: do proper logging
         print(f"\tLoading {formula_hash}")
@@ -53,7 +55,7 @@ def load_gnn_files(root: str, model_hash: str,
 
 
 def train_test_dataset(
-        dataset: Dataset,
+        dataset: DatasetType[T],
         test_size: float = 0.25,
         random_state: int = None,
         shuffle: bool = True,

@@ -14,6 +14,7 @@ from src.generate_graphs import graph_stream
 from src.graphs import *
 from src.run_logic import run, seed_everything
 from src.training.gnn_training import Training
+from src.typing import GNNModelConfig, StopFormat
 
 
 """
@@ -37,15 +38,14 @@ from src.training.gnn_training import Training
 
 
 def get_formula():
-    f = FOC(AND(Property("BLUE", "x"), Exist(
-        "y", AND(Role("EDGE", "x", "y"), Property("GREEN", "y")))))
+    f = FOC(OR(Property("RED", "x"), Property("GREEN", "x")))
     return f
 
 
 def run_experiment(
         n_models: int,
         save_path: str,
-        model_config: Dict[str, Any],
+        model_config: GNNModelConfig,
         data_config: Dict[str, Any],
         train_length: int,
         test_length: int,
@@ -55,7 +55,7 @@ def run_experiment(
         batch_size: int = 64,
         test_batch_size: int = 512,
         lr: float = 0.01,
-        stop_when: Dict = None):
+        stop_when: StopFormat = None):
 
     stream = graph_stream(**data_config)
     models = []
@@ -73,7 +73,7 @@ def run_experiment(
             test_data = RandomGraphDataset(stream, test_length)
 
             model, metrics = run(
-                run_config=Training,
+                run_config=Training(),
                 model_config=model_config,
                 train_data=train_data,
                 test_data=test_data,
@@ -111,7 +111,7 @@ def run_experiment(
 
 def _write_metadata(
         destination: str,
-        model_config: Dict,
+        model_config: GNNModelConfig,
         model_config_hash: str,
         formula: FOC,
         formula_hash: str,
@@ -148,18 +148,18 @@ def main():
 
     input_dim = 4
 
-    model_config = {
+    model_config: GNNModelConfig = {
         "name": model_name,
         "input_dim": input_dim,
         "hidden_dim": 16,
+        "hidden_layers": None,
         "output_dim": 2,
         "aggregate_type": "max",
         "combine_type": "identity",
         "num_layers": 2,
         "mlp_layers": 1,  # the number of layers in A and V
         "combine_layers": 2,  # layers in the combine MLP if combine_type=mlp
-        "task": "node",
-        "truncated_fn": None
+        "task": "node"
     }
     model_config_hash = hashlib.md5(
         json.dumps(
@@ -191,7 +191,7 @@ def main():
     save_path = f"data/gnns/{file_name}.pt"
 
     iterations = 20
-    stop_when = {
+    stop_when: StopFormat = {
         "operation": "and",  # and or or
         "conditions": {
             "micro": 0.995,

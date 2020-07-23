@@ -1,1 +1,1 @@
-from .datasets import LimitedStreamDataset, NetworkDataset, RandomGraphDataset
+from .datasets import NetworkDataset, RandomGraphDataset

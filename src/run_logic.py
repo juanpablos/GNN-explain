@@ -4,31 +4,28 @@ from typing import Any, Dict
 
 import numpy as np
 import torch
-from torch.utils.data import Dataset
+from torch.utils.data.dataset import Dataset
+from torch_geometric.data import DataLoader
 
 from src.training.utils import StopTraining
-
-try:
-    from torch_geometric.data import DataLoader
-except ImportError:
-    from torch.utils.data import DataLoader
+from src.typing import MinModelConfig, StopFormat, Trainer
 
 
 def seed_everything(seed):
     random.seed(seed)
     torch.manual_seed(seed)
-    np.random.seed(seed)
+    np.random.seed(seed)  # type: ignore
     os.environ['PYTHONHASHSEED'] = str(seed)
 
     if torch.cuda.is_available():
-        torch.cuda.manual_seed_all(seed)
-        torch.backends.cudnn.deterministic = True
-        torch.backends.cudnn.benchmark = False
+        torch.cuda.manual_seed_all(seed)  # type: ignore
+        torch.backends.cudnn.deterministic = True  # type: ignore
+        torch.backends.cudnn.benchmark = False  # type: ignore
 
 
 def run(
-    run_config,
-    model_config: Dict[str, Any],
+    run_config: Trainer,
+    model_config: MinModelConfig,
     train_data: Dataset,
     test_data: Dataset,
     iterations: int,
@@ -38,7 +35,7 @@ def run(
     batch_size: int = 64,
     test_batch_size: int = 512,
     lr: float = 0.01,
-    stop_when: Dict = None,
+    stop_when: StopFormat = None,
     verbose: int = 0
 ):
 
@@ -72,7 +69,7 @@ def run(
     scheduler = run_config.get_scheduler(optimizer=optimizer)
 
     stop = StopTraining(stop_when)
-    info = {}
+    info: Dict[str, Any] = {}
     for it in range(1, iterations + 1):
 
         train_loss = run_config.train(

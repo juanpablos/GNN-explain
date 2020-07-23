@@ -1,6 +1,11 @@
 
+from typing import Optional
+
+from src.typing import StopFormat
+
+
 class StopTraining:
-    def __init__(self, conditions):
+    def __init__(self, conditions: Optional[StopFormat]):
         if conditions is None:
             self.operation = None
         else:

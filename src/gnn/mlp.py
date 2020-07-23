@@ -1,3 +1,4 @@
+from typing import List, Optional
 import torch
 import torch.nn as nn
 
@@ -10,8 +11,10 @@ class MLP(nn.Module):
             num_layers: int,
             input_dim: int,
             hidden_dim: int,
-            output_dim: int):
+            output_dim: int,
+            hidden_layers: Optional[List[int]] = None):
 
+        # TODO: implement hidden_layers
         super(MLP, self).__init__()
 
         self.layers = num_layers

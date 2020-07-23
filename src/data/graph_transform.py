@@ -17,7 +17,7 @@ def stream_transform(graph: nx.Graph,
         graph (nx.Graph): the graph to work on
         node_labels (List[List[Any]]): the list of labels for each node
         n_node_features (int, optional): the number of features available. Choose from 2 by default. Defaults to 2.
-        feature_type (str, optional): whether the features are cathegorical or numerical. Defaults to "categorical".
+        feature_type (str, optional): whether the features are categorical or numerical. Defaults to "categorical".
 
     Returns:
         torch_geometric.Data: a Data object representing a single graph to train on.
