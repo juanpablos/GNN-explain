@@ -41,12 +41,9 @@ class Property(Concept):
         self.variable = variable
 
     def __call__(self, properties, **kwargs):
-        """Returns a 2d numpy array with 1 for nodes that satisfy the property, and 0 to which does not
-        dimensions are (n_nodes, 1)
+        """Returns a numpy array with a 1 for nodes that satisfy the property, and 0 to which does not
         """
-        # ? here depends in the type of property, for now it is a any()
-        res = [self.prop in node for node in properties]
-        return np.array(res, dtype=int)
+        return properties == self.prop
 
     def __repr__(self):
         return f"{self.name}({self.variable})"
@@ -144,7 +141,7 @@ class Exist(Element):
         res = self.expression(**kwargs)
         if res.ndim == 1:
             raise Exception(
-                "Cannot have a restriction property with single values")
+                "Cannot have a restriction property with 1d array (there must be a relation operation)")
 
         per_node = np.sum(res, axis=1)
         return (per_node >= lower) & (per_node <= upper)
@@ -168,6 +165,7 @@ class ForAll(Element):
             raise Exception(
                 "Cannot have a restriction property with single values")
 
+        # ??: should all include self?
         return np.all(res, axis=1)
 
     def symbol(self):
@@ -190,6 +188,7 @@ class FOC:
         if res.ndim > 1:
             res = np.squeeze(res)
 
+        assert res.ndim == 1, "Labels must be one per item"
         return res.astype(int)
 
     def __repr__(self):

@@ -28,17 +28,18 @@ from src.typing import GNNModelConfig, StopFormat
 2) FOC(Property("BLUE", "x")) -> 25%
 3) FOC(Property("GREEN", "x")) -> 25%
 4) FOC(Property("BLACK", "x")) -> 25%
+
+
 5) FOC(OR(Property("BLUE", "x"), Property("GREEN", "x"))) -> 50%
 6) FOC(NEG(Property("BLUE", "x"))) -> 75%
 7) FOC(OR(Property("RED", "x"), Property("GREEN", "x"))) -> 50%
-
 8) FOC(AND(Property("BLUE", "x"),Exist("y",AND(Role("EDGE", "x", "y"),Property("GREEN", "y"))))) -> 22%
 9) FOC(AND(Property("BLUE", "x"),Exist("y",AND(Role("EDGE", "x", "y"),OR(Property("RED", "y"),Property("GREEN", "y")))))) -> 25%
 """
 
 
 def get_formula():
-    f = FOC(OR(Property("RED", "x"), Property("GREEN", "x")))
+    f = FOC(Property("BLACK", "x"))
     return f
 
 
@@ -55,7 +56,8 @@ def run_experiment(
         batch_size: int = 64,
         test_batch_size: int = 512,
         lr: float = 0.01,
-        stop_when: StopFormat = None):
+        stop_when: StopFormat = None,
+        verbose: int = 0):
 
     stream = graph_stream(**data_config)
     models = []
@@ -83,7 +85,8 @@ def run_experiment(
                 batch_size=batch_size,
                 test_batch_size=test_batch_size,
                 lr=lr,
-                stop_when=stop_when)
+                stop_when=stop_when,
+                verbose=verbose)
 
             model.cpu()
             weights = clean_state(model.state_dict())
@@ -105,8 +108,10 @@ def run_experiment(
         torch.save(models, save_path)
         with open(f"{save_path}.stat", "w") as f:
             f.write(f"{m} networks\n")
-            f.write(f"macro {json.dumps(macro_dict, sort_keys=True)}\n")
-            f.write(f"micro {json.dumps(micro_dict, sort_keys=True)}\n")
+            f.write(
+                f"macro \n{json.dumps(macro_dict, sort_keys=True, indent=0)}\n")
+            f.write(
+                f"micro \n{json.dumps(micro_dict, sort_keys=True, indent=0)}\n")
 
 
 def _write_metadata(
@@ -143,7 +148,7 @@ def main():
     # seed = 10
     seed_everything(seed)
 
-    n_models = 2000
+    n_models = 5000
     model_name = "acgnn"
 
     input_dim = 4
@@ -154,7 +159,7 @@ def main():
         "hidden_dim": 16,
         "hidden_layers": None,
         "output_dim": 2,
-        "aggregate_type": "max",
+        "aggregate_type": "add",
         "combine_type": "identity",
         "num_layers": 2,
         "mlp_layers": 1,  # the number of layers in A and V
@@ -176,7 +181,6 @@ def main():
         "max_nodes": 60,
         "seed": seed,
         "n_properties": input_dim,
-        "n_property_types": 1,
         "property_distribution": "uniform",
         "distribution": None,
         "verbose": 0,
@@ -188,22 +192,23 @@ def main():
     # * model_name - number of models - model hash - formula hash
     file_name = f"{model_name}-n{n_models}-{model_config_hash}-{formula_hash}"
     # !! TODO: check if file already exists
+    # TODO: write the file directly to folder {model hash}/file
     save_path = f"data/gnns/{file_name}.pt"
 
     iterations = 20
     stop_when: StopFormat = {
         "operation": "and",  # and or or
         "conditions": {
-            "micro": 0.995,
-            "macro": 0.995
+            "micro": 0.999,
+            "macro": 0.999
         },
         "stay": 1
     }
 
-    # I want to be able to retrieve train_batch graphs N times
-    train_batch = 40
+    # I want to be able to retrieve train_batch_length graphs train_batch times
+    train_batch = 50
     train_batch_length = 16
-    # I want to be able to retrieve test_batch graphs N times
+    # I want to be able to retrieve test_batch_length graphs test_batch times
     test_batch = 1
     test_batch_length = 100
 
@@ -241,7 +246,8 @@ def main():
         batch_size=train_batch,
         test_batch_size=test_batch,
         lr=0.01,
-        stop_when=stop_when
+        stop_when=stop_when,
+        verbose=0
     )
     end = timer()
     print(f"Took {end-start} seconds")

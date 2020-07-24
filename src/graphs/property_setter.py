@@ -5,11 +5,9 @@ import networkx as nx
 import numpy as np
 
 
-# REV: what to do when there can be more than one property per node
 def property_generator(graph_generator: Iterator[nx.Graph],
                        number_of_graphs: int = None,
                        n_properties: int = 10,
-                       n_property_types: int = 1,
                        property_distribution: str = "uniform",
                        distribution: Optional[List[float]] = None,
                        seed: int = None,
@@ -20,7 +18,6 @@ def property_generator(graph_generator: Iterator[nx.Graph],
         graph_generator (Generator[nx.Graph, None, None]): the graph generator
         number_of_graphs (int, optional): the number of graphs required. If None generate an infinite number of graphs.
         n_properties (int, optional): the number of properties to be assigned to the graph batch. Defaults to 10.
-        n_property_types (int, optional): number of different entries in the property attribute.
         property_distribution (str, optional): uniform states for each property choosen with an uniform distribution. Otherwise the distribution is in distribution is used. Defaults to "uniform".
         distribution (List[float], optional): the distribution used for each property, must be the same length as the number of properties. Defaults to None.
         seed (int, optional): Defaults to None.
@@ -40,12 +37,6 @@ def property_generator(graph_generator: Iterator[nx.Graph],
         assert 0 <= 1 - \
             sum(distribution) < 1e5, "probabilities do not sum to 1"
 
-    if n_property_types != 1:
-        raise NotImplementedError(
-            f"n_property_types is not implemented when different than 1")
-
-    # !! remove multiple property type support
-    # ??: do we need to change this if more features?
     properties = list(range(n_properties))
 
     rand = np.random.default_rng(seed)
@@ -62,7 +53,7 @@ def property_generator(graph_generator: Iterator[nx.Graph],
 
         graph_properties = rand.choice(
             properties,
-            size=(len(graph), n_property_types),
+            size=len(graph),
             replace=True,
             p=distribution)
 
