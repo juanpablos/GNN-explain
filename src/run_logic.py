@@ -103,7 +103,7 @@ def run(
 
         if stop(**info):
             break
-        logging.debug(f"{it} {run_config.log(info)}")
+        logging.debug(f"{it: <4} {run_config.log(info)}")
 
     logging.info(f"{it} {run_config.log(info)}")
 

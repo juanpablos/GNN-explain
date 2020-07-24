@@ -120,6 +120,7 @@ if __name__ == "__main__":
     # _file_f = logging.Formatter('%(asctime)s [%(levelname)s] %(message)s')
     # _file.setFormatter(_file_f)
     logging.basicConfig(
+        level=logging.DEBUG,
         handlers=[
             _console
         ]

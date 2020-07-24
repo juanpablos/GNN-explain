@@ -31,17 +31,67 @@ from src.typing import GNNModelConfig, StopFormat
 3) FOC(Property("GREEN", "x")) -> 25%
 4) FOC(Property("BLACK", "x")) -> 25%
 
-
 5) FOC(OR(Property("BLUE", "x"), Property("GREEN", "x"))) -> 50%
-6) FOC(NEG(Property("BLUE", "x"))) -> 75%
-7) FOC(OR(Property("RED", "x"), Property("GREEN", "x"))) -> 50%
-8) FOC(AND(Property("BLUE", "x"),Exist("y",AND(Role("EDGE", "x", "y"),Property("GREEN", "y"))))) -> 22%
-9) FOC(AND(Property("BLUE", "x"),Exist("y",AND(Role("EDGE", "x", "y"),OR(Property("RED", "y"),Property("GREEN", "y")))))) -> 25%
+6) blue and exist green neighbor (22%)
+FOC(
+    AND(
+        Property("BLUE", "x"),
+        Exist(
+            "y",
+            AND(
+                Role("EDGE", "x", "y"),
+                Property("GREEN", "y")
+                )
+            )
+        )
+    )
+7) blue and exist either a red or green neighbor (25%)
+FOC(
+    AND(
+        Property("BLUE", "x"),
+        Exist(
+            "y",
+            AND(
+                Role("EDGE", "x", "y"),
+                OR(
+                    Property("RED", "y"),
+                    Property("GREEN", "y")
+                    )
+                )
+            )
+        )
+    )
+8) red and at least 2 blue neighbors (15%)
+FOC(
+    AND(
+        Property("RED", "x"),
+        Exist(
+            "y",
+            AND(
+                Role("EDGE", "x", "y"),
+                Property("BLUE", "y")
+            ),
+            2
+        )
+    )
+)
 """
 
 
 def get_formula():
-    f = FOC(Property("BLACK", "x"))
+    f = FOC(
+        AND(
+            Property("RED", "x"),
+            Exist(
+                "y",
+                AND(
+                    Role("EDGE", "x", "y"),
+                    Property("BLUE", "y")
+                ),
+                2
+            )
+        )
+    )
     return f
 
 
@@ -69,7 +119,7 @@ def run_experiment(
     try:
         for m in range(1, n_models + 1):
 
-            logging.info(f"Training model {m}/{n_models + 1}")
+            logging.info(f"Training model {m}/{n_models}")
 
             train_data = RandomGraphDataset(stream, train_length)
             test_data = RandomGraphDataset(stream, test_length)
@@ -264,6 +314,7 @@ if __name__ == "__main__":
     # _file_f = logging.Formatter('%(asctime)s [%(levelname)s] %(message)s')
     # _file.setFormatter(_file_f)
     logging.basicConfig(
+        level=logging.DEBUG,
         handlers=[
             _console
         ]
