@@ -1,9 +1,11 @@
 import csv
 import hashlib
 import json
+import logging
 import random
 from collections import Counter
 from inspect import getsource
+from timeit import default_timer as timer
 from typing import Any, Dict
 
 import torch
@@ -56,8 +58,7 @@ def run_experiment(
         batch_size: int = 64,
         test_batch_size: int = 512,
         lr: float = 0.01,
-        stop_when: StopFormat = None,
-        verbose: int = 0):
+        stop_when: StopFormat = None):
 
     stream = graph_stream(**data_config)
     models = []
@@ -68,8 +69,7 @@ def run_experiment(
     try:
         for m in range(1, n_models + 1):
 
-            # REV: replace with a proper logger
-            print("Training model", m)
+            logging.info(f"Training model {m}/{n_models + 1}")
 
             train_data = RandomGraphDataset(stream, train_length)
             test_data = RandomGraphDataset(stream, test_length)
@@ -85,8 +85,7 @@ def run_experiment(
                 batch_size=batch_size,
                 test_batch_size=test_batch_size,
                 lr=lr,
-                stop_when=stop_when,
-                verbose=verbose)
+                stop_when=stop_when)
 
             model.cpu()
             weights = clean_state(model.state_dict())
@@ -96,15 +95,19 @@ def run_experiment(
             micro_dict[round(metrics["micro"], 3)] += 1
 
     except KeyboardInterrupt:
+        logging.info("Manually Interrumpted")
         with open(f"{save_path}.error", "w") as o:
             o.write(f"Interrupted work in file {save_path}\n")
             o.write(f"Only {m} models were written\n")
     except Exception as e:
+        logging.error(f"Exception encountered: {type(e).__name__}")
+        logging.error(f"Message: {e}")
         with open(f"{save_path}.error", "w") as o:
             o.write(f"Problem in file {save_path}\n")
             o.write(f"Exception encountered: {e}\n")
             o.write(f"Only {m} models were written\n")
     finally:
+        logging.info(f"Saving {m} models")
         torch.save(models, save_path)
         with open(f"{save_path}.stat", "w") as f:
             f.write(f"{m} networks\n")
@@ -231,7 +234,6 @@ def main():
 
     data_config["formula"] = formula
 
-    from timeit import default_timer as timer
     start = timer()
     run_experiment(
         n_models=n_models,
@@ -246,12 +248,25 @@ def main():
         batch_size=train_batch,
         test_batch_size=test_batch,
         lr=0.01,
-        stop_when=stop_when,
-        verbose=0
+        stop_when=stop_when
     )
     end = timer()
-    print(f"Took {end-start} seconds")
+    logging.info(f"Took {end-start} seconds")
 
 
 if __name__ == "__main__":
+    _console = logging.StreamHandler()
+    _console.setLevel(logging.INFO)
+    _console_f = logging.Formatter("[%(levelname)s] %(message)s")
+    _console.setFormatter(_console_f)
+    # _file = logging.FileHandler("debug_log.log")
+    # _file.setLevel(logging.DEBUG)
+    # _file_f = logging.Formatter('%(asctime)s [%(levelname)s] %(message)s')
+    # _file.setFormatter(_file_f)
+    logging.basicConfig(
+        handlers=[
+            _console
+        ]
+    )
+
     main()

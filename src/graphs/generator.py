@@ -76,9 +76,7 @@ def graph_generator(generator_fn: str,
     else:
         raise ValueError("Generator function not supported")
 
-    # print("Start graph generation")
-
     while True:
-        # randomdly choose the number of nodes in the graph
+        # randomly choose the number of nodes for the graph
         n_nodes = rand.randint(min_nodes, max_nodes)
         yield fn(n_nodes=n_nodes)

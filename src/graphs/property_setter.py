@@ -1,3 +1,4 @@
+import logging
 from itertools import repeat
 from typing import Iterator, List, Optional
 
@@ -62,8 +63,8 @@ def property_generator(graph_generator: Iterator[nx.Graph],
 
         if verbose == 1:
             if it % (number_of_graphs // 10) == 0:
-                print(f"{it + 1}/{number_of_graphs} graphs colored")
+                logging.debug(f"{it + 1}/{number_of_graphs} graphs colored")
         elif verbose == 2:
-            print(f"{it + 1}/{number_of_graphs} graphs colored")
+            logging.debug(f"{it + 1}/{number_of_graphs} graphs colored")
 
         yield graph

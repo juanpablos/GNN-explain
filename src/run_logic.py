@@ -1,3 +1,4 @@
+import logging
 import os
 import random
 from typing import Any, Dict
@@ -36,8 +37,7 @@ def run(
     batch_size: int = 64,
     test_batch_size: int = 512,
     lr: float = 0.01,
-    stop_when: StopFormat = None,
-    verbose: int = 0
+    stop_when: StopFormat = None
 ):
 
     if torch.cuda.is_available():
@@ -71,6 +71,8 @@ def run(
 
     stop = StopTraining(stop_when)
     info: Dict[str, Any] = {}
+
+    it = 1
     for it in range(1, iterations + 1):
 
         train_loss = run_config.train(
@@ -99,11 +101,10 @@ def run(
             binary_prediction=True,
             collector=info)
 
-        # TODO: implement a logger
         if stop(**info):
-            print(it, run_config.log(info))
             break
-        elif it == iterations or verbose > 0:
-            print(it, run_config.log(info))
+        logging.debug(f"{it} {run_config.log(info)}")
+
+    logging.info(f"{it} {run_config.log(info)}")
 
     return model, info

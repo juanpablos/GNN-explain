@@ -69,14 +69,3 @@ class ACConv(MessagePassing):
         self.V.reset_parameters()
         self.A.reset_parameters()
         self.combine.reset_parameters()
-
-
-# if __name__ == "__main__":
-#     t = ACConv(5, 1, "add", None, 2, 2)
-
-#     # print(t.state_dict())
-#     for i, m in enumerate(t.modules()):
-#         print(type(m))
-#         for p in m.parameters(recurse=False):
-#             print(i, p)
-#     # print(list(t.parameters()))

@@ -1,3 +1,4 @@
+import logging
 import os
 from typing import Any, Dict, List, Sequence
 
@@ -43,8 +44,8 @@ def load_gnn_files(root: str, model_hash: str,
 
     datasets: List[NetworkDataset] = []
     for formula_hash, config in formula_hashes.items():
-        # TODO: do proper logging
-        print(f"\tLoading {formula_hash}")
+        logging.info(f"\tLoading {formula_hash}")
+
         file_path = os.path.join(model_path, dir_formulas[formula_hash])
 
         dataset = NetworkDataset(file=file_path, **config)
@@ -80,12 +81,11 @@ def train_test_dataset(
 
 def get_input_dim(data):
     datapoint = next(iter(data))
-    if isinstance(datapoint, tuple):
+    if isinstance(datapoint, Sequence):
         x = datapoint[0]
     else:
         x = datapoint
 
-    # TODO: add a message
-    assert isinstance(x, torch.Tensor)
+    assert isinstance(x, torch.Tensor), "Dataset elements must be a tensor"
 
     return x.shape
