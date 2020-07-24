@@ -32,7 +32,7 @@ class Property(Concept):
         "BLACK": 3
     }
 
-    def __init__(self, prop, variable):
+    def __init__(self, prop: str, variable: str):
         if prop not in self.available:
             raise Exception("Property not available")
 
@@ -54,7 +54,7 @@ class Property(Concept):
 
 class Role(Concept):
 
-    def __init__(self, relation, variable1, variable2):
+    def __init__(self, relation: str, variable1: str, variable2: str):
         self.name = relation
         self.variable1 = variable1
         self.variable2 = variable2
@@ -114,7 +114,12 @@ class OR(Operator):
 
 
 class Exist(Element):
-    def __init__(self, variable, expression, lower=None, upper=None):
+    def __init__(
+            self,
+            variable: str,
+            expression,
+            lower: int = None,
+            upper: int = None):
         self.variable = variable
         self.expression = expression
         self.lower = lower

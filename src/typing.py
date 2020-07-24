@@ -11,6 +11,7 @@ from torch.utils.data.dataloader import DataLoader as torch_loader
 from torch_geometric.data import DataLoader as torch_geometric_loader
 
 T = TypeVar("T")
+T_co = TypeVar("T_co", covariant=True)
 
 
 class FormulaHashInfo(TypedDict):
@@ -19,6 +20,12 @@ class FormulaHashInfo(TypedDict):
 
 
 FormulaHash = Dict[str, FormulaHashInfo]
+
+
+class NetworkDataConfig(TypedDict):
+    root: str
+    model_hash: str
+    formula_hashes: FormulaHash
 
 
 class StopFormat(TypedDict):
@@ -42,12 +49,6 @@ class GNNModelConfig(MinModelConfig):
     mlp_layers: int
     combine_layers: int
     task: Literal["node", "graph"]
-
-
-class NetworkDataConfig(TypedDict):
-    root: str
-    model_hash: str
-    formula_hashes: FormulaHash
 
 
 class Trainer(Protocol):
@@ -91,10 +92,10 @@ class Trainer(Protocol):
     def log(self, info: Dict[str, Any]) -> str: ...
 
 
-class DatasetType(Dataset, Generic[T]):
+class DatasetType(Dataset, Generic[T_co]):
     @abstractmethod
-    def __getitem__(self, idx: int) -> T: ...
+    def __getitem__(self, index: int) -> T_co: ...
     @abstractmethod
     def __len__(self) -> int: ...
     @abstractmethod
-    def __iter__(self) -> Iterator[T]: ...
+    def __iter__(self) -> Iterator[T_co]: ...

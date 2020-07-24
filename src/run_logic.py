@@ -13,11 +13,12 @@ from src.typing import MinModelConfig, StopFormat, Trainer
 
 def seed_everything(seed):
     random.seed(seed)
-    torch.manual_seed(seed)
     np.random.seed(seed)  # type: ignore
+    torch.manual_seed(seed)
     os.environ['PYTHONHASHSEED'] = str(seed)
 
     if torch.cuda.is_available():
+        torch.cuda.manual_seed(seed)  # type: ignore
         torch.cuda.manual_seed_all(seed)  # type: ignore
         torch.backends.cudnn.deterministic = True  # type: ignore
         torch.backends.cudnn.benchmark = False  # type: ignore

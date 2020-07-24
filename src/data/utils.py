@@ -1,5 +1,5 @@
 import os
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Sequence
 
 import torch
 from sklearn.model_selection import train_test_split as sk_split
@@ -55,7 +55,6 @@ def load_gnn_files(root: str, model_hash: str,
 
 
 def train_test_dataset(
-        # !! T must be something with [1], if answered remove ?? below
         dataset: DatasetType[T],
         test_size: float = 0.25,
         random_state: int = None,
@@ -64,7 +63,10 @@ def train_test_dataset(
 
     classes = None
     if stratify:
-        # ?? can we do this better?
+        _item = next(iter(dataset))
+        assert isinstance(_item, Sequence)
+        assert len(_item) > 1, \
+            "The return type of an item from the dataset must be at least of length 2"
         classes = [data[1] for data in dataset]
 
     train_idx, test_idx = sk_split(list(range(len(dataset))),

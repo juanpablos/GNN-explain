@@ -5,7 +5,7 @@ import numpy as np
 import torch
 from torch.utils.data import IterableDataset
 
-from src.typing import DatasetType, T
+from src.typing import DatasetType, T_co
 
 
 class LimitedStreamDataset(IterableDataset):
@@ -30,11 +30,11 @@ class LimitedStreamDataset(IterableDataset):
                 yield datapoint
 
 
-class RandomGraphDataset(DatasetType[T]):
+class RandomGraphDataset(DatasetType[T_co]):
     """A Pytorch dataset that takes a (infinite) generator and stores 'limit' elements of it.
     """
 
-    def __init__(self, generator: Iterator[T], limit: int):
+    def __init__(self, generator: Iterator[T_co], limit: int):
         self.dataset = [next(generator) for _ in range(limit)]
 
     def __len__(self):
@@ -85,11 +85,11 @@ class NetworkDataset(DatasetType[Tuple[torch.Tensor, Any]]):
                 break
 
 
-class MergedDataset(DatasetType[T]):
+class MergedDataset(DatasetType[T_co]):
     """A Pytorch dataset that merges a sequence of iterables, or other Datasets physically.
     """
 
-    def __init__(self, datasets: Sequence[Iterable[T]]):
+    def __init__(self, datasets: Sequence[Iterable[T_co]]):
         self.dataset = list(chain.from_iterable(datasets))
 
     def __len__(self):
@@ -102,9 +102,9 @@ class MergedDataset(DatasetType[T]):
         return iter(self.dataset)
 
 
-class Subset(DatasetType[T]):
+class Subset(DatasetType[T_co]):
 
-    def __init__(self, dataset: DatasetType[T], indices: Sequence[int]):
+    def __init__(self, dataset: DatasetType[T_co], indices: Sequence[int]):
         self.dataset = dataset
         self.indices = indices
 
