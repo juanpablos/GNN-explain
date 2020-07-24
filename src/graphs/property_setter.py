@@ -32,11 +32,12 @@ def property_generator(graph_generator: Iterator[nx.Graph],
         distribution = None
     else:
         # in the case the properties are not uniformly distributed
-        assert distribution, "distribution cannot be empty nor None"
-        assert len(
-            distribution) == n_properties, "distribution has to have the same number of elements as n_properties"
-        assert 0 <= 1 - \
-            sum(distribution) < 1e5, "probabilities do not sum to 1"
+        if not distribution:
+            raise ValueError(
+                "`distribution` cannot be empty nor None when `property_distribution` is not `uniform`")
+        if len(distribution) != n_properties:
+            raise ValueError(
+                "`distribution` must have the same number of elements as `n_properties`")
 
     properties = list(range(n_properties))
 

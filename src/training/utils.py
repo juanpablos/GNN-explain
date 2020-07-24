@@ -9,10 +9,11 @@ class StopTraining:
         if conditions is None:
             self.operation = None
         else:
-            assert "operation" in conditions, "conditions must have value 'operation'"
+            if "operation" not in conditions:
+                raise ValueError("`conditions` must have key 'operation'")
 
-            assert conditions["operation"] in [
-                "and", "or"], "operation must be either and or or"
+            if conditions["operation"] not in ["and", "or"]:
+                raise ValueError("`operation` must be either 'and' or 'or'")
 
             self.operation = all if conditions["operation"] == "and" else any
             self.conditions = conditions["conditions"]
@@ -26,8 +27,11 @@ class StopTraining:
             return False
 
         if self.check:
-            assert all(
-                cond in kwargs for cond in self.conditions), "Not all selected conditions are available from the training"
+            if not all(cond in kwargs for cond in self.conditions):
+                _conds = [c for c in self.conditions if c not in kwargs]
+                raise ValueError(
+                    f"Not all selected metrics are available from the training: {_conds}")
+            self.check = False
 
         current_state = [
             kwargs[cond] >= value for cond,

@@ -34,13 +34,16 @@ def load_gnn_files(root: str, model_hash: str,
         return files
 
     if model_hash not in os.listdir(root):
-        raise FileExistsError("No directory for the current model hash")
+        raise FileExistsError(
+            f"No directory for the current model hash: {root}")
 
     model_path = os.path.join(root, model_hash)
     dir_formulas = _prepare_files(model_path)
 
-    assert all(
-        f in dir_formulas for f in formula_hashes), "Not all formula hashes are present"
+    if not all(f in dir_formulas for f in formula_hashes):
+        _not = [f for f in formula_hashes if f not in dir_formulas]
+        raise ValueError(
+            f"Not all requested formula hashes are present in the directory: {_not}")
 
     datasets: List[NetworkDataset] = []
     for formula_hash, config in formula_hashes.items():
@@ -65,10 +68,13 @@ def train_test_dataset(
     classes = None
     if stratify:
         _item = next(iter(dataset))
-        assert isinstance(_item, Sequence)
-        assert len(_item) > 1, \
-            "The return type of an item from the dataset must be at least of length 2"
-        classes = [data[1] for data in dataset]
+        if not isinstance(_item, Sequence):
+            raise TypeError("Elements of the dataset must be tuple-like")
+        if len(_item) < 2:
+            raise ValueError(
+                "The return type of an item from the dataset must be at least of length 2")
+
+        classes = [data[-1] for data in dataset]
 
     train_idx, test_idx = sk_split(list(range(len(dataset))),
                                    test_size=test_size,
@@ -86,6 +92,7 @@ def get_input_dim(data):
     else:
         x = datapoint
 
-    assert isinstance(x, torch.Tensor), "Dataset elements must be a tensor"
+    if not isinstance(x, torch.Tensor):
+        raise TypeError(f"Dataset elements are not tensors: {type(x)}")
 
     return x.shape

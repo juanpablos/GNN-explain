@@ -14,8 +14,12 @@ class ACConv(MessagePassing):
             mlp_layers: int,
             **kwargs):
 
-        assert aggregate_type in ["add", "mean", "max"]
-        assert combine_type in ["identity", "linear", "mlp"]
+        if aggregate_type not in ["add", "mean", "max"]:
+            raise ValueError(
+                "`aggregate_type` must be one of: add, mean or max")
+        if combine_type not in ["identity", "linear", "mlp"]:
+            raise ValueError(
+                "`combine_type` must be one of: identity, linear or mlp")
 
         super(ACConv, self).__init__(aggr=aggregate_type, **kwargs)
 

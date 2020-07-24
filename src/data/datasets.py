@@ -70,9 +70,11 @@ class NetworkDataset(DatasetType[Tuple[torch.Tensor, Any]]):
         networks = torch.load(file_name)
 
         if limit is not None:
-            assert isinstance(limit, int), "Limit is not an integer"
-            assert len(
-                networks) >= limit, "Limit is larger than the size of the dataset"
+            if not isinstance(limit, int):
+                raise ValueError("Limit must be an integer")
+            if len(networks) < limit:
+                raise ValueError(
+                    "Limit is larger than the size of the dataset")
 
         for i, weights in enumerate(networks, start=1):
 

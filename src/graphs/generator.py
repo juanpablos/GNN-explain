@@ -29,23 +29,23 @@ def __generate_random_graph(
         nx.Graph: a new graph
     """
 
-    assert name in ["erdos", "barabasi"]
-    if name == "barabasi":
-        assert m is not None, "barabasi generator needs the argument m"
-    if name == "erdos":
-        assert p is not None or m is not None, "erdos needs either m or p"
-
     if name == "erdos":
         if m is not None:
             return nx.gnm_random_graph(n=n_nodes, m=n_nodes * m, seed=seed)
-
-        return nx.fast_gnp_random_graph(n=n_nodes, p=p, seed=seed)
+        elif p is not None:
+            return nx.fast_gnp_random_graph(n=n_nodes, p=p, seed=seed)
+        else:
+            raise ValueError(
+                "`erdos` generator needs either arguments `m` or `p`")
 
     elif name == "barabasi":
+        if m is None:
+            raise ValueError("`barabasi` generator must define argument `m`")
         return nx.barabasi_albert_graph(n=n_nodes, m=m, seed=seed)
 
     else:
-        raise ValueError("Invalid generator")
+        raise ValueError(
+            f"Invalid generator value, not `erdos` or `barabasi`: {name}")
 
 
 def graph_generator(generator_fn: str,
