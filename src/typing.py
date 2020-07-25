@@ -1,7 +1,8 @@
 
 from abc import abstractmethod
 from typing import (Any, Dict, Generic, Iterator, List, Literal, Optional,
-                    Protocol, Tuple, TypedDict, TypeVar, Union)
+                    Protocol, Tuple, TypedDict, TypeVar, Union,
+                    runtime_checkable)
 
 import torch
 import torch.nn as nn
@@ -99,3 +100,11 @@ class DatasetType(Dataset, Generic[T_co]):
     def __len__(self) -> int: ...
     @abstractmethod
     def __iter__(self) -> Iterator[T_co]: ...
+
+
+@runtime_checkable
+class Indexable(Protocol[T_co]):
+    @abstractmethod
+    def __getitem__(self, index: int) -> T_co: ...
+    @abstractmethod
+    def __len__(self) -> int: ...

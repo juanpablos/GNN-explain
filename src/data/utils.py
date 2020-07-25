@@ -1,11 +1,12 @@
 import logging
 import os
-from typing import Any, Dict, List, Sequence
+from collections import defaultdict
+from typing import Any, Callable, Dict, Hashable, List
 
 import torch
 from sklearn.model_selection import train_test_split as sk_split
 
-from src.typing import DatasetType, FormulaHash, T
+from src.typing import DatasetType, FormulaHash, Indexable, T
 
 from .datasets import MergedDataset, NetworkDataset, Subset
 
@@ -68,7 +69,7 @@ def train_test_dataset(
     classes = None
     if stratify:
         _item = next(iter(dataset))
-        if not isinstance(_item, Sequence):
+        if not isinstance(_item, Indexable):
             raise TypeError("Elements of the dataset must be tuple-like")
         if len(_item) < 2:
             raise ValueError(
@@ -87,7 +88,7 @@ def train_test_dataset(
 
 def get_input_dim(data):
     datapoint = next(iter(data))
-    if isinstance(datapoint, Sequence):
+    if isinstance(datapoint, Indexable):
         x = datapoint[0]
     else:
         x = datapoint
@@ -96,3 +97,31 @@ def get_input_dim(data):
         raise TypeError(f"Dataset elements are not tensors: {type(x)}")
 
     return x.shape
+
+
+def get_label_distribution(
+        dataset: DatasetType[T], getter: Callable[[T], Any] = None):
+    _item = next(iter(dataset))
+    if not isinstance(_item, Indexable):
+        raise TypeError("Elements of the dataset must be tuple-like")
+    if len(_item) < 2:
+        raise ValueError(
+            "The return type of an item from the dataset must be at least of length 2")
+
+    if getter is None:
+        getter = lambda x: x[-1]
+
+    if not isinstance(getter(_item), Hashable):
+        raise TypeError(
+            f"Label elements must be hashable, type {type(_item[-1])} is not")
+
+    counter: Dict[Any, float] = defaultdict(float)
+    elements = 0
+    for item in dataset:
+        counter[getter(item)] += 1
+        elements += 1
+
+    for k in counter:
+        counter[k] /= elements
+
+    return dict(counter)

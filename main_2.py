@@ -2,7 +2,7 @@ import logging
 import random
 from timeit import default_timer as timer
 
-from src.data.utils import get_input_dim, load_gnn_files, train_test_dataset
+from src.data.utils import get_input_dim, get_label_distribution, load_gnn_files, train_test_dataset
 from src.run_logic import run, seed_everything
 from src.training.mlp_training import Training
 from src.typing import MinModelConfig, NetworkDataConfig
@@ -32,6 +32,15 @@ def run_experiment(
                                                shuffle=True,
                                                stratify=stratify)
 
+    if stratify:
+        logging.debug(
+            f"Dataset distribution {get_label_distribution(dataset)}")
+    else:
+        logging.debug(
+            f"Train dataset distribution {get_label_distribution(train_data)}")
+        logging.debug(
+            f"Test dataset distribution {get_label_distribution(test_data)}")
+
     input_shape = get_input_dim(train_data)
     assert len(input_shape) == 1, "The input dimension is different from 1"
     model_config["input_dim"] = input_shape[0]
@@ -59,7 +68,7 @@ def main():
         "num_layers": 3,
         "input_dim": None,
         "hidden_dim": 2048,
-        "hidden_layers": None,
+        "hidden_layers": [2048],
         "output_dim": 2
     }
 
@@ -67,21 +76,21 @@ def main():
     # this would assign a particular label to each file
     data_config: NetworkDataConfig = {
         "root": "data/gnns",
-        "model_hash": "9100982dba",
+        "model_hash": "fad344f078-add1",
         "formula_hashes": {
-            # "e7901521fb": {  # red
+            # "81c2571aae": {  # black
             #     "limit": None,
             #     "label": 0
             # },
-            "ff2e1a9328": {  # blue or green
-                "limit": None,
+            "e7901521fb": {  # red
+                "limit": 2500,
                 "label": 0
             },
-            "ea9c5d0ff4": {  # not blue
-                "limit": None,
+            "d747ceb5a2": {  # blue and 1<= green neigh
+                "limit": 2500,
                 "label": 0
             },
-            "d747ceb5a2": {  # blue and green neighbor
+            "ef45a33c0f": {  # red and 2<= blue neigh
                 "limit": None,
                 "label": 1
             }
@@ -89,7 +98,7 @@ def main():
     }
 
     iterations = 100
-    train_batch = 16
+    train_batch = 32
     test_batch = 512
 
     start = timer()
@@ -104,7 +113,7 @@ def main():
         data_workers=2,
         batch_size=train_batch,
         test_batch_size=test_batch,
-        lr=0.01
+        lr=0.001
     )
     end = timer()
     logging.info(f"Took {end-start} seconds")
