@@ -1,29 +1,33 @@
-from abc import ABC
+from abc import ABC, abstractmethod
+from functools import reduce
 
 import networkx as nx
 import numpy as np
 
-# TODO: documentation
-
 
 class Element(ABC):
-
+    @abstractmethod
     def __call__(self, **kwargs):
         raise NotImplementedError
 
+    @abstractmethod
     def __repr__(self):
         raise NotImplementedError
 
 
 class Concept(ABC):
+    @abstractmethod
     def __call__(self, **kwargs):
         raise NotImplementedError
 
+    @abstractmethod
     def __repr__(self):
         raise NotImplementedError
 
 
 class Property(Concept):
+    """Returns a 1d vector with the nodes that satisfy the condition
+    """
     # REV: seach for a better way to do this
     available = {
         "RED": 0,
@@ -32,13 +36,13 @@ class Property(Concept):
         "BLACK": 3
     }
 
-    def __init__(self, prop: str, variable: str):
+    def __init__(self, prop: str, *, variable: str = None):
         if prop not in self.available:
-            raise Exception("Property not available")
+            raise ValueError("Property not available")
 
         self.prop = self.available[prop]
         self.name = prop
-        self.variable = variable
+        self.variable = variable if variable is not None else "."
 
     def __call__(self, properties, **kwargs):
         """Returns a numpy array with a 1 for nodes that satisfy the property, and 0 to which does not
@@ -50,11 +54,18 @@ class Property(Concept):
 
 
 class Role(Concept):
+    """Returns a 2d matrix with the relations between nodes that satisfy the condition
+    """
 
-    def __init__(self, relation: str, variable1: str, variable2: str):
+    def __init__(
+            self,
+            relation: str,
+            *,
+            variable1: str = None,
+            variable2: str = None):
         self.name = relation
-        self.variable1 = variable1
-        self.variable2 = variable2
+        self.variable1 = variable1 if variable1 is not None else "."
+        self.variable2 = variable2 if variable2 is not None else "."
 
     def __call__(self, graph, adjacency, **kwargs):
         """Returns an adjacency matrix for a graph
@@ -68,56 +79,59 @@ class Role(Concept):
 
 
 class Operator(Element):
-    def __init__(self, first, second=None):
-        self.first = first
-        self.second = second
+    def __init__(self, *args, **kwargs):
+        self.operands = args
+        for k, v in kwargs.items():
+            setattr(self, k, v)
 
 
 class NEG(Operator):
-    def __init__(self, first):
-        super().__init__(first)
+    def __init__(self, expression):
+        super().__init__(expression=expression)
 
     def __repr__(self):
-        return f"¬({self.first})"
+        return f"¬({self.expression})"  # type: ignore
 
     def __call__(self, **kwargs):
-        return np.logical_not(self.first(**kwargs))  # type: ignore
+        first = self.expression(**kwargs)  # type: ignore
+        return np.logical_not(first)  # type: ignore
 
 
 class AND(Operator):
-    def __init__(self, first, second):
-        super().__init__(first, second)
+    def __init__(self, first, second, *args):
+        super().__init__(first, second, *args)
 
     def __repr__(self):
-        return f"({self.first} ∧ {self.second})"
+        rep = " ∧ ".join(self.operands)
+        return f"({rep})"
 
     def __call__(self, **kwargs):
-        first = self.first(**kwargs)
-        second = self.second(**kwargs)
-        return np.logical_and(first, second)  # type: ignore
+        intermediate = [expr(**kwargs) for expr in self.operands]
+        return reduce(np.logical_and, intermediate)  # type: ignore
 
 
 class OR(Operator):
-    def __init__(self, first, second):
-        super().__init__(first, second)
+    def __init__(self, first, second, *args):
+        super().__init__(first, second, *args)
 
     def __repr__(self):
-        return f"({self.first} ∨ {self.second})"
+        rep = " ∨ ".join(self.operands)
+        return f"({rep})"
 
     def __call__(self, **kwargs):
-        first = self.first(**kwargs)
-        second = self.second(**kwargs)
-        return np.logical_or(first, second)  # type: ignore
+        intermediate = [expr(**kwargs) for expr in self.operands]
+        return reduce(np.logical_or, intermediate)  # type: ignore
 
 
 class Exist(Element):
     def __init__(
             self,
-            variable: str,
             expression,
             lower: int = None,
-            upper: int = None):
-        self.variable = variable
+            upper: int = None,
+            *,
+            variable: str = None):
+        self.variable = variable if variable is not None else "."
         self.expression = expression
         self.lower = lower
         self.upper = upper
@@ -139,8 +153,8 @@ class Exist(Element):
         upper = self.upper if self.upper is not None else float("inf")
 
         res = self.expression(**kwargs)
-        if res.ndim == 1:
-            raise Exception(
+        if res.ndim <= 1:
+            raise ValueError(
                 "Cannot have a restriction property with 1d array (there must be a relation operation)")
 
         per_node = np.sum(res, axis=1)
@@ -151,8 +165,8 @@ class Exist(Element):
 
 
 class ForAll(Element):
-    def __init__(self, variable, expression):
-        self.variable = variable
+    def __init__(self, expression, *, variable: str = None):
+        self.variable = variable if variable is not None else "."
         self.expression = expression
 
     def __repr__(self):
@@ -161,11 +175,12 @@ class ForAll(Element):
 
     def __call__(self, **kwargs):
         res = self.expression(**kwargs)
-        if res.ndim == 1:
+        if res.ndim <= 1:
             raise Exception(
                 "Cannot have a restriction property with single values")
 
-        # ??: should all include self?
+        # * for all will always come with a 2d array from a relation between nodes. Unless we accept reflexive relationships. EDGE is not reflexive.
+        np.fill_diagonal(res, True)
         return np.all(res, axis=1)
 
     def symbol(self):

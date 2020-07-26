@@ -28,20 +28,19 @@ from src.utils import cleanup, merge_update, save_file_exists
 "BLACK": 3
 """
 """
-1) FOC(Property("RED", "x")) -> 25%
-2) FOC(Property("BLUE", "x")) -> 25%
-3) FOC(Property("GREEN", "x")) -> 25%
-4) FOC(Property("BLACK", "x")) -> 25%
-5) FOC(OR(Property("BLUE", "x"), Property("GREEN", "x"))) -> 50%
+1) FOC(Property("RED")) -> 25%
+2) FOC(Property("BLUE")) -> 25%
+3) FOC(Property("GREEN")) -> 25%
+4) FOC(Property("BLACK")) -> 25%
+5) FOC(OR(Property("BLUE"), Property("GREEN"))) -> 50%
 6) blue and exist green neighbor (22%)
 FOC(
     AND(
-        Property("BLUE", "x"),
+        Property("BLUE"),
         Exist(
-            "y",
             AND(
-                Role("EDGE", "x", "y"),
-                Property("GREEN", "y")
+                Role("EDGE"),
+                Property("GREEN")
             )
         )
     )
@@ -49,14 +48,13 @@ FOC(
 7) blue and exist either a red or green neighbor (25%)
 FOC(
     AND(
-        Property("BLUE", "x"),
+        Property("BLUE"),
         Exist(
-            "y",
             AND(
-                Role("EDGE", "x", "y"),
+                Role("EDGE"),
                 OR(
-                    Property("RED", "y"),
-                    Property("GREEN", "y")
+                    Property("RED"),
+                    Property("GREEN")
                 )
             )
         )
@@ -65,12 +63,11 @@ FOC(
 8) red and at least 2 blue neighbors (15%)
 FOC(
     AND(
-        Property("RED", "x"),
+        Property("RED"),
         Exist(
-            "y",
             AND(
-                Role("EDGE", "x", "y"),
-                Property("BLUE", "y")
+                Role("EDGE"),
+                Property("BLUE")
             ),
             2
         )
@@ -80,19 +77,17 @@ FOC(
 FOC(
     OR(
         Exist(
-            "y",
             AND(
-                Role("EDGE", "x", "y"),
-                Property("BLUE", "y")
+                Role("EDGE"),
+                Property("BLUE")
             ),
             2,
             4
         ),
         Exist(
-            "y",
             AND(
-                Role("EDGE", "x", "y"),
-                Property("RED", "y")
+                Role("EDGE"),
+                Property("RED")
             ),
             4,
             6
@@ -106,19 +101,17 @@ def get_formula():
     f = FOC(
         OR(
             Exist(
-                "y",
                 AND(
-                    Role("EDGE", "x", "y"),
-                    Property("BLUE", "y")
+                    Role("EDGE"),
+                    Property("BLUE")
                 ),
                 2,
                 4
             ),
             Exist(
-                "y",
                 AND(
-                    Role("EDGE", "x", "y"),
-                    Property("RED", "y")
+                    Role("EDGE"),
+                    Property("RED")
                 ),
                 4,
                 6
