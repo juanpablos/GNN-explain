@@ -105,6 +105,6 @@ def run(
             break
         logging.debug(f"{it: <4} {run_config.log(info)}")
 
-    logging.info(f"{it} {run_config.log(info)}")
+    logging.info(f"{it: <4} {run_config.log(info)}")
 
     return model, info

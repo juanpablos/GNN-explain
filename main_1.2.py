@@ -138,10 +138,15 @@ def run_experiment(
         lr: float = 0.01,
         stop_when: StopFormat = None):
 
+    logging.debug("Initializing graph stream")
     stream = graph_stream(**data_config)
 
+    logging.info(f"Pre-generating database of {total_graphs} graphs")
     dataset = RandomGraphDataset(stream, limit=total_graphs)
+    logging.info("Finished pre-generating")
+
     seed = data_config.get("seed", None)
+    logging.debug("Initializing subsampler")
     data_sampler = SubsetSampler(
         dataset=dataset,
         n_graphs=n_graphs,
@@ -159,6 +164,7 @@ def run_experiment(
 
             logging.info(f"Training model {m}/{n_models}")
 
+            logging.debug("Subsampling dataset")
             train_data, test_data = data_sampler()
 
             model, metrics = run(
@@ -317,13 +323,21 @@ def main():
     }
 
     # total graphs to pre-generate
-    total_graphs = 400_000
+    total_graphs = 10000
     # graphs selected per training session / model
-    n_graphs = 5000
+    n_graphs = 4000
     # how many graphs are selected for the testing
     test_size = 200
     # the size of the training batch
     train_batch_size = 16
+    # # total graphs to pre-generate
+    # total_graphs = 400_000
+    # # graphs selected per training session / model
+    # n_graphs = 5000
+    # # how many graphs are selected for the testing
+    # test_size = 200
+    # # the size of the training batch
+    # train_batch_size = 16
 
     _write_metadata(
         destination=f"{save_path}/.meta.csv",
