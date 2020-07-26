@@ -99,22 +99,17 @@ FOC(
 
 def get_formula():
     f = FOC(
-        OR(
+        AND(
+            OR(
+                Property("BLACK"),
+                Property("GREEN")
+            ),
             Exist(
                 AND(
                     Role("EDGE"),
                     Property("BLUE")
                 ),
-                2,
-                4
-            ),
-            Exist(
-                AND(
-                    Role("EDGE"),
-                    Property("RED")
-                ),
-                4,
-                6
+                2
             )
         )
     )
@@ -245,8 +240,8 @@ def _write_metadata(
 
 
 def main():
-    seed = random.randint(1, 1 << 30)
-    # seed = 10
+    # seed = random.randint(1, 1 << 30)
+    seed = 10
     seed_everything(seed)
 
     n_models = 10
@@ -309,11 +304,11 @@ def main():
     }
 
     # I want to be able to retrieve train_batch_length graphs train_batch times
-    train_batch = 600
-    train_batch_length = 16
-    # I want to be able to retrieve test_batch_length graphs test_batch times
-    test_batch = 1
-    test_batch_length = 200
+    train_batches = 200
+    train_batch_size = 16
+    # I want to be able to retrieve test_batch_size graphs test_batch times
+    test_batches = 1
+    test_batch_size = 100
 
     _write_metadata(
         destination=f"{save_path}/.meta.csv",
@@ -323,10 +318,10 @@ def main():
         formula_hash=formula_hash,
         data_config=data_config,
         iterations=iterations,
-        train_batch=train_batch,
-        train_batch_length=train_batch_length,
-        test_batch=test_batch,
-        test_batch_length=test_batch_length,
+        train_batches=train_batches,
+        train_batch_size=train_batch_size,
+        test_batches=test_batches,
+        test_batch_size=test_batch_size,
         seed=seed,
         stop_when=stop_when,
     )
@@ -340,13 +335,13 @@ def main():
         file_name=file_name,
         model_config=model_config,
         data_config=data_config,
-        train_length=train_batch * train_batch_length,
-        test_length=test_batch * test_batch_length,
+        train_length=train_batches * train_batch_size,
+        test_length=test_batches * test_batch_size,
         iterations=iterations,
         gpu_num=0,
         data_workers=2,
-        batch_size=train_batch,
-        test_batch_size=test_batch,
+        batch_size=train_batch_size,
+        test_batch_size=test_batch_size,
         lr=0.01,
         stop_when=stop_when
     )
