@@ -1,7 +1,8 @@
+import numpy as np
 import logging
 import os
 from collections import defaultdict
-from typing import Any, Callable, Dict, Hashable, List
+from typing import Any, Callable, Dict, Generic, Hashable, List
 
 import torch
 from sklearn.model_selection import train_test_split as sk_split
@@ -125,3 +126,32 @@ def get_label_distribution(
         counter[k] /= elements
 
     return dict(counter)
+
+
+class SubsetSampler(Generic[T]):
+    def __init__(
+            self,
+            dataset: DatasetType[T],
+            n_graphs: int,
+            test_size: int,
+            seed: Any):
+        self.dataset = dataset
+        self.sample = n_graphs
+        self.test = test_size
+
+        if len(dataset) < n_graphs:
+            raise ValueError(
+                f"The sample number cannot be smaller than the number of elements to sample from: dataset has {len(dataset)} < {n_graphs}")
+        if test_size > n_graphs:
+            raise ValueError(
+                f"Cannot sample more elements for the test set than the total sampled elements, {test_size} > {n_graphs}")
+
+        self.indices = list(range(len(self.dataset)))
+        self.rand = np.random.default_rng(seed)
+
+    def __call__(self):
+        ind = self.rand.choice(self.indices, size=self.sample, replace=False)
+        test_idx = ind[:self.test]
+        train_idx = ind[self.test:]
+
+        return Subset(self.dataset, train_idx), Subset(self.dataset, test_idx)
