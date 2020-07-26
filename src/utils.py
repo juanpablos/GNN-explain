@@ -1,5 +1,5 @@
-from collections.abc import Mapping
 import os
+from collections.abc import Mapping
 
 
 def merge_update(dict1, dict2):
@@ -11,6 +11,8 @@ def merge_update(dict1, dict2):
             dict1[k] = merge_update(dict1[k], v)
         else:
             dict1[k] += v
+
+    return dict1
 
 
 def save_file_exists(root: str, file_name: str):

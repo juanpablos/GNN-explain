@@ -18,10 +18,10 @@ class Metric:
         self.fn = 0.0
 
     def __call__(self, y_true, y_pred):
-        self.tp = ((y_true == 1) & (y_pred == 1)).sum().cpu().item()
-        self.tn = ((y_true == 0) & (y_pred == 0)).sum().cpu().item()
-        self.fp = ((y_true == 0) & (y_pred == 1)).sum().cpu().item()
-        self.fn = ((y_true == 1) & (y_pred == 0)).sum().cpu().item()
+        self.tp += ((y_true == 1) & (y_pred == 1)).sum().cpu().item()
+        self.tn += ((y_true == 0) & (y_pred == 0)).sum().cpu().item()
+        self.fp += ((y_true == 0) & (y_pred == 1)).sum().cpu().item()
+        self.fn += ((y_true == 1) & (y_pred == 0)).sum().cpu().item()
 
     def precision(self):
         return self.tp / (self.tp + self.fp)

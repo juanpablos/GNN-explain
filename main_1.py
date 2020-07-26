@@ -98,26 +98,7 @@ FOC(
 
 
 def get_formula():
-    f = FOC(
-        OR(
-            Exist(
-                AND(
-                    Role("EDGE"),
-                    Property("BLUE")
-                ),
-                2,
-                4
-            ),
-            Exist(
-                AND(
-                    Role("EDGE"),
-                    Property("RED")
-                ),
-                4,
-                6
-            )
-        )
-    )
+    f = FOC(Property("RED"))
     return f
 
 
@@ -170,8 +151,8 @@ def run_experiment(
             weights = clean_state(model.state_dict())
             models.append(weights)
 
-            stats["macro"][round(metrics["macro"], 3)] += 1
-            stats["micro"][round(metrics["micro"], 3)] += 1
+            stats["macro"][str(round(metrics["macro"], 3))] += 1
+            stats["micro"][str(round(metrics["micro"], 3))] += 1
 
     except KeyboardInterrupt:
         logging.info("Manually Interrumpted")
@@ -203,7 +184,7 @@ def run_experiment(
 
             with open(f"{save_path}/{prev_file}.stat", "r") as f:
                 prev_stats = json.load(f)
-                merge_update(stats, prev_stats)
+                stats = merge_update(stats, prev_stats)
 
         logging.info(f"Saving {len(models)} models...")
         models_file = f"{save_path}/{file_name.format(len(models))}"
@@ -226,9 +207,9 @@ def _write_metadata(
     formula_source = getsource(get_formula)
 
     """
-    format is:
-    formula hash, formula string, model hash, seed,
-        model config, data config, others, formula source
+    * format is:
+    * formula hash, formula string, model hash, seed,
+    *    model config, data config, others, formula source
     """
     with open(destination, "a", newline='', encoding='utf-8') as f:
         writer = csv.writer(f, quotechar="|")
@@ -249,7 +230,7 @@ def main():
     # seed = 10
     seed_everything(seed)
 
-    n_models = 5000
+    n_models = 2
     model_name = "acgnn"
 
     input_dim = 4
