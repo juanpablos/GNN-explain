@@ -18,7 +18,7 @@ from src.graphs import *
 from src.run_logic import run, seed_everything
 from src.training.gnn_training import Training
 from src.typing import GNNModelConfig, StopFormat
-from src.utils import cleanup, merge_update, save_file_exists
+from src.utils import cleanup, merge_update, save_file_exists, write_metadata
 
 
 """
@@ -154,36 +154,6 @@ def run_experiment(
         cleanup(exists, save_path, prev_file)
 
 
-def _write_metadata(
-        destination: str,
-        model_config: GNNModelConfig,
-        model_config_hash: str,
-        formula: FOC,
-        formula_hash: str,
-        data_config: Dict,
-        seed: int,
-        **kwargs):
-    formula_source = getsource(get_formula)
-
-    """
-    * format is:
-    * formula hash, formula string, model hash, seed,
-    *    model config, data config, others, formula source
-    """
-    with open(destination, "a", newline='', encoding='utf-8') as f:
-        writer = csv.writer(f, quotechar="|")
-        writer.writerow([
-            formula_hash,
-            repr(formula),
-            model_config_hash,
-            seed,
-            json.dumps(model_config),
-            json.dumps(data_config),
-            json.dumps(kwargs),
-            formula_source
-        ])
-
-
 def main():
     # seed = random.randint(1, 1 << 30)
     seed = 10
@@ -257,12 +227,13 @@ def main():
     # the size of the training batch
     batch_size = 16
 
-    _write_metadata(
+    write_metadata(
         destination=f"{save_path}/.meta.csv",
         model_config=model_config,
         model_config_hash=model_config_hash,
         formula=formula,
         formula_hash=formula_hash,
+        formula_fn=get_formula,
         data_config=data_config,
         iterations=iterations,
         total_graphs=total_graphs,
