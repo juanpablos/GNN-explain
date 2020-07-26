@@ -102,7 +102,7 @@ class AND(Operator):
         super().__init__(first, second, *args)
 
     def __repr__(self):
-        rep = " ∧ ".join(self.operands)
+        rep = " ∧ ".join(([repr(op) for op in self.operands]))
         return f"({rep})"
 
     def __call__(self, **kwargs):
@@ -115,7 +115,7 @@ class OR(Operator):
         super().__init__(first, second, *args)
 
     def __repr__(self):
-        rep = " ∨ ".join(self.operands)
+        rep = " ∨ ".join(([repr(op) for op in self.operands]))
         return f"({rep})"
 
     def __call__(self, **kwargs):

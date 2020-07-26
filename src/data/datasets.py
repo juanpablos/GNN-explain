@@ -60,7 +60,7 @@ class NetworkDataset(DatasetType[Tuple[torch.Tensor, Any]]):
         return len(self.dataset)
 
     def __getitem__(self, idx: int):
-        # REV: improve memory by only storing the label once
+        # ??: improve memory by only storing the label once
         return self.dataset[idx]
 
     def __iter__(self):

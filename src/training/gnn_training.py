@@ -72,7 +72,9 @@ class Training(Trainer):
         return optim.Adam(model.parameters(), lr=lr)
 
     def get_scheduler(self, optimizer, step=50):
-        return optim.lr_scheduler.StepLR(optimizer, step_size=step, gamma=0.5)
+        # return optim.lr_scheduler.StepLR(optimizer, step_size=step,
+        # gamma=0.5)
+        pass
 
     def train(self,
               model,
@@ -81,7 +83,7 @@ class Training(Trainer):
               device,
               optimizer,
               collector,
-              scheduler,
+              #   scheduler,
               binary_prediction: bool,
               **kwargs):
 
@@ -94,7 +96,6 @@ class Training(Trainer):
         for data in training_data:
             data = data.to(device)
 
-            # ??: for a more generic application, include the edge features
             output = model(x=data.x,
                            edge_index=data.edge_index,
                            batch=data.batch)
@@ -109,7 +110,7 @@ class Training(Trainer):
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
-            scheduler.step()
+            # scheduler.step()
 
             accum_loss.append(loss.detach().cpu().numpy())
 

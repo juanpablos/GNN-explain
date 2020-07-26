@@ -60,7 +60,7 @@ FOC(
         )
     )
 )
-8) red and at least 2 blue neighbors (15%)
+8) red and at least 4 blue neighbors (15%)
 FOC(
     AND(
         Property("RED"),
@@ -69,7 +69,7 @@ FOC(
                 Role("EDGE"),
                 Property("BLUE")
             ),
-            2
+            4
         )
     )
 )
@@ -98,7 +98,26 @@ FOC(
 
 
 def get_formula():
-    f = FOC(Property("RED"))
+    f = FOC(
+        OR(
+            Exist(
+                AND(
+                    Role("EDGE"),
+                    Property("BLUE")
+                ),
+                2,
+                4
+            ),
+            Exist(
+                AND(
+                    Role("EDGE"),
+                    Property("RED")
+                ),
+                4,
+                6
+            )
+        )
+    )
     return f
 
 
@@ -230,7 +249,7 @@ def main():
     # seed = 10
     seed_everything(seed)
 
-    n_models = 2
+    n_models = 10
     model_name = "acgnn"
 
     input_dim = 4
@@ -290,11 +309,11 @@ def main():
     }
 
     # I want to be able to retrieve train_batch_length graphs train_batch times
-    train_batch = 50
+    train_batch = 600
     train_batch_length = 16
     # I want to be able to retrieve test_batch_length graphs test_batch times
     test_batch = 1
-    test_batch_length = 100
+    test_batch_length = 200
 
     _write_metadata(
         destination=f"{save_path}/.meta.csv",
