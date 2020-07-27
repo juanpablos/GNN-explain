@@ -78,6 +78,7 @@ def run_experiment(
 
             logging.debug("Subsampling dataset")
             train_data, test_data = data_sampler()
+            logging.debug("Finished Subsampling dataset")
 
             model, metrics = run(
                 run_config=Training(),
@@ -88,7 +89,7 @@ def run_experiment(
                 gpu_num=gpu_num,
                 data_workers=data_workers,
                 batch_size=batch_size,
-                test_batch_size=1,
+                test_batch_size=test_size,
                 lr=lr,
                 stop_when=stop_when)
 
