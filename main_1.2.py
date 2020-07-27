@@ -1,11 +1,9 @@
-import csv
 import hashlib
 import json
 import logging
 import os
 import random
 from collections import defaultdict
-from inspect import getsource
 from timeit import default_timer as timer
 from typing import Any, Dict
 
@@ -30,21 +28,7 @@ from src.utils import cleanup, merge_update, save_file_exists, write_metadata
 
 
 def get_formula():
-    f = FOC(
-        AND(
-            OR(
-                Property("BLACK"),
-                Property("GREEN")
-            ),
-            Exist(
-                AND(
-                    Role("EDGE"),
-                    Property("BLUE")
-                ),
-                2
-            )
-        )
-    )
+    f = FOC(Property("RED"))
     return f
 
 
@@ -62,22 +46,24 @@ def run_experiment(
         gpu_num: int = 0,
         data_workers: int = 2,
         lr: float = 0.01,
-        stop_when: StopFormat = None):
+        stop_when: StopFormat = None,
+        unique_test: bool = True):
 
     logging.debug("Initializing graph stream")
     stream = graph_stream(**data_config)
 
     logging.info(f"Pre-generating database of {total_graphs} graphs")
-    dataset = RandomGraphDataset(stream, limit=total_graphs)
+    data_pool = RandomGraphDataset(stream, limit=total_graphs)
     logging.info("Finished pre-generating")
 
     seed = data_config.get("seed", None)
     logging.debug("Initializing subsampler")
     data_sampler = SubsetSampler(
-        dataset=dataset,
-        n_graphs=n_graphs,
+        dataset=data_pool,
+        n_elements=n_graphs,
         test_size=test_size,
-        seed=seed)
+        seed=seed,
+        unique_test=unique_test)
 
     models = []
     stats = {
@@ -155,11 +141,11 @@ def run_experiment(
 
 
 def main():
-    # seed = random.randint(1, 1 << 30)
-    seed = 10
+    seed = random.randint(1, 1 << 30)
+    # seed = 10
     seed_everything(seed)
 
-    n_models = 10
+    n_models = 5000
     model_name = "acgnn"
 
     input_dim = 4
@@ -219,13 +205,16 @@ def main():
     }
 
     # total graphs to pre-generate
-    total_graphs = 33000
+    total_graphs = 300_000
     # graphs selected per training session / model
-    n_graphs = 3300
+    n_graphs = 5120
     # how many graphs are selected for the testing
-    test_size = 100
+    test_size = 500
     # the size of the training batch
-    batch_size = 16
+    batch_size = 128
+    # if true, the test set is generated only one time and all models are
+    # tested against that
+    unique_test = True
 
     write_metadata(
         destination=f"{save_path}/.meta.csv",
@@ -242,6 +231,7 @@ def main():
         test_size=test_size,
         seed=seed,
         stop_when=stop_when,
+        unique_test=unique_test
     )
 
     data_config["formula"] = formula
@@ -261,7 +251,8 @@ def main():
         gpu_num=0,
         data_workers=2,
         lr=0.01,
-        stop_when=stop_when
+        stop_when=stop_when,
+        unique_test=unique_test
     )
     end = timer()
     logging.info(f"Took {end-start} seconds")
@@ -269,7 +260,7 @@ def main():
 
 if __name__ == "__main__":
     _console = logging.StreamHandler()
-    _console.setLevel(logging.DEBUG)
+    _console.setLevel(logging.INFO)
     _console_f = logging.Formatter("[%(levelname)s] %(message)s")
     _console.setFormatter(_console_f)
     # _file = logging.FileHandler("debug_log.log")
