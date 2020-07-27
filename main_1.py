@@ -1,11 +1,9 @@
-import csv
 import hashlib
 import json
 import logging
 import os
 import random
 from collections import defaultdict
-from inspect import getsource
 from timeit import default_timer as timer
 from typing import Any, Dict
 
@@ -27,92 +25,10 @@ from src.utils import cleanup, merge_update, save_file_exists, write_metadata
 "GREEN": 2,
 "BLACK": 3
 """
-"""
-1) FOC(Property("RED")) -> 25%
-2) FOC(Property("BLUE")) -> 25%
-3) FOC(Property("GREEN")) -> 25%
-4) FOC(Property("BLACK")) -> 25%
-5) FOC(OR(Property("BLUE"), Property("GREEN"))) -> 50%
-6) blue and exist green neighbor (22%)
-FOC(
-    AND(
-        Property("BLUE"),
-        Exist(
-            AND(
-                Role("EDGE"),
-                Property("GREEN")
-            )
-        )
-    )
-)
-7) blue and exist either a red or green neighbor (25%)
-FOC(
-    AND(
-        Property("BLUE"),
-        Exist(
-            AND(
-                Role("EDGE"),
-                OR(
-                    Property("RED"),
-                    Property("GREEN")
-                )
-            )
-        )
-    )
-)
-8) red and at least 4 blue neighbors (15%)
-FOC(
-    AND(
-        Property("RED"),
-        Exist(
-            AND(
-                Role("EDGE"),
-                Property("BLUE")
-            ),
-            4
-        )
-    )
-)
-9) ????? either a node with between 2 to 4 blue neighbors, or a node with between 4 to 6 red neighbors
-FOC(
-    OR(
-        Exist(
-            AND(
-                Role("EDGE"),
-                Property("BLUE")
-            ),
-            2,
-            4
-        ),
-        Exist(
-            AND(
-                Role("EDGE"),
-                Property("RED")
-            ),
-            4,
-            6
-        )
-    )
-)
-"""
 
 
 def get_formula():
-    f = FOC(
-        AND(
-            OR(
-                Property("BLACK"),
-                Property("GREEN")
-            ),
-            Exist(
-                AND(
-                    Role("EDGE"),
-                    Property("BLUE")
-                ),
-                2
-            )
-        )
-    )
+    f = FOC(Property("RED"))
     return f
 
 
@@ -140,13 +56,19 @@ def run_experiment(
         "micro": defaultdict(int)
     }
 
+    time_graph = 0.
+
+    s = timer()
+    test_data = RandomGraphDataset(stream, test_length)
+    time_graph += timer() - s
     try:
         for m in range(1, n_models + 1):
 
             logging.info(f"Training model {m}/{n_models}")
 
+            s = timer()
             train_data = RandomGraphDataset(stream, train_length)
-            test_data = RandomGraphDataset(stream, test_length)
+            time_graph += timer() - s
 
             model, metrics = run(
                 run_config=Training(),
@@ -208,10 +130,12 @@ def run_experiment(
 
         cleanup(exists, save_path, prev_file)
 
+    print("total graph time", time_graph)
+
 
 def main():
-    # seed = random.randint(1, 1 << 30)
-    seed = 10
+    seed = random.randint(1, 1 << 30)
+    # seed = 10
     seed_everything(seed)
 
     n_models = 10
@@ -274,11 +198,11 @@ def main():
     }
 
     # I want to be able to retrieve train_batch_length graphs train_batch times
-    train_batches = 200
-    train_batch_size = 16
+    train_batches = 40
+    train_batch_size = 128
     # I want to be able to retrieve test_batch_size graphs test_batch times
     test_batches = 1
-    test_batch_size = 100
+    test_batch_size = 500
 
     write_metadata(
         destination=f"{save_path}/.meta.csv",
