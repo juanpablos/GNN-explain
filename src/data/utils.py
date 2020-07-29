@@ -18,7 +18,7 @@ def clean_state(model_dict: Dict[str, Any]):
 
 
 def load_gnn_files(root: str, model_hash: str,
-                   formula_hashes: FormulaHash):
+                   formula_hashes: FormulaHash, load_all: bool):
     """
     formula hashes has the following format
     hash: {
@@ -29,7 +29,8 @@ def load_gnn_files(root: str, model_hash: str,
 
     def _prepare_files(path: str):
         files: Dict[str, str] = {}
-        for file in os.listdir(path):
+        # reproducibility, always sorted files
+        for file in sorted(os.listdir(path)):
             if file.endswith(".pt"):
                 _hash = file.split(".")[0].split("-")[-1]
                 files[_hash] = file
@@ -42,17 +43,26 @@ def load_gnn_files(root: str, model_hash: str,
     model_path = os.path.join(root, model_hash)
     dir_formulas = _prepare_files(model_path)
 
-    if not all(f in dir_formulas for f in formula_hashes):
-        _not = [f for f in formula_hashes if f not in dir_formulas]
-        raise ValueError(
-            f"Not all requested formula hashes are present in the directory: {_not}")
+    if load_all:
+        formula_configs: FormulaHash = {}
+        for label, f_hash in enumerate(dir_formulas):
+            formula_configs[f_hash] = {
+                "label": label,
+                "limit": None
+            }
+    else:
+        if not all(f in dir_formulas for f in formula_hashes):
+            _not = [f for f in formula_hashes if f not in dir_formulas]
+            raise ValueError(
+                f"Not all requested formula hashes are present in the directory: {_not}")
+
+        formula_configs = formula_hashes
 
     datasets: List[NetworkDataset] = []
-    for formula_hash, config in formula_hashes.items():
+    for formula_hash, config in formula_configs.items():
         logging.info(f"\tLoading {formula_hash}")
 
         file_path = os.path.join(model_path, dir_formulas[formula_hash])
-
         dataset = NetworkDataset(file=file_path, **config)
 
         datasets.append(dataset)

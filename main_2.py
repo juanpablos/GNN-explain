@@ -68,29 +68,45 @@ def main():
         "num_layers": 3,
         "input_dim": None,
         "hidden_dim": 2048,
-        "hidden_layers": [2048],
+        "hidden_layers": [4096, 512],
         "output_dim": 2
     }
 
-    # TODO: implement all, to configure all the files at the same time
-    # this would assign a particular label to each file
     data_config: NetworkDataConfig = {
         "root": "data/gnns",
-        "model_hash": "fad344f078-add1",
+        "model_hash": "0d7e1554fa-add2",
+        # * if load_all is true formula_hashes is ignored and each formula in the directory receives a different label
+        "load_all": True,
         "formula_hashes": {
-            # "81c2571aae": {  # black
+            # "5caab97089": {  # (black|green) and 3-5 blue neigh
             #     "limit": None,
             #     "label": 0
             # },
-            "e7901521fb": {  # red
-                "limit": 2500,
+            # "7e24cdcffb": {  # red
+            #     "limit": None,
+            #     "label": 0
+            # },
+            # "74a0324f6e": {  # green
+            #     "limit": None,
+            #     "label": 0
+            # },
+            # "45207fda29": {  # OR(X and 4+ X neigh), X [red, blue, green, black]
+            #     "limit": None,
+            #     "label": 0
+            # },
+            # "a085814a6b": {  # blue & 2+ green neigh
+            #     "limit": None,
+            #     "label": 0
+            # },
+            # "b18de7fd2c": {  # green & ((2-4 blue neigh) | (4-6 red neigh))
+            #     "limit": None,
+            #     "label": 0
+            # },
+            "bfa11bd667": {  # red & 2-4 (black|blue) neigh
+                "limit": None,
                 "label": 0
             },
-            "d747ceb5a2": {  # blue and 1<= green neigh
-                "limit": 2500,
-                "label": 0
-            },
-            "ef45a33c0f": {  # red and 2<= blue neigh
+            "c716a094ab": {  # blue|green
                 "limit": None,
                 "label": 1
             }
@@ -98,7 +114,7 @@ def main():
     }
 
     iterations = 100
-    train_batch = 32
+    train_batch = 8
     test_batch = 512
 
     start = timer()

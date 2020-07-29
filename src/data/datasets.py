@@ -54,7 +54,7 @@ class NetworkDataset(DatasetType[Tuple[torch.Tensor, Any]]):
     def __init__(self, file: str, label: Any, limit: int = None):
         # the weights in a vector
         self.dataset: List[Tuple[torch.Tensor, Any]] = []
-        self.__load(file, limit, label)
+        self.__load(file, label, limit)
 
     def __len__(self):
         return len(self.dataset)
@@ -66,7 +66,7 @@ class NetworkDataset(DatasetType[Tuple[torch.Tensor, Any]]):
     def __iter__(self):
         return iter(self.dataset)
 
-    def __load(self, file_name, limit, label):
+    def __load(self, file_name, label, limit):
         networks = torch.load(file_name)
 
         if limit is not None:
@@ -78,10 +78,8 @@ class NetworkDataset(DatasetType[Tuple[torch.Tensor, Any]]):
 
         for i, weights in enumerate(networks, start=1):
 
-            self.dataset.append(
-                (torch.cat([w.flatten() for w in weights.values()]),
-                 label)
-            )
+            concat_weights = torch.cat([w.flatten() for w in weights.values()])
+            self.dataset.append((concat_weights, label))
 
             if i == limit:
                 break

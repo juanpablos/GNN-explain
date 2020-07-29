@@ -27,6 +27,7 @@ class NetworkDataConfig(TypedDict):
     root: str
     model_hash: str
     formula_hashes: FormulaHash
+    load_all: bool
 
 
 class StopFormat(TypedDict):

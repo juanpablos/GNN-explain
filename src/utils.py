@@ -1,9 +1,10 @@
 import csv
-from inspect import getsourcefile
 import json
 import os
 from collections.abc import Mapping
+from inspect import getsource
 from typing import Callable, Dict
+
 from src.graphs.foc import FOC
 from src.typing import GNNModelConfig
 
@@ -61,7 +62,7 @@ def write_metadata(
         seed: int,
         formula_fn: Callable[[], FOC],
         **kwargs):
-    formula_source = getsourcefile(formula_fn)
+    formula_source = getsource(formula_fn)
 
     """
     * format is:
