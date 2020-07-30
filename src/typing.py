@@ -12,6 +12,7 @@ from torch_geometric.data import DataLoader as torch_geometric_loader
 
 T = TypeVar("T")
 T_co = TypeVar("T_co", covariant=True)
+TNum = TypeVar("TNum", int, float)
 
 
 class FormulaHashInfo(TypedDict):
@@ -77,7 +78,7 @@ class Trainer(Protocol):
               criterion: nn.Module,
               device: torch.device,
               optimizer: optim.Optimizer,
-              collector: Dict[str, Any],
+              collector: Dict[str, TNum],
               **kwargs) -> float: ...
 
     @abstractmethod
@@ -86,11 +87,11 @@ class Trainer(Protocol):
                  test_data: Union[torch_loader, torch_geometric_loader],
                  criterion: nn.Module,
                  device: torch.device,
-                 collector: Dict[str, Any],
+                 collector: Dict[str, TNum],
                  **kwargs) -> Tuple[float, ...]: ...
 
     @abstractmethod
-    def log(self, info: Dict[str, Any]) -> str: ...
+    def log(self, info: Dict[str, TNum]) -> str: ...
 
 
 @runtime_checkable

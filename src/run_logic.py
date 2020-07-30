@@ -1,7 +1,7 @@
 import logging
 import os
 import random
-from typing import Any, Dict
+from typing import Dict
 
 import numpy as np
 import torch
@@ -9,7 +9,7 @@ from torch.utils.data.dataset import Dataset
 from torch_geometric.data import DataLoader
 
 from src.training.utils import StopTraining
-from src.typing import MinModelConfig, StopFormat, Trainer
+from src.typing import MinModelConfig, StopFormat, TNum, Trainer
 
 
 def seed_everything(seed):
@@ -70,7 +70,7 @@ def run(
     scheduler = run_config.get_scheduler(optimizer=optimizer)
 
     stop = StopTraining(stop_when)
-    info: Dict[str, Any] = {}
+    info: Dict[str, TNum] = {}
 
     it = 1
     for it in range(1, iterations + 1):
@@ -103,8 +103,8 @@ def run(
 
         if stop(**info):
             break
-        logging.debug(f"{it: <4} {run_config.log(info)}")
+        logging.debug(f"{it: 03} {run_config.log(info)}")
 
-    logging.info(f"{it: <4} {run_config.log(info)}")
+    logging.info(f"{it: 03} {run_config.log(info)}")
 
     return model, info
