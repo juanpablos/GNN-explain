@@ -185,7 +185,5 @@ class Training(Trainer):
         return average_loss, micro_avg, macro_avg
 
     def log(self, info):
-        return """loss {train_loss: <10.6f} \
-                test_loss {test_loss: <10.6f} \
-                micro {micro: <10.4f} \
-                macro {macro: .4f}""".format(**info)
+        return "loss {train_loss: <10.6f} test_loss {test_loss: <10.6f} micro {micro: <10.4f} macro {macro: .4f}".format(
+            **info)

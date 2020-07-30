@@ -40,7 +40,7 @@ class MinModelConfig(TypedDict):
     num_layers: int
     input_dim: Optional[int]
     hidden_dim: int
-    output_dim: int
+    output_dim: Optional[int]
     hidden_layers: Optional[List[int]]
 
 

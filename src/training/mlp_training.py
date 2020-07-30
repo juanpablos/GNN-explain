@@ -12,7 +12,7 @@ from src.typing import TNum, Trainer
 
 
 class Metric:
-    def __init__(self, average: str = "micro"):
+    def __init__(self, average: str = "macro"):
         if average not in ["binary", "micro", "macro"]:
             raise ValueError(
                 "Argument `average` must be one of `binary`, `micro`, `macro`")
@@ -40,7 +40,7 @@ class Metric:
 
 class Training(Trainer):
 
-    def __init__(self, n_classes: int = 2, metrics_average: str = "micro"):
+    def __init__(self, n_classes: int = 2, metrics_average: str = "macro"):
         self.n_classes = n_classes
         self.metrics = Metric(average=metrics_average)
 
@@ -155,9 +155,5 @@ class Training(Trainer):
         return average_loss
 
     def log(self, info: Dict[str, TNum]):
-        return """loss {train_loss: <10.6f} \
-                test_loss {test_loss: <10.6f} \
-                precision {precision: <10.4f} \
-                recall {recall: <10.4f} \
-                f1score {f1score: <10.4f} \
-                accuracy {acc:.4f}""".format(**info)
+        return "loss {train_loss: <10.6f} test_loss {test_loss: <10.6f} precision {precision: <10.4f} recall {recall: <10.4f} f1score {f1score: <10.4f} accuracy {acc:.4f}".format(
+            **info)
