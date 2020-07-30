@@ -1,3 +1,4 @@
+import json
 import logging
 import random
 from timeit import default_timer as timer
@@ -6,6 +7,7 @@ from sklearn.metrics import classification_report, confusion_matrix
 
 from src.data.utils import (get_input_dim, get_label_distribution,
                             load_gnn_files, train_test_dataset)
+from src.formula_index import formulas
 from src.run_logic import run, seed_everything
 from src.training.mlp_training import Training
 from src.typing import MinModelConfig, NetworkDataConfig
@@ -26,7 +28,7 @@ def run_experiment(
 ):
 
     logging.info("Loading Files")
-    dataset = load_gnn_files(**data_config)
+    dataset, label_mapping = load_gnn_files(**data_config)
     n_classes = len(dataset.label_info)
     logging.debug(f"{n_classes} classes detected")
 
@@ -68,10 +70,19 @@ def run_experiment(
         test_batch_size=test_batch_size,
         lr=lr)
 
+    label_formula = {label_mapping[h]: repr(formulas[h])
+                     for h in label_mapping}
+
     _y = train_state.metrics.acc_y
     _y_pred = train_state.metrics.acc_y_pred
+
+    print(
+        classification_report(
+            _y, _y_pred, target_names=[
+                label_formula[k] for k in sorted(label_formula)]))
+
     print(confusion_matrix(_y, _y_pred))
-    print(classification_report(_y, _y_pred))
+    print(json.dumps(label_formula, indent=2, ensure_ascii=False))
 
 
 def main():
@@ -81,8 +92,8 @@ def main():
     model_config: MinModelConfig = {
         "num_layers": 3,
         "input_dim": None,
-        "hidden_dim": 2048,
-        "hidden_layers": [4096, 1024, 64],
+        "hidden_dim": 4096,
+        "hidden_layers": None,  # [4096, 1024, 64],
         "output_dim": None
     }
 
@@ -140,10 +151,10 @@ def main():
         seed=seed,
         test_size=0.20,
         stratify=True,
-        data_workers=2,
+        data_workers=0,
         batch_size=train_batch,
         test_batch_size=test_batch,
-        lr=0.01
+        lr=0.001
     )
     end = timer()
     logging.info(f"Took {end-start} seconds")

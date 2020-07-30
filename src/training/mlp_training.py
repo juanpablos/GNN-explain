@@ -1,3 +1,4 @@
+import logging
 from typing import Dict, List
 
 import numpy as np
@@ -58,8 +59,10 @@ class Training(Trainer):
 
     def get_loss(self):
         if self.n_classes > 2:
+            logging.debug("Using CrossEntropyLoss")
             return nn.CrossEntropyLoss(reduction="mean")
         elif self.n_classes == 2:
+            logging.debug("Using BCEWithLogitsLoss")
             return nn.BCEWithLogitsLoss(reduction="mean")
         else:
             raise ValueError("Number of classes cannot be less than 2")
@@ -78,6 +81,9 @@ class Training(Trainer):
                    output_dim=output_dim)
 
     def get_optim(self, model, lr):
+        # return optim.Rprop(model.parameters(), lr=lr)
+        # return optim.RMSprop(model.parameters(), lr=lr)
+        # return optim.SGD(model.parameters(), lr=lr)
         return optim.Adam(model.parameters(), lr=lr)
 
     def get_scheduler(self, **kwargs):

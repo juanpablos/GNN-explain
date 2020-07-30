@@ -6,7 +6,8 @@ from typing import Dict
 import numpy as np
 import torch
 from torch.utils.data.dataset import Dataset
-from torch_geometric.data import DataLoader
+# from torch_geometric.data import DataLoader
+from torch.utils.data import DataLoader
 
 from src.training.utils import StopTraining
 from src.typing import MinModelConfig, StopFormat, TNum, Trainer
@@ -52,13 +53,13 @@ def run(
     train_loader = DataLoader(
         train_data,
         batch_size=batch_size,
-        pin_memory=True,
+        pin_memory=False,
         shuffle=True,
         num_workers=data_workers)
     test_loader = DataLoader(
         test_data,
         batch_size=test_batch_size,
-        pin_memory=True,
+        pin_memory=False,
         shuffle=True,
         num_workers=test_data_workers)
 

@@ -180,7 +180,7 @@ def main():
         "m": 4
     }
 
-    save_path = f"data/gnns/{model_config_hash}"
+    save_path = f"data/gnns/{model_config_hash}-test"
     # ! manual operation
     os.makedirs(save_path, exist_ok=True)
     # * model_name - number of models - model hash - formula hash

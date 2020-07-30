@@ -58,6 +58,7 @@ def load_gnn_files(root: str, model_hash: str,
 
         formula_configs = formula_hashes
 
+    mapping: Dict[str, int] = {}
     datasets: List[NetworkDataset] = []
     for formula_hash, config in formula_configs.items():
         logging.info(f"\tLoading {formula_hash}")
@@ -66,8 +67,9 @@ def load_gnn_files(root: str, model_hash: str,
         dataset = NetworkDataset(file=file_path, **config)
 
         datasets.append(dataset)
+        mapping[formula_hash] = config.get("label", -1)
 
-    return SingleDataset.from_iterable(datasets, labeled=True)
+    return SingleDataset.from_iterable(datasets, labeled=True), mapping
 
 
 def train_test_dataset(
