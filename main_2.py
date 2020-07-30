@@ -76,7 +76,7 @@ def main():
         "root": "data/gnns",
         "model_hash": "0d7e1554fa-add2",
         # * if load_all is true formula_hashes is ignored and each formula in the directory receives a different label
-        "load_all": True,
+        "load_all": False,
         "formula_hashes": {
             # "5caab97089": {  # (black|green) and 3-5 blue neigh
             #     "limit": None,

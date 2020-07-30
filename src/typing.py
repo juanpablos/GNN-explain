@@ -1,13 +1,12 @@
 
 from abc import abstractmethod
-from typing import (Any, Dict, Generic, Iterator, List, Literal, Optional,
-                    Protocol, Tuple, TypedDict, TypeVar, Union,
+from typing import (Any, Dict, Hashable, Iterator, List, Literal, Mapping,
+                    Optional, Protocol, Tuple, TypedDict, TypeVar, Union,
                     runtime_checkable)
 
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from torch.utils.data import Dataset
 from torch.utils.data.dataloader import DataLoader as torch_loader
 from torch_geometric.data import DataLoader as torch_geometric_loader
 
@@ -94,18 +93,20 @@ class Trainer(Protocol):
     def log(self, info: Dict[str, Any]) -> str: ...
 
 
-class DatasetType(Dataset, Generic[T_co]):
-    @abstractmethod
+@runtime_checkable
+class Indexable(Protocol[T_co]):
     def __getitem__(self, index: int) -> T_co: ...
-    @abstractmethod
     def __len__(self) -> int: ...
-    @abstractmethod
+
+
+class IndexableIterable(Indexable[T_co], Protocol[T_co]):
     def __iter__(self) -> Iterator[T_co]: ...
 
 
-@runtime_checkable
-class Indexable(Protocol[T_co]):
-    @abstractmethod
-    def __getitem__(self, index: int) -> T_co: ...
-    @abstractmethod
-    def __len__(self) -> int: ...
+class DatasetLike(IndexableIterable[T_co], Protocol[T_co]):
+    @property
+    def dataset(self) -> IndexableIterable[T_co]: ...
+    @property
+    def label_info(self) -> Mapping[Hashable, int]: ...
+    @property
+    def labeled(self) -> bool: ...

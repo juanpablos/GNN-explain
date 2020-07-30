@@ -1,15 +1,14 @@
 import logging
 import os
-from collections import defaultdict
-from typing import Any, Callable, Dict, Generic, Hashable, List
+from typing import Any, Dict, Generic, List
 
 import numpy as np
 import torch
 from sklearn.model_selection import train_test_split as sk_split
 
-from src.typing import DatasetType, FormulaHash, Indexable, T
+from src.typing import DatasetLike, FormulaHash, Indexable, T
 
-from .datasets import MergedDataset, NetworkDataset, Subset
+from .datasets import NetworkDataset, SingleDataset, Subset
 
 
 def clean_state(model_dict: Dict[str, Any]):
@@ -67,11 +66,11 @@ def load_gnn_files(root: str, model_hash: str,
 
         datasets.append(dataset)
 
-    return MergedDataset(datasets)
+    return SingleDataset.from_iterable(datasets, labeled=True)
 
 
 def train_test_dataset(
-        dataset: DatasetType[T],
+        dataset: DatasetLike[T],
         test_size: float = 0.25,
         random_state: int = None,
         shuffle: bool = True,
@@ -79,14 +78,10 @@ def train_test_dataset(
 
     classes = None
     if stratify:
-        _item = next(iter(dataset))
-        if not isinstance(_item, Indexable):
-            raise TypeError("Elements of the dataset must be tuple-like")
-        if len(_item) < 2:
-            raise ValueError(
-                "The return type of an item from the dataset must be at least of length 2")
+        if not dataset.labeled:
+            raise ValueError("`dataset` is not a labeled dataset")
 
-        classes = [data[-1] for data in dataset]
+        classes = [data[1] for data in dataset]
 
     train_idx, test_idx = sk_split(list(range(len(dataset))),
                                    test_size=test_size,
@@ -110,32 +105,14 @@ def get_input_dim(data):
     return x.shape
 
 
-def get_label_distribution(
-        dataset: DatasetType[T], getter: Callable[[T], Any] = None):
-    _item = next(iter(dataset))
-    if not isinstance(_item, Indexable):
-        raise TypeError("Elements of the dataset must be tuple-like")
-    if len(_item) < 2:
-        raise ValueError(
-            "The return type of an item from the dataset must be at least of length 2")
+def get_label_distribution(dataset: DatasetLike[T]):
+    if not dataset.labeled:
+        raise ValueError("`dataset` is not a labeled dataset")
 
-    if getter is None:
-        getter = lambda x: x[-1]
+    label_info = dataset.label_info
+    n_elements = len(dataset)
 
-    if not isinstance(getter(_item), Hashable):
-        raise TypeError(
-            f"Label elements must be hashable, type {type(_item[-1])} is not")
-
-    counter: Dict[Any, float] = defaultdict(float)
-    elements = 0
-    for item in dataset:
-        counter[getter(item)] += 1
-        elements += 1
-
-    for k in counter:
-        counter[k] /= elements
-
-    return dict(counter)
+    return {k: float(v) / n_elements for k, v in label_info.items()}
 
 
 class SubsetSampler(Generic[T]):
@@ -143,7 +120,7 @@ class SubsetSampler(Generic[T]):
     A dataset sampler that subsets a dataset by the number required.
 
     Args:
-        dataset (DatasetType[T]): a big dataset that is to subset.
+        dataset (DatasetLike[T]): a big dataset that is to subset.
         n_elements (int): the number of elements to be randomly sampled from the dataset. This cannot be larger than the number of elements in the dataset.
         test_size (int): the size of the test partition. This is taken from n_elements so test_size cannot be larger than n_elements when unique_test is False. If unique_test is True, then a partition of the dataset of size test_size is reserved and returned every call. The train partition is disjoint from this test partition. If unique_test is True then test_size does not take elements from n_elements.
         seed (Any): the seed to use for splitting the dataset.
@@ -162,7 +139,7 @@ class SubsetSampler(Generic[T]):
 
     def __init__(
             self,
-            dataset: DatasetType[T],
+            dataset: DatasetLike[T],
             n_elements: int,
             test_size: int,
             seed: Any,

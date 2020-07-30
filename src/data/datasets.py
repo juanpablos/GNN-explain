@@ -1,11 +1,74 @@
+import warnings
+from abc import ABC
+from collections import defaultdict
 from itertools import chain
-from typing import Any, Iterable, Iterator, List, Sequence, Tuple
+from typing import (
+    Dict, Generic, Hashable, Iterator, List, Mapping, Sequence, Tuple)
 
 import numpy as np
 import torch
-from torch.utils.data import IterableDataset
+from torch.utils.data import Dataset, IterableDataset
 
-from src.typing import DatasetType, T_co
+from src.typing import DatasetLike, Indexable, IndexableIterable, T_co
+
+
+class DatasetBase(ABC, Generic[T_co]):
+    """
+    Base class for the datasets used. Defines basic functionality to be usable and label information support.
+    """
+
+    def __init__(self, labeled: bool = False):
+        self._labeled: bool = labeled
+        self._label_info: Dict[Hashable, int] = defaultdict(int)
+        self._label_info_loaded: bool = False
+        # only declaration
+        self._dataset: IndexableIterable[T_co]
+
+    def __getitem__(self, index: int) -> T_co:
+        return self.dataset[index]
+
+    def __len__(self) -> int:
+        return len(self.dataset)
+
+    def __iter__(self) -> Iterator[T_co]:
+        return iter(self.dataset)
+
+    @property
+    def dataset(self) -> IndexableIterable[T_co]:
+        return self._dataset
+
+    @property
+    def label_info(self) -> Mapping[Hashable, int]:
+        self._check()
+        return dict(self._label_info)
+
+    @property
+    def labeled(self) -> bool:
+        return self._labeled
+
+    def _check(self):
+        if self.labeled:
+            if not self._label_info_loaded:
+                for el in self:
+                    self._label_info[el[1]] += 1
+                self._label_info_loaded = True
+        else:
+            warnings.warn(
+                "The argument `labeled` was not set, this method is not supported for `labeled=False`",
+                RuntimeWarning)
+
+    @staticmethod
+    def _check_if_element_cond(element):
+        data_element = element[0]
+        if not isinstance(data_element, Indexable):
+            raise TypeError(
+                f"Labeled is passed but the sequence of datasets do not have indexable elements: {type(data_element)}")
+        if len(data_element) < 2:
+            raise TypeError(
+                f"Labeled is passed but the sequence of datasets do not have indexable elements with enough elements to unpack: {len(data_element)}")
+        if not isinstance(data_element[1], Hashable):
+            raise TypeError(
+                f"The labels are not hashable: {type(data_element[1])}")
 
 
 class LimitedStreamDataset(IterableDataset):
@@ -30,41 +93,24 @@ class LimitedStreamDataset(IterableDataset):
                 yield datapoint
 
 
-class RandomGraphDataset(DatasetType[T_co]):
+class RandomGraphDataset(DatasetBase[T_co], Dataset):
     """A Pytorch dataset that takes a (infinite) generator and stores 'limit' elements of it.
     """
 
     def __init__(self, generator: Iterator[T_co], limit: int):
-        self.dataset = [next(generator) for _ in range(limit)]
-
-    def __len__(self):
-        return len(self.dataset)
-
-    def __getitem__(self, idx: int):
-        return self.dataset[idx]
-
-    def __iter__(self):
-        return iter(self.dataset)
+        super().__init__(labeled=False)
+        self._dataset = [next(generator) for _ in range(limit)]
 
 
-class NetworkDataset(DatasetType[Tuple[torch.Tensor, Any]]):
+class NetworkDataset(DatasetBase[Tuple[torch.Tensor, Hashable]], Dataset):
     """A Pytorch dataset that loads a pickle file storing a list of the outputs of torch.nn.Module.state_dict(), that is basically a Dict[str, Tensor]. This dataset loads that file, for each network it flattens the tensors into a single vector and stores a tuple (flattened vector, label). Stores exactly the first 'limit' elements of the list.
     """
 
-    def __init__(self, file: str, label: Any, limit: int = None):
+    def __init__(self, file: str, label: Hashable, limit: int = None):
+        super().__init__(labeled=True)
         # the weights in a vector
-        self.dataset: List[Tuple[torch.Tensor, Any]] = []
+        self._dataset: List[Tuple[torch.Tensor, Hashable]] = []
         self.__load(file, label, limit)
-
-    def __len__(self):
-        return len(self.dataset)
-
-    def __getitem__(self, idx: int):
-        # ??: improve memory by only storing the label once
-        return self.dataset[idx]
-
-    def __iter__(self):
-        return iter(self.dataset)
 
     def __load(self, file_name, label, limit):
         networks = torch.load(file_name)
@@ -77,36 +123,47 @@ class NetworkDataset(DatasetType[Tuple[torch.Tensor, Any]]):
                     "Limit is larger than the size of the dataset")
 
         for i, weights in enumerate(networks, start=1):
-
             concat_weights = torch.cat([w.flatten() for w in weights.values()])
-            self.dataset.append((concat_weights, label))
+            self._dataset.append((concat_weights, label))
 
             if i == limit:
                 break
 
 
-class MergedDataset(DatasetType[T_co]):
-    """A Pytorch dataset that merges a sequence of iterables, or other Datasets physically.
+class SingleDataset(DatasetBase[T_co], Dataset):
+    """A simple dataset that supports labeled data.
     """
 
-    def __init__(self, datasets: Sequence[Iterable[T_co]]):
-        self.dataset = list(chain.from_iterable(datasets))
+    def __init__(self,
+                 dataset: IndexableIterable[T_co],
+                 labeled: bool = False):
+        super().__init__(labeled=labeled)
 
-    def __len__(self):
-        return len(self.dataset)
+        if labeled:
+            self._check_if_element_cond(dataset)
 
-    def __getitem__(self, idx: int):
-        return self.dataset[idx]
+        self._dataset = dataset
 
-    def __iter__(self):
-        return iter(self.dataset)
+    @classmethod
+    def from_iterable(cls,
+                      datasets: Sequence[IndexableIterable[T_co]],
+                      labeled: bool = False):
+
+        if labeled:
+            _el = datasets[0]
+            cls._check_if_element_cond(_el)
+        data = list(chain.from_iterable(datasets))
+        dataset = cls(dataset=data, labeled=labeled)
+
+        return dataset
 
 
-class Subset(DatasetType[T_co]):
+class Subset(DatasetBase[T_co], Dataset):
 
-    def __init__(self, dataset: DatasetType[T_co], indices: Sequence[int]):
-        self.dataset = dataset
-        self.indices = indices
+    def __init__(self, dataset: DatasetLike[T_co], indices: Sequence[int]):
+        super().__init__(labeled=dataset.labeled)
+        self._dataset = dataset
+        self._indices = indices
 
     def __getitem__(self, idx: int):
         return self.dataset[self.indices[idx]]
@@ -115,4 +172,9 @@ class Subset(DatasetType[T_co]):
         return len(self.indices)
 
     def __iter__(self):
-        return iter(self.dataset)
+        for ind in self.indices:
+            yield self._dataset[ind]
+
+    @property
+    def indices(self):
+        return self._indices
