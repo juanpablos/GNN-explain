@@ -14,7 +14,8 @@ class MLP(nn.Module):
             hidden_dim: int,
             output_dim: int,
             hidden_layers: Optional[List[int]] = None):
-        """A simple MLP class with batchnorm.
+        """
+        A simple MLP class with batchnorm.
 
         Args:
             num_layers (int): the number of layers. If `hidden_layers` is set, then this argument is ignored. When the value is negative the Identity function is returned.

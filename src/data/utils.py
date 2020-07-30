@@ -53,7 +53,8 @@ def load_gnn_files(root: str, model_hash: str,
         if not all(f in dir_formulas for f in formula_hashes):
             _not = [f for f in formula_hashes if f not in dir_formulas]
             raise ValueError(
-                f"Not all requested formula hashes are present in the directory: {_not}")
+                "Not all requested formula hashes are present "
+                f"in the directory: {_not}")
 
         formula_configs = formula_hashes
 
@@ -147,7 +148,9 @@ class SubsetSampler(Generic[T]):
 
         if len(dataset) < n_elements:
             raise ValueError(
-                f"The sample number cannot be smaller than the number of elements to sample from: dataset has {len(dataset)} < {n_elements}")
+                "The sample number cannot be smaller than the number of "
+                "elements to sample from: dataset has "
+                f"{len(dataset)} < {n_elements} elements")
 
         self.dataset = dataset
         self.sample = n_elements
@@ -161,7 +164,8 @@ class SubsetSampler(Generic[T]):
         if unique_test:
             if test_size > n_elements:
                 raise ValueError(
-                    f"Cannot sample more elements for the test set than the total sampled elements, {test_size} > {n_elements}")
+                    "Cannot sample more elements for the test set than "
+                    f"the total sampled elements, {test_size} > {n_elements}")
 
             # generate the unique test partition
             self.test_partition = Subset(

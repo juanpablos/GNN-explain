@@ -24,6 +24,7 @@ def run_experiment(
 
     logging.info("Loading Files")
     dataset = load_gnn_files(**data_config)
+    n_classes = len(dataset.label_info)
 
     logging.debug("Splitting data")
     train_data, test_data = train_test_dataset(dataset=dataset,
@@ -48,7 +49,7 @@ def run_experiment(
     logging.debug("Running")
     logging.debug(f"Input size is {input_shape[0]}")
     model, metrics = run(
-        run_config=Training(),
+        run_config=Training(n_classes=n_classes),
         model_config=model_config,
         train_data=train_data,
         test_data=test_data,
@@ -76,7 +77,7 @@ def main():
         "root": "data/gnns",
         "model_hash": "0d7e1554fa-add2",
         # * if load_all is true formula_hashes is ignored and each formula in the directory receives a different label
-        "load_all": False,
+        "load_all": True,
         "formula_hashes": {
             # "5caab97089": {  # (black|green) and 3-5 blue neigh
             #     "limit": None,

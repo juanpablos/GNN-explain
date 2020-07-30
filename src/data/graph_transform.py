@@ -10,7 +10,8 @@ def stream_transform(graph: nx.Graph,
                      n_node_features: int = 2,
                      #  n_node_labels=2,
                      feature_type: str = "categorical") -> Data:
-    """Generates a stream of torch_geometric:Data objects containing the generated graph and the label associated with each node.
+    """
+    Generates a stream of torch_geometric:Data objects containing the generated graph and the label associated with each node.
 
     Args:
         graph (nx.Graph): the graph to work on

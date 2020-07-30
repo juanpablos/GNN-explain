@@ -14,7 +14,8 @@ from src.typing import DatasetLike, Indexable, IndexableIterable, T_co
 
 class DatasetBase(ABC, Generic[T_co]):
     """
-    Base class for the datasets used. Defines basic functionality to be usable and label information support.
+    Base class for the datasets used.
+    Defines basic functionality to be usable and label information support.
     """
 
     def __init__(self, labeled: bool = False):
@@ -54,18 +55,23 @@ class DatasetBase(ABC, Generic[T_co]):
                 self._label_info_loaded = True
         else:
             warnings.warn(
-                "The argument `labeled` was not set, this method is not supported for `labeled=False`",
-                RuntimeWarning)
+                "The argument `labeled` was not set, "
+                "this method is not supported for `labeled=False`",
+                UserWarning,
+                stacklevel=2)
 
     @staticmethod
     def _check_if_element_cond(element):
         data_element = element[0]
         if not isinstance(data_element, Indexable):
             raise TypeError(
-                f"Labeled is passed but the sequence of datasets do not have indexable elements: {type(data_element)}")
+                "Labeled is passed but the sequence of datasets "
+                f"do not have indexable elements: {type(data_element)}")
         if len(data_element) < 2:
             raise TypeError(
-                f"Labeled is passed but the sequence of datasets do not have indexable elements with enough elements to unpack: {len(data_element)}")
+                "Labeled is passed but the sequence of datasets "
+                "do not have indexable elements with enough elements "
+                f"to unpack: {len(data_element)}")
         if not isinstance(data_element[1], Hashable):
             raise TypeError(
                 f"The labels are not hashable: {type(data_element[1])}")
@@ -94,8 +100,7 @@ class LimitedStreamDataset(IterableDataset):
 
 
 class RandomGraphDataset(DatasetBase[T_co], Dataset):
-    """A Pytorch dataset that takes a (infinite) generator and stores 'limit' elements of it.
-    """
+    """A Pytorch dataset that takes a (infinite) generator and stores 'limit' elements of it."""
 
     def __init__(self, generator: Iterator[T_co], limit: int):
         super().__init__(labeled=False)
@@ -103,7 +108,8 @@ class RandomGraphDataset(DatasetBase[T_co], Dataset):
 
 
 class NetworkDataset(DatasetBase[Tuple[torch.Tensor, Hashable]], Dataset):
-    """A Pytorch dataset that loads a pickle file storing a list of the outputs of torch.nn.Module.state_dict(), that is basically a Dict[str, Tensor]. This dataset loads that file, for each network it flattens the tensors into a single vector and stores a tuple (flattened vector, label). Stores exactly the first 'limit' elements of the list.
+    """
+    A Pytorch dataset that loads a pickle file storing a list of the outputs of torch.nn.Module.state_dict(), that is basically a Dict[str, Tensor]. This dataset loads that file, for each network it flattens the tensors into a single vector and stores a tuple (flattened vector, label). Stores exactly the first 'limit' elements of the list.
     """
 
     def __init__(self, file: str, label: Hashable, limit: int = None):
@@ -131,8 +137,7 @@ class NetworkDataset(DatasetBase[Tuple[torch.Tensor, Hashable]], Dataset):
 
 
 class SingleDataset(DatasetBase[T_co], Dataset):
-    """A simple dataset that supports labeled data.
-    """
+    """A simple dataset that supports labeled data."""
 
     def __init__(self,
                  dataset: IndexableIterable[T_co],

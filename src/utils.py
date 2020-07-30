@@ -10,7 +10,8 @@ from src.typing import GNNModelConfig
 
 
 def merge_update(dict1, dict2):
-    """Only updates if the 2 dictionaries have the same set of keys and types
+    """
+    Only updates if the 2 dictionaries have the same set of keys and types
     Basically they are the same DictType. Other cases are not supported.
     """
     for k, v in dict2.items():
@@ -23,8 +24,7 @@ def merge_update(dict1, dict2):
 
 
 def save_file_exists(root: str, file_name: str):
-    """Check if the tuple (model type, model config, formula) already exists (ignores the number of models saved)
-    """
+    """Check if the tuple (model type, model config, formula) already exists (ignores the number of models saved)"""
     def _create_tuple(s):
         left = s.split(".pt")[0]
         splitted = left.split("-")
@@ -44,8 +44,7 @@ def save_file_exists(root: str, file_name: str):
 
 
 def cleanup(exists, path, file):
-    """Does not check if file exists, it should already exist if exists is true. Otherwise a race condition was met, but that is not checked
-    """
+    """Does not check if file exists, it should already exist if exists is true. Otherwise a race condition was met, but that is not checked"""
     if exists:
         file_path = os.path.join(path, file)
         os.remove(file_path)

@@ -53,7 +53,8 @@ def graph_generator(generator_fn: str,
                     max_nodes: int,
                     seed: int = None,
                     **kwargs) -> Iterator[nx.Graph]:
-    """Generator that creates an unlimited amount of random graphs given a generator function
+    """
+    Generator that creates an unlimited amount of random graphs given a generator function
 
     Args:
         generator_fn (str): generation fuction of a graph. Only random is accepted as of now.

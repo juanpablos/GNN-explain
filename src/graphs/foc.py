@@ -26,8 +26,7 @@ class Concept(ABC):
 
 
 class Property(Concept):
-    """Returns a 1d vector with the nodes that satisfy the condition
-    """
+    """Returns a 1d vector with the nodes that satisfy the condition"""
     # REV: seach for a better way to do this
     available = {
         "RED": 0,
@@ -45,8 +44,7 @@ class Property(Concept):
         self.variable = variable if variable is not None else "."
 
     def __call__(self, properties, **kwargs):
-        """Returns a numpy array with a 1 for nodes that satisfy the property, and 0 to which does not
-        """
+        """Returns a numpy array with a 1 for nodes that satisfy the property, and 0 to which does not"""
         return properties == self.prop
 
     def __repr__(self):
@@ -54,8 +52,7 @@ class Property(Concept):
 
 
 class Role(Concept):
-    """Returns a 2d matrix with the relations between nodes that satisfy the condition
-    """
+    """Returns a 2d matrix with the relations between nodes that satisfy the condition"""
 
     def __init__(
             self,
@@ -68,8 +65,7 @@ class Role(Concept):
         self.variable2 = variable2 if variable2 is not None else "."
 
     def __call__(self, graph, adjacency, **kwargs):
-        """Returns an adjacency matrix for a graph
-        """
+        """Returns an adjacency matrix for a graph"""
         if adjacency["value"] is None:
             adjacency["value"] = nx.adjacency_matrix(graph).toarray()
         return adjacency["value"]
@@ -155,7 +151,8 @@ class Exist(Element):
         res = self.expression(**kwargs)
         if res.ndim <= 1:
             raise ValueError(
-                "Cannot have a restriction property with 1d array (there must be a relation operation)")
+                "Cannot have a restriction property with 1d array "
+                "(there must be a relation operation)")
 
         per_node = np.sum(res, axis=1)
         return (per_node >= lower) & (per_node <= upper)
@@ -176,7 +173,7 @@ class ForAll(Element):
     def __call__(self, **kwargs):
         res = self.expression(**kwargs)
         if res.ndim <= 1:
-            raise Exception(
+            raise ValueError(
                 "Cannot have a restriction property with single values")
 
         # * for all will always come with a 2d array from a relation between nodes. Unless we accept reflexive relationships. EDGE is not reflexive.
