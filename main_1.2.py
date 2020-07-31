@@ -28,7 +28,7 @@ from src.utils import cleanup, merge_update, save_file_exists, write_metadata
 
 
 def get_formula():
-    f = FOC(Property("RED"))
+    f = FOC(Property("BLACK"))
     return f
 
 
