@@ -7,7 +7,7 @@ from sklearn.metrics import classification_report, confusion_matrix
 
 from src.data.utils import (get_input_dim, get_label_distribution,
                             load_gnn_files, train_test_dataset)
-from src.formula_index import formulas
+from src.formula_index import FormulaMapping
 from src.run_logic import run, seed_everything
 from src.training.mlp_training import Training
 from src.typing import MinModelConfig, NetworkDataConfig
@@ -70,17 +70,21 @@ def run_experiment(
         test_batch_size=test_batch_size,
         lr=lr)
 
-    label_formula = {label_mapping[h]: repr(formulas[h])
-                     for h in label_mapping}
-
     _y = train_state.metrics.acc_y
     _y_pred = train_state.metrics.acc_y_pred
 
-    print(
-        classification_report(
-            _y, _y_pred, target_names=[
-                label_formula[k] for k in sorted(label_formula)]))
+    try:
+        formula_mapping = FormulaMapping("src/formulas.json")
+        label_formula = {label: str(formula_mapping[h])
+                         for h, label in label_mapping.items()}
+    except Exception as e:
+        logging.error("Exception encountered when using formula mapping")
+        logging.error("Message:", e)
+        # fallback when cannot use the formula mapping
+        label_formula = {label: str(label) for label in label_mapping.values()}
 
+    target_names = [label_formula[k] for k in sorted(label_formula)]
+    print(classification_report(_y, _y_pred, target_names=target_names))
     print(confusion_matrix(_y, _y_pred))
     print(json.dumps(label_formula, indent=2, ensure_ascii=False))
 
