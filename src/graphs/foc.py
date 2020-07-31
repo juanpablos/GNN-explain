@@ -48,6 +48,9 @@ class Property(Concept):
         return properties == self.prop
 
     def __repr__(self):
+        return f"{self.__class__.__name__}({self.name!r})"
+
+    def __str__(self):
         return f"{self.name}({self.variable})"
 
 
@@ -71,6 +74,9 @@ class Role(Concept):
         return adjacency["value"]
 
     def __repr__(self):
+        return f"{self.__class__.__name__}({self.name!r})"
+
+    def __str__(self):
         return f"{self.name}({self.variable1}, {self.variable2})"
 
 
@@ -80,12 +86,20 @@ class Operator(Element):
         for k, v in kwargs.items():
             setattr(self, k, v)
 
+    def __repr__(self):
+        args = ",".join([repr(el) for el in self.operands])
+        return f"{self.__class__.__name__}({args!r})"
+
 
 class NEG(Operator):
     def __init__(self, expression):
         super().__init__(expression=expression)
 
     def __repr__(self):
+        expr = self.expression  # type: ignore
+        return f"{self.__class__.__name__}({expr!r})"
+
+    def __str__(self):
         return f"¬({self.expression})"  # type: ignore
 
     def __call__(self, **kwargs):
@@ -97,8 +111,8 @@ class AND(Operator):
     def __init__(self, first, second, *args):
         super().__init__(first, second, *args)
 
-    def __repr__(self):
-        rep = " ∧ ".join(([repr(op) for op in self.operands]))
+    def __str__(self):
+        rep = " ∧ ".join(([str(op) for op in self.operands]))
         return f"({rep})"
 
     def __call__(self, **kwargs):
@@ -110,8 +124,8 @@ class OR(Operator):
     def __init__(self, first, second, *args):
         super().__init__(first, second, *args)
 
-    def __repr__(self):
-        rep = " ∨ ".join(([repr(op) for op in self.operands]))
+    def __str__(self):
+        rep = " ∨ ".join(([str(op) for op in self.operands]))
         return f"({rep})"
 
     def __call__(self, **kwargs):
@@ -133,6 +147,10 @@ class Exist(Element):
         self.upper = upper
 
     def __repr__(self):
+        return (f"{self.__class__.__name__}"
+                f"({self.expression!r},{self.lower},{self.upper})")
+
+    def __str__(self):
         s = self.symbol()
 
         if self.lower is None and self.upper is None:
@@ -167,6 +185,9 @@ class ForAll(Element):
         self.expression = expression
 
     def __repr__(self):
+        return f"{self.__class__.__name__}({self.expression!r})"
+
+    def __str__(self):
         s = self.symbol()
         return f"{s}({self.variable}){self.expression}"
 
@@ -202,6 +223,9 @@ class FOC:
 
         assert res.ndim == 1, "Labels must be one per item"
         return res.astype(int)
+
+    def __str__(self):
+        return str(self.expression)
 
     def __repr__(self):
         return repr(self.expression)
