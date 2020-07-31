@@ -92,8 +92,8 @@ def main():
     model_config: MinModelConfig = {
         "num_layers": 3,
         "input_dim": None,
-        "hidden_dim": 4096,
-        "hidden_layers": None,  # [4096, 1024, 64],
+        "hidden_dim": 128,
+        "hidden_layers": [1024, 128, 8],
         "output_dim": None
     }
 
@@ -138,8 +138,8 @@ def main():
         }
     }
 
-    iterations = 10
-    train_batch = 128  # 8
+    iterations = 50
+    train_batch = 32  # 8
     test_batch = 512
 
     start = timer()

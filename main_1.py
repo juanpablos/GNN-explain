@@ -11,6 +11,7 @@ import torch
 
 from src.data.datasets import RandomGraphDataset
 from src.data.utils import clean_state
+from src.formula_index import formulas
 from src.generate_graphs import graph_stream
 from src.graphs import *
 from src.run_logic import run, seed_everything
@@ -28,7 +29,27 @@ from src.utils import cleanup, merge_update, save_file_exists, write_metadata
 
 
 def get_formula():
-    f = FOC(Property("RED"))
+    f = FOC(AND(
+            Property("GREEN"),
+            OR(
+                Exist(
+                    AND(
+                        Role("EDGE"),
+                        Property("BLUE")
+                    ),
+                    2,
+                    4
+                ),
+                Exist(
+                    AND(
+                        Role("EDGE"),
+                        Property("RED")
+                    ),
+                    4,
+                    6
+                )
+            )
+            ))
     return f
 
 
@@ -133,7 +154,7 @@ def run_experiment(
     print("total graph time", time_graph)
 
 
-def main():
+def main(use_formula: FOC = None):
     seed = random.randint(1, 1 << 30)
     # seed = 10
     seed_everything(seed)
@@ -146,13 +167,13 @@ def main():
     model_config: GNNModelConfig = {
         "name": model_name,
         "input_dim": input_dim,
-        "hidden_dim": 16,
+        "hidden_dim": 8,
         "hidden_layers": None,
         "output_dim": 2,
         "aggregate_type": "add",
         "combine_type": "identity",
         "num_layers": 2,
-        "mlp_layers": 2,  # the number of layers in A and V
+        "mlp_layers": 1,  # the number of layers in A and V
         "combine_layers": 2,  # layers in the combine MLP if combine_type=mlp
         "task": "node"
     }
@@ -162,7 +183,7 @@ def main():
             sort_keys=True).encode()).hexdigest()[
         :10]
 
-    formula = get_formula()
+    formula = get_formula() if use_formula is None else use_formula
     formula_hash = hashlib.md5(repr(formula).encode()).hexdigest()[:10]
 
     data_config = {
@@ -180,7 +201,7 @@ def main():
         "m": 4
     }
 
-    save_path = f"data/gnns/{model_config_hash}-test"
+    save_path = f"data/gnns/test-{model_config_hash}"
     # ! manual operation
     os.makedirs(save_path, exist_ok=True)
     # * model_name - number of models - model hash - formula hash
@@ -194,7 +215,7 @@ def main():
             "micro": 0.999,
             "macro": 0.999
         },
-        "stay": 1
+        "stay": 2
     }
 
     # I want to be able to retrieve train_batch_length graphs train_batch times
@@ -243,6 +264,8 @@ def main():
     end = timer()
     logging.info(f"Took {end-start} seconds")
 
+    return model_config, model_config_hash
+
 
 if __name__ == "__main__":
     _console = logging.StreamHandler()
@@ -260,4 +283,11 @@ if __name__ == "__main__":
         ]
     )
 
+    # _s = timer()
+    # for ff in formulas.values():
+    #     print(ff)
+    #     _m, _m_h = main(FOC(ff))
+    # print("Total time", timer() - _s)
+    # print(_m_h)
+    # print(json.dumps(_m, indent=2))
     main()

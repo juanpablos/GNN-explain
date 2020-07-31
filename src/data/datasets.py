@@ -183,3 +183,7 @@ class Subset(DatasetBase[T_co], Dataset):
     @property
     def indices(self):
         return self._indices
+
+    def make_concrete(self):
+        dataset = [self._dataset[ind] for ind in self._indices]
+        return SingleDataset(dataset=dataset, labeled=self.labeled)

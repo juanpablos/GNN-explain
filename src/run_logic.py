@@ -6,8 +6,7 @@ from typing import Dict
 import numpy as np
 import torch
 from torch.utils.data.dataset import Dataset
-# from torch_geometric.data import DataLoader
-from torch.utils.data import DataLoader
+from torch_geometric.data import DataLoader
 
 from src.training.utils import StopTraining
 from src.typing import MinModelConfig, StopFormat, TNum, Trainer

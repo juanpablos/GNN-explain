@@ -154,13 +154,13 @@ def main():
     model_config: GNNModelConfig = {
         "name": model_name,
         "input_dim": input_dim,
-        "hidden_dim": 16,
+        "hidden_dim": 8,
         "hidden_layers": None,
         "output_dim": 2,
         "aggregate_type": "add",
         "combine_type": "identity",
         "num_layers": 2,
-        "mlp_layers": 2,  # the number of layers in A and V
+        "mlp_layers": 1,  # the number of layers in A and V
         "combine_layers": 2,  # layers in the combine MLP if combine_type=mlp
         "task": "node"
     }
@@ -202,7 +202,7 @@ def main():
             "micro": 0.999,
             "macro": 0.999
         },
-        "stay": 1
+        "stay": 2
     }
 
     # total graphs to pre-generate
