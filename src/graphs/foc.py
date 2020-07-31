@@ -88,7 +88,7 @@ class Operator(Element):
 
     def __repr__(self):
         args = ",".join([repr(el) for el in self.operands])
-        return f"{self.__class__.__name__}({args!r})"
+        return f"{self.__class__.__name__}({args})"
 
 
 class NEG(Operator):
