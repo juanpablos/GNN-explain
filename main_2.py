@@ -3,7 +3,7 @@ import logging
 import random
 from timeit import default_timer as timer
 
-from sklearn.metrics import classification_report, confusion_matrix
+from sklearn.metrics import classification_report
 
 from src.data.utils import (get_input_dim, get_label_distribution,
                             load_gnn_files, train_test_dataset)
@@ -11,6 +11,7 @@ from src.formula_index import FormulaMapping
 from src.run_logic import run, seed_everything
 from src.training.mlp_training import Training
 from src.typing import MinModelConfig, NetworkDataConfig
+from src.visualization.confusion_matrix import plot_confusion_matrix
 
 
 def run_experiment(
@@ -70,6 +71,7 @@ def run_experiment(
         test_batch_size=test_batch_size,
         lr=lr)
 
+    # * get the last evaluation values
     _y = train_state.metrics.acc_y
     _y_pred = train_state.metrics.acc_y_pred
 
@@ -85,8 +87,12 @@ def run_experiment(
 
     target_names = [label_formula[k] for k in sorted(label_formula)]
     print(classification_report(_y, _y_pred, target_names=target_names))
-    print(confusion_matrix(_y, _y_pred))
-    print(json.dumps(label_formula, indent=2, ensure_ascii=False))
+    # print(json.dumps(label_formula, indent=2, ensure_ascii=False))
+    plot_confusion_matrix(
+        _y,
+        _y_pred,
+        save_path="./results",
+        labels=target_names)
 
 
 def main():
@@ -97,52 +103,32 @@ def main():
         "num_layers": 3,
         "input_dim": None,
         "hidden_dim": 128,
-        "hidden_layers": [1024, 128, 8],
+        "hidden_layers": [512],
         "output_dim": None
     }
 
     data_config: NetworkDataConfig = {
         "root": "data/gnns",
-        "model_hash": "testing",  # "0d7e1554fa-add2",
+        "model_hash": "testing",  # "6106dbd778",
         # * if load_all is true formula_hashes is ignored and each formula in the directory receives a different label
         "load_all": True,
         "formula_hashes": {
-            # "5caab97089": {  # (black|green) and 3-5 blue neigh
-            #     "limit": None,
-            #     "label": 0
-            # },
-            # "7e24cdcffb": {  # red
-            #     "limit": None,
-            #     "label": 0
-            # },
-            # "74a0324f6e": {  # green
-            #     "limit": None,
-            #     "label": 0
-            # },
-            # "45207fda29": {  # OR(X and 4+ X neigh), X [red, blue, green, black]
-            #     "limit": None,
-            #     "label": 0
-            # },
-            # "a085814a6b": {  # blue & 2+ green neigh
-            #     "limit": None,
-            #     "label": 0
-            # },
-            # "b18de7fd2c": {  # green & ((2-4 blue neigh) | (4-6 red neigh))
-            #     "limit": None,
-            #     "label": 0
-            # },
-            "bfa11bd667": {  # red & 2-4 (black|blue) neigh
+            "dc670b1bec": {
                 "limit": None,
                 "label": 0
             },
-            "c716a094ab": {  # blue|green
+            "4805042859": {
                 "limit": None,
                 "label": 1
+            },
+            "688d12b701": {
+                "limit": None,
+                "label": 2
             }
         }
     }
 
-    iterations = 50
+    iterations = 1
     train_batch = 32  # 8
     test_batch = 512
 
