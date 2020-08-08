@@ -11,6 +11,8 @@ from torch_geometric.data import DataLoader
 from src.training.utils import StopTraining
 from src.typing import MinModelConfig, StopFormat, TNum, Trainer
 
+logger = logging.getLogger(__name__)
+
 
 def seed_everything(seed):
     random.seed(seed)
@@ -103,8 +105,8 @@ def run(
 
         if stop(**info):
             break
-        logging.debug(f"{it: 03} {run_config.log(info)}")
+        logger.debug(f"{it: 03} {run_config.log(info)}")
 
-    logging.info(f"{it: 03} {run_config.log(info)}")
+    logger.info(f"{it: 03} {run_config.log(info)}")
 
     return model, info

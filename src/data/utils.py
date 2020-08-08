@@ -10,6 +10,8 @@ from src.typing import DatasetLike, FormulaHash, Indexable, T
 
 from .datasets import NetworkDataset, SingleDataset, Subset
 
+logger = logging.getLogger(__name__)
+
 
 def clean_state(model_dict: Dict[str, Any]):
     """Removes the weights associated with batchnorm"""
@@ -61,7 +63,7 @@ def load_gnn_files(root: str, model_hash: str,
     mapping: Dict[str, int] = {}
     datasets: List[NetworkDataset] = []
     for formula_hash, config in formula_configs.items():
-        logging.info(f"\tLoading {formula_hash}")
+        logger.info(f"\tLoading {formula_hash}")
 
         file_path = os.path.join(model_path, dir_formulas[formula_hash])
         dataset = NetworkDataset(file=file_path, **config)

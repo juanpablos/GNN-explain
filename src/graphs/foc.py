@@ -4,6 +4,8 @@ from functools import reduce
 import networkx as nx
 import numpy as np
 
+__all__ = ["AND", "FOC", "NEG", "OR", "Exist", "ForAll", "Property", "Role"]
+
 
 class Element(ABC):
     @abstractmethod

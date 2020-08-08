@@ -11,6 +11,8 @@ from sklearn.metrics import accuracy_score, precision_recall_fscore_support
 from src.gnn import MLP
 from src.typing import TNum, Trainer
 
+logger = logging.getLogger(__name__)
+
 
 class Metric:
     def __init__(self, average: str = "macro"):
@@ -59,10 +61,10 @@ class Training(Trainer):
 
     def get_loss(self):
         if self.n_classes > 2:
-            logging.debug("Using CrossEntropyLoss")
+            logger.debug("Using CrossEntropyLoss")
             return nn.CrossEntropyLoss(reduction="mean")
         elif self.n_classes == 2:
-            logging.debug("Using BCEWithLogitsLoss")
+            logger.debug("Using BCEWithLogitsLoss")
             return nn.BCEWithLogitsLoss(reduction="mean")
         else:
             raise ValueError("Number of classes cannot be less than 2")

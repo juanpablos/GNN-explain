@@ -1,5 +1,6 @@
 import csv
 import json
+import logging
 import os
 from collections.abc import Mapping
 from inspect import getsource
@@ -7,6 +8,8 @@ from typing import Callable, Dict
 
 from src.graphs.foc import FOC
 from src.typing import GNNModelConfig
+
+logger = logging.getLogger(__name__)
 
 
 def merge_update(dict1, dict2):
@@ -33,6 +36,7 @@ def save_file_exists(root: str, file_name: str):
 
     searching = _create_tuple(file_name)
 
+    logger.debug(f"Searching for existing file: {searching}")
     for file in os.listdir(root):
         if file.endswith(".pt"):
             other = _create_tuple(file)
@@ -46,6 +50,7 @@ def save_file_exists(root: str, file_name: str):
 def cleanup(exists, path, file):
     """Does not check if file exists, it should already exist if exists is true. Otherwise a race condition was met, but that is not checked"""
     if exists:
+        logger.debug("Deleting old files")
         file_path = os.path.join(path, file)
         os.remove(file_path)
         os.remove(f"{file_path}.stat")
@@ -62,6 +67,8 @@ def write_metadata(
         formula_fn: Callable[[], FOC],
         **kwargs):
     formula_source = getsource(formula_fn)
+
+    logging.debug("Writing metadata")
 
     """
     * format is:

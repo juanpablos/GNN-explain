@@ -5,6 +5,8 @@ from typing import Iterator, List, Optional
 import networkx as nx
 import numpy as np
 
+logger = logging.getLogger(__name__)
+
 
 def property_generator(graph_generator: Iterator[nx.Graph],
                        number_of_graphs: int = None,
@@ -67,8 +69,8 @@ def property_generator(graph_generator: Iterator[nx.Graph],
 
         if verbose == 1:
             if it % (number_of_graphs // 10) == 0:
-                logging.debug(f"{it + 1}/{number_of_graphs} graphs colored")
+                logger.debug(f"{it + 1}/{number_of_graphs} graphs colored")
         elif verbose == 2:
-            logging.debug(f"{it + 1}/{number_of_graphs} graphs colored")
+            logger.debug(f"{it + 1}/{number_of_graphs} graphs colored")
 
         yield graph

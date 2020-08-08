@@ -18,6 +18,7 @@ from src.training.gnn_training import Training
 from src.typing import GNNModelConfig, StopFormat
 from src.utils import cleanup, merge_update, save_file_exists, write_metadata
 
+logger = logging.getLogger("src")
 
 """
 "RED": 0,
@@ -49,15 +50,15 @@ def run_experiment(
         stop_when: StopFormat = None,
         unique_test: bool = True):
 
-    logging.debug("Initializing graph stream")
+    logger.debug("Initializing graph stream")
     stream = graph_stream(**data_config)
 
-    logging.info(f"Pre-generating database of {total_graphs} graphs")
+    logger.info(f"Pre-generating database of {total_graphs} graphs")
     data_pool = RandomGraphDataset(stream, limit=total_graphs)
-    logging.info("Finished pre-generating")
+    logger.info("Finished pre-generating")
 
     seed = data_config.get("seed", None)
-    logging.debug("Initializing subsampler")
+    logger.debug("Initializing subsampler")
     data_sampler = SubsetSampler(
         dataset=data_pool,
         n_elements=n_graphs,
@@ -74,11 +75,11 @@ def run_experiment(
     try:
         for m in range(1, n_models + 1):
 
-            logging.info(f"Training model {m}/{n_models}")
+            logger.info(f"Training model {m}/{n_models}")
 
-            logging.debug("Subsampling dataset")
+            logger.debug("Subsampling dataset")
             train_data, test_data = data_sampler()
-            logging.debug("Finished Subsampling dataset")
+            logger.debug("Finished Subsampling dataset")
 
             model, metrics = run(
                 run_config=Training(),
@@ -101,29 +102,29 @@ def run_experiment(
             stats["micro"][str(round(metrics["micro"], 3))] += 1
 
     except KeyboardInterrupt:
-        logging.info("Manually Interrumpted")
+        logger.info("Manually Interrumpted")
         _error_file = f"{save_path}/{file_name.format(len(models))}.error"
         with open(_error_file, "w") as o:
             o.write(f"Interrupted work in file {save_path}\n")
             o.write(f"Only {len(models)} models were written\n")
     except Exception as e:
-        logging.error(f"Exception encountered: {type(e).__name__}")
-        logging.error(f"Message: {e}")
+        logger.error(f"Exception encountered: {type(e).__name__}")
+        logger.error(f"Message: {e}")
         _error_file = f"{save_path}/{file_name.format(len(models))}.error"
         with open(_error_file, "w") as o:
             o.write(f"Problem in file {save_path}/{file_name.format('X')}\n")
             o.write(f"Exception encountered: {e}\n")
             o.write(f"Only {len(models)} models were written\n")
     finally:
-        logging.info(f"Saving computed models...")
+        logger.info(f"Saving computed models...")
 
         exists, prev_file = save_file_exists(save_path, file_name)
         if exists:
             # ! this does not take care of race conditions
-            logging.info("File already exists")
-            logging.info("Appending new models to file")
-            logging.debug("Loading previous models")
+            logger.info("File already exists")
+            logger.info("Appending new models to file")
 
+            logger.debug("Loading previous models")
             prev_models = torch.load(f"{save_path}/{prev_file}")
 
             models.extend(prev_models)
@@ -132,7 +133,7 @@ def run_experiment(
                 prev_stats = json.load(f)
                 stats = merge_update(stats, prev_stats)
 
-        logging.info(f"Saving {len(models)} models...")
+        logger.info(f"Saving {len(models)} models...")
         models_file = f"{save_path}/{file_name.format(len(models))}"
         torch.save(models, models_file)
         with open(f"{models_file}.stat", "w") as f:
@@ -256,23 +257,23 @@ def main():
         unique_test=unique_test
     )
     end = timer()
-    logging.info(f"Took {end-start} seconds")
+    logger.info(f"Took {end-start} seconds")
 
 
 if __name__ == "__main__":
-    _console = logging.StreamHandler()
-    _console.setLevel(logging.INFO)
-    _console_f = logging.Formatter("[%(levelname)s] %(message)s")
-    _console.setFormatter(_console_f)
-    # _file = logging.FileHandler("debug_log.log")
-    # _file.setLevel(logging.DEBUG)
-    # _file_f = logging.Formatter('%(asctime)s [%(levelname)s] %(message)s')
-    # _file.setFormatter(_file_f)
-    logging.basicConfig(
-        level=logging.DEBUG,
-        handlers=[
-            _console
-        ]
-    )
+    logger.setLevel(logging.DEBUG)
 
+    ch = logging.StreamHandler()
+    ch.setLevel(logging.DEBUG)
+    _console_f = logging.Formatter("%(levelname)-8s: %(message)s")
+    ch.setFormatter(_console_f)
+
+    # fh = logging.FileHandler("main_1.2.log")
+    # fh.setLevel(logging.DEBUG)
+    # _file_f = logging.Formatter(
+    #     '%(asctime)s %(name)s %(levelname)s "%(message)s"')
+    # fh.setFormatter(_file_f)
+
+    logger.addHandler(ch)
+    # logger.addHandler(fh)
     main()

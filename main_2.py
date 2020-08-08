@@ -1,4 +1,3 @@
-import json
 import logging
 import random
 from timeit import default_timer as timer
@@ -12,6 +11,8 @@ from src.run_logic import run, seed_everything
 from src.training.mlp_training import Training
 from src.typing import MinModelConfig, NetworkDataConfig
 from src.visualization.confusion_matrix import plot_confusion_matrix
+
+logger = logging.getLogger("src")
 
 
 def run_experiment(
@@ -28,12 +29,12 @@ def run_experiment(
         lr: float = 0.01
 ):
 
-    logging.info("Loading Files")
+    logger.info("Loading Files")
     dataset, label_mapping = load_gnn_files(**data_config)
     n_classes = len(dataset.label_info)
-    logging.debug(f"{n_classes} classes detected")
+    logger.debug(f"{n_classes} classes detected")
 
-    logging.debug("Splitting data")
+    logger.debug("Splitting data")
     train_data, test_data = train_test_dataset(dataset=dataset,
                                                test_size=test_size,
                                                random_state=seed,
@@ -41,12 +42,12 @@ def run_experiment(
                                                stratify=stratify)
 
     if stratify:
-        logging.debug(
+        logger.debug(
             f"Dataset distribution {get_label_distribution(dataset)}")
     else:
-        logging.debug(
+        logger.debug(
             f"Train dataset distribution {get_label_distribution(train_data)}")
-        logging.debug(
+        logger.debug(
             f"Test dataset distribution {get_label_distribution(test_data)}")
 
     input_shape = get_input_dim(train_data)
@@ -57,8 +58,8 @@ def run_experiment(
 
     train_state = Training(n_classes=n_classes)
 
-    logging.debug("Running")
-    logging.debug(f"Input size is {input_shape[0]}")
+    logger.debug("Running")
+    logger.debug(f"Input size is {input_shape[0]}")
     model, metrics = run(
         run_config=train_state,
         model_config=model_config,
@@ -80,8 +81,8 @@ def run_experiment(
         label_formula = {label: str(formula_mapping[h])
                          for h, label in label_mapping.items()}
     except Exception as e:
-        logging.error("Exception encountered when using formula mapping")
-        logging.error("Message:", e)
+        logger.error("Exception encountered when using formula mapping")
+        logger.error("Message:", e)
         # fallback when cannot use the formula mapping
         label_formula = {label: str(label) for label in label_mapping.values()}
 
@@ -147,23 +148,23 @@ def main():
         lr=0.001
     )
     end = timer()
-    logging.info(f"Took {end-start} seconds")
+    logger.info(f"Took {end-start} seconds")
 
 
 if __name__ == "__main__":
-    _console = logging.StreamHandler()
-    _console.setLevel(logging.DEBUG)
-    _console_f = logging.Formatter("[%(levelname)s] %(message)s")
-    _console.setFormatter(_console_f)
-    # _file = logging.FileHandler("debug_log.log")
-    # _file.setLevel(logging.DEBUG)
-    # _file_f = logging.Formatter('%(asctime)s [%(levelname)s] %(message)s')
-    # _file.setFormatter(_file_f)
-    logging.basicConfig(
-        level=logging.DEBUG,
-        handlers=[
-            _console
-        ]
-    )
+    logger.setLevel(logging.DEBUG)
 
+    ch = logging.StreamHandler()
+    ch.setLevel(logging.DEBUG)
+    _console_f = logging.Formatter("%(levelname)-8s: %(message)s")
+    ch.setFormatter(_console_f)
+
+    # fh = logging.FileHandler("main_2.log")
+    # fh.setLevel(logging.DEBUG)
+    # _file_f = logging.Formatter(
+    #     '%(asctime)s %(filename) %(name)s %(levelname)s "%(message)s"')
+    # fh.setFormatter(_file_f)
+
+    logger.addHandler(ch)
+    # logger.addHandler(fh)
     main()

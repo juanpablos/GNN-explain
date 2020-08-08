@@ -11,7 +11,6 @@ import torch
 
 from src.data.datasets import RandomGraphDataset
 from src.data.utils import clean_state
-from src.formula_index import formulas
 from src.generate_graphs import graph_stream
 from src.graphs import *
 from src.run_logic import run, seed_everything
@@ -19,6 +18,7 @@ from src.training.gnn_training import Training
 from src.typing import GNNModelConfig, StopFormat
 from src.utils import cleanup, merge_update, save_file_exists, write_metadata
 
+logger = logging.getLogger("src")
 
 """
 "RED": 0,
@@ -85,7 +85,7 @@ def run_experiment(
     try:
         for m in range(1, n_models + 1):
 
-            logging.info(f"Training model {m}/{n_models}")
+            logger.info(f"Training model {m}/{n_models}")
 
             s = timer()
             train_data = RandomGraphDataset(stream, train_length)
@@ -112,28 +112,28 @@ def run_experiment(
             stats["micro"][str(round(metrics["micro"], 3))] += 1
 
     except KeyboardInterrupt:
-        logging.info("Manually Interrumpted")
+        logger.info("Manually Interrumpted")
         _error_file = f"{save_path}/{file_name.format(len(models))}.error"
         with open(_error_file, "w") as o:
             o.write(f"Interrupted work in file {save_path}\n")
             o.write(f"Only {len(models)} models were written\n")
     except Exception as e:
-        logging.error(f"Exception encountered: {type(e).__name__}")
-        logging.error(f"Message: {e}")
+        logger.error(f"Exception encountered: {type(e).__name__}")
+        logger.error(f"Message: {e}")
         _error_file = f"{save_path}/{file_name.format(len(models))}.error"
         with open(_error_file, "w") as o:
             o.write(f"Problem in file {save_path}/{file_name.format('X')}\n")
             o.write(f"Exception encountered: {e}\n")
             o.write(f"Only {len(models)} models were written\n")
     finally:
-        logging.info(f"Saving computed models...")
+        logger.info(f"Saving computed models...")
 
         exists, prev_file = save_file_exists(save_path, file_name)
         if exists:
             # ! this does not take care of race conditions
-            logging.info("File already exists")
-            logging.info("Appending new models to file")
-            logging.debug("Loading previous models")
+            logger.info("File already exists")
+            logger.info("Appending new models to file")
+            logger.debug("Loading previous models")
 
             prev_models = torch.load(f"{save_path}/{prev_file}")
 
@@ -143,7 +143,7 @@ def run_experiment(
                 prev_stats = json.load(f)
                 stats = merge_update(stats, prev_stats)
 
-        logging.info(f"Saving {len(models)} models...")
+        logger.info(f"Saving {len(models)} models...")
         models_file = f"{save_path}/{file_name.format(len(models))}"
         torch.save(models, models_file)
         with open(f"{models_file}.stat", "w") as f:
@@ -262,32 +262,25 @@ def main(use_formula: FOC = None):
         stop_when=stop_when
     )
     end = timer()
-    logging.info(f"Took {end-start} seconds")
+    logger.info(f"Took {end-start} seconds")
 
     return model_config, model_config_hash
 
 
 if __name__ == "__main__":
-    _console = logging.StreamHandler()
-    _console.setLevel(logging.DEBUG)
-    _console_f = logging.Formatter("[%(levelname)s] %(message)s")
-    _console.setFormatter(_console_f)
-    # _file = logging.FileHandler("debug_log.log")
-    # _file.setLevel(logging.DEBUG)
-    # _file_f = logging.Formatter('%(asctime)s [%(levelname)s] %(message)s')
-    # _file.setFormatter(_file_f)
-    logging.basicConfig(
-        level=logging.DEBUG,
-        handlers=[
-            _console
-        ]
-    )
+    logger.setLevel(logging.DEBUG)
 
-    # _s = timer()
-    # for ff in formulas.values():
-    #     print(ff)
-    #     _m, _m_h = main(FOC(ff))
-    # print("Total time", timer() - _s)
-    # print(_m_h)
-    # print(json.dumps(_m, indent=2))
+    ch = logging.StreamHandler()
+    ch.setLevel(logging.DEBUG)
+    _console_f = logging.Formatter("%(levelname)-8s: %(message)s")
+    ch.setFormatter(_console_f)
+
+    # fh = logging.FileHandler("main_1.log")
+    # fh.setLevel(logging.DEBUG)
+    # _file_f = logging.Formatter(
+    #     '%(asctime)s %(name)s %(levelname)s "%(message)s"')
+    # fh.setFormatter(_file_f)
+
+    logger.addHandler(ch)
+    # logger.addHandler(fh)
     main()
