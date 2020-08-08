@@ -64,16 +64,14 @@ def write_metadata(
         formula_hash: str,
         data_config: Dict,
         seed: int,
-        formula_fn: Callable[[], FOC],
         **kwargs):
-    formula_source = getsource(formula_fn)
 
     logging.debug("Writing metadata")
 
     """
     * format is:
     * formula hash, formula string, model hash, seed,
-    *    model config, data config, others, formula source
+    *    model config, data config, others
     """
     with open(destination, "a", newline='', encoding='utf-8') as f:
         writer = csv.writer(f, quotechar="|")
@@ -84,6 +82,5 @@ def write_metadata(
             seed,
             json.dumps(model_config),
             json.dumps(data_config),
-            json.dumps(kwargs),
-            formula_source
+            json.dumps(kwargs)
         ])

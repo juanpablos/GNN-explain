@@ -224,7 +224,6 @@ def main():
         model_config_hash=model_config_hash,
         formula=formula,
         formula_hash=formula_hash,
-        formula_fn=get_formula,
         data_config=data_config,
         iterations=iterations,
         total_graphs=total_graphs,
