@@ -211,7 +211,7 @@ class LabeledSubset(Dataset, Generic[T_co, S_co]):
         self._indices = indices
 
     def __getitem__(self, idx: int):
-        return self.dataset[self.indices[idx]]
+        return self._dataset[self.indices[idx]]
 
     def __len__(self):
         return len(self.indices)
