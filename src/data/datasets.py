@@ -1,13 +1,28 @@
 from abc import ABC
 from collections import Counter
-from typing import Dict, Generic, Iterator, List, Mapping, Sequence, Tuple
+from typing import Any, Dict, Generic, Iterator, List, Mapping, Sequence, Tuple
 
 import torch
 from torch.utils.data import Dataset
 
-from src.data.data_utils import DummyIterable
 from src.typing import (DatasetLike, Indexable, IndexableIterable,
                         LabeledDatasetLike, S_co, T_co)
+
+
+class DummyIterable:
+    def __init__(self, value: Any, length: int):
+        self.value = value
+        self.length = length
+
+    def __len__(self):
+        return self.length
+
+    def __getitem__(self, index: int):
+        return self.value
+
+    def __iter__(self):
+        for _ in range(self.length):
+            yield self.value
 
 
 class SimpleDataset(Dataset, Generic[T_co]):
