@@ -11,13 +11,15 @@ from torch.utils.data.dataloader import DataLoader as torch_loader
 from torch_geometric.data import DataLoader as torch_geometric_loader
 
 T = TypeVar("T")
+S = TypeVar("S")
 T_co = TypeVar("T_co", covariant=True)
+S_co = TypeVar("S_co", covariant=True)
 TNum = TypeVar("TNum", int, float)
 
 
 class FormulaHashInfo(TypedDict):
     limit: Optional[int]
-    label: Any
+    label: int
 
 
 FormulaHash = Dict[str, FormulaHashInfo]
@@ -107,7 +109,16 @@ class IndexableIterable(Indexable[T_co], Protocol[T_co]):
 class DatasetLike(IndexableIterable[T_co], Protocol[T_co]):
     @property
     def dataset(self) -> IndexableIterable[T_co]: ...
+
+
+@runtime_checkable
+class LabeledDatasetLike(Protocol[T_co, S_co]):
+    def __getitem__(self, index: int) -> Tuple[T_co, S_co]: ...
+    def __len__(self) -> int: ...
+    def __iter__(self) -> Iterator[Tuple[T_co, S_co]]: ...
     @property
-    def label_info(self) -> Mapping[Hashable, int]: ...
+    def dataset(self) -> IndexableIterable[T_co]: ...
     @property
-    def labeled(self) -> bool: ...
+    def labels(self) -> IndexableIterable[S_co]: ...
+    @property
+    def label_info(self) -> Mapping[S_co, int]: ...

@@ -6,9 +6,10 @@ import numpy as np
 import torch
 from sklearn.model_selection import train_test_split as sk_split
 
-from src.typing import DatasetLike, FormulaHash, Indexable, T
+from src.typing import (DatasetLike, FormulaHash, Indexable,
+                        LabeledDatasetLike, S, T)
 
-from .datasets import NetworkDataset, SingleDataset, Subset
+from .datasets import LabeledDataset, LabeledSubset, NetworkDataset, Subset
 
 logger = logging.getLogger(__name__)
 
@@ -61,21 +62,24 @@ def load_gnn_files(root: str, model_hash: str,
         formula_configs = formula_hashes
 
     mapping: Dict[str, int] = {}
-    datasets: List[NetworkDataset] = []
+    datasets: List[NetworkDataset[int]] = []
     for formula_hash, config in formula_configs.items():
         logger.info(f"\tLoading {formula_hash}")
 
         file_path = os.path.join(model_path, dir_formulas[formula_hash])
-        dataset = NetworkDataset(file=file_path, **config)
+        dataset = NetworkDataset(
+            file=file_path,
+            label=config["label"],
+            limit=config["limit"])
 
         datasets.append(dataset)
         mapping[formula_hash] = config.get("label", -1)
 
-    return SingleDataset.from_iterable(datasets, labeled=True), mapping
+    return LabeledDataset.from_iterable(datasets), mapping
 
 
 def train_test_dataset(
-        dataset: DatasetLike[T],
+        dataset: LabeledDatasetLike[T, S],
         test_size: float = 0.25,
         random_state: int = None,
         shuffle: bool = True,
@@ -83,10 +87,10 @@ def train_test_dataset(
 
     classes = None
     if stratify:
-        if not dataset.labeled:
+        if not isinstance(dataset, LabeledDatasetLike):
             raise ValueError("`dataset` is not a labeled dataset")
 
-        classes = [data[1] for data in dataset]
+        classes = dataset.labels
 
     train_idx, test_idx = sk_split(list(range(len(dataset))),
                                    test_size=test_size,
@@ -94,7 +98,7 @@ def train_test_dataset(
                                    shuffle=shuffle,
                                    stratify=classes)
 
-    return Subset(dataset, train_idx), Subset(dataset, test_idx)
+    return LabeledSubset(dataset, train_idx), LabeledSubset(dataset, test_idx)
 
 
 def get_input_dim(data):
@@ -110,10 +114,7 @@ def get_input_dim(data):
     return x.shape
 
 
-def get_label_distribution(dataset: DatasetLike[T]):
-    if not dataset.labeled:
-        raise ValueError("`dataset` is not a labeled dataset")
-
+def get_label_distribution(dataset: LabeledDatasetLike[T, S]):
     label_info = dataset.label_info
     n_elements = len(dataset)
 
