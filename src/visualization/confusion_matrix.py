@@ -6,21 +6,36 @@ from sklearn.metrics import ConfusionMatrixDisplay, confusion_matrix
 logger = logging.getLogger(__name__)
 
 
-def plot_confusion_matrix(y, y_pred, save_path, *, labels=None):
-    logger.info("Calculating confusion matrix")
-    matrix_og = confusion_matrix(y, y_pred, normalize=None)
-    # matrix_norm = confusion_matrix(y, y_pred, normalize="true")
+def plot_confusion_matrix(
+        y,
+        y_pred,
+        save_path,
+        *,
+        labels=None,
+        each_label: int = None):
+    logger.info(f"Calculating confusion matrix")
 
-    fig, ax = plt.subplots()
+    normalize = None
+    if each_label is not None:
+        normalize = "true"
 
-    disp_og = ConfusionMatrixDisplay(matrix_og, display_labels=labels)
-    # disp_norm = ConfusionMatrixDisplay(matrix_norm, display_labels=labels)
+    matrix_og = confusion_matrix(y, y_pred, normalize=normalize)
 
-    logger.debug("Plotting confusin matrix")
-    disp_og.plot(cmap="Blues", ax=ax, xticks_rotation=45)
-    # disp_norm.plot(cmap="Blues", ax=ax2, xticks_rotation=45)
+    size = 10 if len(labels) < 10 else len(labels) * 1.25
+    fig, ax = plt.subplots(figsize=(size, size))
 
-    plt.title("Confusion matrix")
+    disp = ConfusionMatrixDisplay(matrix_og, display_labels=labels)
+
+    logger.debug("Plotting confusion matrix")
+    disp.plot(cmap="Blues", ax=ax, xticks_rotation=30)
+
+    plt.setp(ax.get_xticklabels(), rotation=30,  # type:ignore
+             horizontalalignment='right')
+    if each_label is None:
+        plt.title("Confusion matrix")
+    else:
+        plt.title(f"Confusion matrix: {each_label} elements each class")
+        disp.im_.set_clim(0, 1)
     plt.tight_layout()
     plt.savefig(f"{save_path}/confusion_matrix.png")
     plt.close()

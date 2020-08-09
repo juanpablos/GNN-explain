@@ -89,11 +89,16 @@ def run_experiment(
     target_names = [label_formula[k] for k in sorted(label_formula)]
     print(classification_report(_y, _y_pred, target_names=target_names))
     # print(json.dumps(label_formula, indent=2, ensure_ascii=False))
+
+    test_label_info = test_data.apply_subset().label_info
+    each_label = next(iter(test_label_info.values()))
+
     plot_confusion_matrix(
         _y,
         _y_pred,
         save_path="./results",
-        labels=target_names)
+        labels=target_names,
+        each_label=each_label)
 
 
 def main():
@@ -104,7 +109,7 @@ def main():
         "num_layers": 3,
         "input_dim": None,
         "hidden_dim": 128,
-        "hidden_layers": [512],
+        "hidden_layers": [1024],
         "output_dim": None
     }
 
@@ -112,24 +117,28 @@ def main():
         "root": "data/gnns",
         "model_hash": "testing",  # "6106dbd778",
         # * if load_all is true formula_hashes is ignored and each formula in the directory receives a different label
-        "load_all": True,
+        "load_all": False,
         "formula_hashes": {
-            "dc670b1bec": {
+            "ea81181317": {
                 "limit": None,
                 "label": 0
             },
-            "4805042859": {
+            "9dfdcfb080": {
                 "limit": None,
                 "label": 1
             },
-            "688d12b701": {
+            "9eb3668544": {
                 "limit": None,
                 "label": 2
+            },
+            "2231100a27": {
+                "limit": None,
+                "label": 3
             }
         }
     }
 
-    iterations = 1
+    iterations = 2
     train_batch = 32  # 8
     test_batch = 512
 

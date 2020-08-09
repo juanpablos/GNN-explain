@@ -240,7 +240,7 @@ class LabeledSubset(Dataset, Generic[T_co, S_co]):
         dataset: List[T_co] = []
         labels: List[S_co] = []
         for ind in self.indices:
-            x, y = self.dataset[ind]
+            x, y = self._dataset[ind]
             dataset.append(x)
             labels.append(y)
         return LabeledDataset(dataset=dataset, labels=labels)
