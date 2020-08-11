@@ -142,7 +142,7 @@ def run_experiment(
         cleanup(exists, save_path, prev_file)
 
 
-def main():
+def main(use_formula: FOC = None):
     seed = random.randint(1, 1 << 30)
     # seed = 10
     seed_everything(seed)
@@ -171,7 +171,7 @@ def main():
             sort_keys=True).encode()).hexdigest()[
         :10]
 
-    formula = get_formula()
+    formula = get_formula() if use_formula is None else use_formula
     formula_hash = hashlib.md5(repr(formula).encode()).hexdigest()[:10]
 
     data_config = {
@@ -275,4 +275,11 @@ if __name__ == "__main__":
 
     logger.addHandler(ch)
     # logger.addHandler(fh)
-    main()
+
+    # main()
+
+    __formulas = [
+
+    ]
+    for __formula in __formulas:
+        main(use_formula=FOC(__formula))
