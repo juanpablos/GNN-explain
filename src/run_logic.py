@@ -105,8 +105,8 @@ def run(
 
         if stop(**info):
             break
-        logger.debug(f"{it: 03} {run_config.log(info)}")
+        logger.debug(f"{it: 03d} {run_config.log(info)}")
 
-    logger.info(f"{it: 03} {run_config.log(info)}")
+    logger.info(f"{it: 03d} {run_config.log(info)}")
 
     return model, info

@@ -162,6 +162,7 @@ def main():
 
 if __name__ == "__main__":
     logger.setLevel(logging.DEBUG)
+    logger.propagate = False
 
     ch = logging.StreamHandler()
     ch.setLevel(logging.DEBUG)

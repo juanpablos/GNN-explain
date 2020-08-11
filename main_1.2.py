@@ -1,6 +1,7 @@
 import hashlib
 import json
 import logging
+import math
 import os
 import random
 from collections import defaultdict
@@ -147,7 +148,8 @@ def main(use_formula: FOC = None):
     # seed = 10
     seed_everything(seed)
 
-    n_models = 5000
+    n_models = 2
+    # n_models = 5000
     model_name = "acgnn"
 
     input_dim = 4
@@ -189,7 +191,8 @@ def main(use_formula: FOC = None):
         "m": 4
     }
 
-    save_path = f"data/gnns/{model_config_hash}"
+    save_path = f"data/gnns/{model_config_hash}-testing"
+    # save_path = f"data/gnns/{model_config_hash}"
     # ! manual operation
     os.makedirs(save_path, exist_ok=True)
     # * model_name - number of models - model hash - formula hash
@@ -207,13 +210,17 @@ def main(use_formula: FOC = None):
     }
 
     # total graphs to pre-generate
-    total_graphs = 300_000
+    total_graphs = 3000
+    # total_graphs = 300_000
     # graphs selected per training session / model
-    n_graphs = 5120
+    n_graphs = 100
+    # n_graphs = 5120
     # how many graphs are selected for the testing
-    test_size = 500
+    test_size = 50
+    # test_size = 500
     # the size of the training batch
-    batch_size = 128
+    batch_size = 8
+    # batch_size = 128
     # if true, the test set is generated only one time and all models are
     # tested against that
     unique_test = True
@@ -261,6 +268,7 @@ def main(use_formula: FOC = None):
 
 if __name__ == "__main__":
     logger.setLevel(logging.DEBUG)
+    logger.propagate = False
 
     ch = logging.StreamHandler()
     ch.setLevel(logging.DEBUG)
@@ -279,7 +287,19 @@ if __name__ == "__main__":
     # main()
 
     __formulas = [
-
+        AND(Property('RED'), Exist(AND(Role('EDGE'), Property('RED')), 1, None)),
+        AND(Property('RED'), Exist(AND(Role('EDGE'), Property('GREEN')), 1, None)),
+        AND(Property('RED'), Exist(AND(Role('EDGE'), Property('BLUE')), 1, None)),
+        AND(Property('RED'), Exist(AND(Role('EDGE'), Property('BLACK')), 1, None)),
     ]
-    for __formula in __formulas:
-        main(use_formula=FOC(__formula))
+    if __formulas:
+        __n_formulas = len(__formulas)
+        __dig = int(math.log10(__n_formulas)) + 1
+        for _i, __formula in enumerate(__formulas, start=1):
+            _cf = logging.Formatter(
+                f"{_i:0{__dig}}/{__n_formulas} %(levelname)-8s: %(message)s")
+            ch.setFormatter(_cf)
+
+            main(use_formula=FOC(__formula))
+    else:
+        main()
