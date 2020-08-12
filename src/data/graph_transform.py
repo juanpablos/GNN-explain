@@ -7,8 +7,7 @@ from torch_geometric.data import Data
 
 def stream_transform(graph: nx.Graph,
                      node_labels: List[List[Any]],
-                     n_node_features: int = 2,
-                     #  n_node_labels=2,
+                     n_node_features: int,
                      feature_type: str = "categorical") -> Data:
     """
     Generates a stream of torch_geometric:Data objects containing the generated graph and the label associated with each node.
@@ -16,7 +15,7 @@ def stream_transform(graph: nx.Graph,
     Args:
         graph (nx.Graph): the graph to work on
         node_labels (List[List[Any]]): the list of labels for each node
-        n_node_features (int, optional): the number of features available. Choose from 2 by default. Defaults to 2.
+        n_node_features (int, optional): the number of features available.
         feature_type (str, optional): whether the features are categorical or numerical. Defaults to "categorical".
 
     Returns:

@@ -1,4 +1,3 @@
-
 from abc import abstractmethod
 from typing import (
     Dict, Iterator, List, Literal, Mapping, Optional, Protocol, Tuple,

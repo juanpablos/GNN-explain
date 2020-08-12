@@ -147,13 +147,14 @@ class Exist(Element):
         self.expression = expression
         self.lower = lower
         self.upper = upper
+        self.symbol = "∃"
 
     def __repr__(self):
         return (f"{self.__class__.__name__}"
                 f"({self.expression!r},{self.lower},{self.upper})")
 
     def __str__(self):
-        s = self.symbol()
+        s = self.symbol
 
         if self.lower is None and self.upper is None:
             return f"{s}({self.variable}){self.expression}"
@@ -177,20 +178,18 @@ class Exist(Element):
         per_node = np.sum(res, axis=1)
         return (per_node >= lower) & (per_node <= upper)
 
-    def symbol(self):
-        return "∃"
-
 
 class ForAll(Element):
     def __init__(self, expression, *, variable: str = None):
         self.variable = variable if variable is not None else "."
         self.expression = expression
+        self.symbol = "∀"
 
     def __repr__(self):
         return f"{self.__class__.__name__}({self.expression!r})"
 
     def __str__(self):
-        s = self.symbol()
+        s = self.symbol
         return f"{s}({self.variable}){self.expression}"
 
     def __call__(self, **kwargs):
@@ -202,9 +201,6 @@ class ForAll(Element):
         # * for all will always come with a 2d array from a relation between nodes. Unless we accept reflexive relationships. EDGE is not reflexive.
         np.fill_diagonal(res, True)
         return np.all(res, axis=1)
-
-    def symbol(self):
-        return "∀"
 
 
 class FOC:

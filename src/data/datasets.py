@@ -1,6 +1,6 @@
 from abc import ABC
 from collections import Counter
-from typing import Any, Dict, Generic, Iterator, List, Mapping, Sequence, Tuple
+from typing import Dict, Generic, Iterator, List, Mapping, Sequence, Tuple
 
 import torch
 from torch.utils.data import Dataset
@@ -9,10 +9,10 @@ from src.typing import (DatasetLike, Indexable, IndexableIterable,
                         LabeledDatasetLike, S_co, T_co)
 
 
-class DummyIterable:
-    def __init__(self, value: Any, length: int):
-        self.value = value
-        self.length = length
+class DummyIterable(Generic[T_co]):
+    def __init__(self, value: T_co, length: int):
+        self.value: T_co = value
+        self.length: int = length
 
     def __len__(self):
         return self.length

@@ -3,8 +3,7 @@ import json
 import logging
 import os
 from collections.abc import Mapping
-from inspect import getsource
-from typing import Callable, Dict
+from typing import Any, Dict
 
 from src.graphs.foc import FOC
 from src.typing import GNNModelConfig
@@ -62,9 +61,9 @@ def write_metadata(
         model_config_hash: str,
         formula: FOC,
         formula_hash: str,
-        data_config: Dict,
+        data_config: Dict[str, Any],
         seed: int,
-        **kwargs):
+        **kwargs: Any):
 
     logging.debug("Writing metadata")
 
