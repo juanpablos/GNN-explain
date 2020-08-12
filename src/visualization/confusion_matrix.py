@@ -9,7 +9,9 @@ logger = logging.getLogger(__name__)
 def plot_confusion_matrix(
         y,
         y_pred,
-        save_path,
+        save_path: str,
+        file_name: str = None,
+        title: str = None,
         *,
         labels=None,
         each_label: int = None):
@@ -37,5 +39,11 @@ def plot_confusion_matrix(
         plt.title(f"Confusion matrix: {each_label} elements each class")
         disp.im_.set_clim(0, 1)
     plt.tight_layout()
-    plt.savefig(f"{save_path}/confusion_matrix.png")
+
+    figure_name = file_name if file_name is not None else "confusion_matrix.png"
+    figure_title = title if title is not None else ""
+
+    plt.title(figure_title)
+
+    plt.savefig(f"{save_path}/{figure_name}")
     plt.close()

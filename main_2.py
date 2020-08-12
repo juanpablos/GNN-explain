@@ -26,7 +26,10 @@ def run_experiment(
         data_workers: int = 2,
         batch_size: int = 64,
         test_batch_size: int = 512,
-        lr: float = 0.01
+        lr: float = 0.01,
+        plot_path: str = "./results",
+        plot_file_name: str = None,
+        plot_title: str = None
 ):
 
     logger.info("Loading Files")
@@ -96,7 +99,9 @@ def run_experiment(
     plot_confusion_matrix(
         _y,
         _y_pred,
-        save_path="./results",
+        save_path=plot_path,
+        file_name=plot_file_name,
+        title=plot_title,
         labels=target_names,
         each_label=each_label)
 
@@ -127,14 +132,14 @@ def main():
                 "limit": None,
                 "label": 1
             },
-            "9eb3668544": {
-                "limit": None,
-                "label": 2
-            },
-            "2231100a27": {
-                "limit": None,
-                "label": 3
-            }
+            # "9eb3668544": {
+            #     "limit": None,
+            #     "label": 2
+            # },
+            # "2231100a27": {
+            #     "limit": None,
+            #     "label": 3
+            # }
         }
     }
 
@@ -154,7 +159,10 @@ def main():
         data_workers=0,
         batch_size=train_batch,
         test_batch_size=test_batch,
-        lr=0.001
+        lr=0.001,
+        plot_path="./results/exp1",
+        plot_file_name=None,
+        plot_title=None
     )
     end = timer()
     logger.info(f"Took {end-start} seconds")
