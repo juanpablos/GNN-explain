@@ -109,7 +109,7 @@ def main():
         "num_layers": 3,
         "input_dim": None,
         "hidden_dim": 128,
-        "hidden_layers": [1024],
+        "hidden_layers": [512],
         "output_dim": None
     }
 
@@ -138,7 +138,7 @@ def main():
         }
     }
 
-    iterations = 2
+    iterations = 20
     train_batch = 32  # 8
     test_batch = 512
 
