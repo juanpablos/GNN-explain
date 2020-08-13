@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import logging
 import os
 from typing import Dict, Generic, Iterable, List, Type, Union
@@ -22,7 +24,7 @@ class FormulaConfig(Generic[S_co]):
     def get_content(self):
         return self.formula, self.label, self.limit
 
-    def __eq__(self, other: Union[str, "FormulaConfig"]):
+    def __eq__(self, other: Union[str, FormulaConfig]):
         if isinstance(other, str):
             return self.formula == other
         elif isinstance(other, FormulaConfig):
@@ -30,9 +32,12 @@ class FormulaConfig(Generic[S_co]):
         else:
             return False
 
+    def __hash__(self):
+        return hash(self.formula)
+
     @classmethod
-    def from_hashes(cls: Type["FormulaConfig"[int]], hashes: Iterable[str]):
-        configs: List["FormulaConfig"[int]] = []
+    def from_hashes(cls: Type[FormulaConfig[int]], hashes: Iterable[str]):
+        configs: List[FormulaConfig[int]] = []
         for l, h in enumerate(hashes):
             configs.append(cls(h, formula_label=l))
 
