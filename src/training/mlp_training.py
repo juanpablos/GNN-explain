@@ -1,5 +1,4 @@
 import logging
-from src.training.utils import MetricLogger
 from typing import Any, Dict, List, Literal, Union
 
 import numpy as np
@@ -10,6 +9,7 @@ import torch.optim as optim
 from sklearn.metrics import accuracy_score, precision_recall_fscore_support
 
 from src.gnn import MLP
+from src.training.utils import MetricLogger
 from src.typing import Trainer
 
 logger = logging.getLogger(__name__)

@@ -5,8 +5,14 @@ from typing import Dict, Generic, Iterator, List, Mapping, Sequence, Tuple
 import torch
 from torch.utils.data import Dataset
 
-from src.typing import (DatasetLike, Indexable, IndexableIterable,
-                        LabeledDatasetLike, S_co, T_co)
+from src.typing import (
+    DatasetLike,
+    Indexable,
+    IndexableIterable,
+    LabeledDatasetLike,
+    S_co,
+    T_co
+)
 
 
 class DummyIterable(Generic[T_co]):

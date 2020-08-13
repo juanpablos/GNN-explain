@@ -1,6 +1,7 @@
 import logging
 
 import matplotlib.pyplot as plt
+
 from src.typing import MetricHistory
 
 logger = logging.getLogger(__name__)
