@@ -1,7 +1,7 @@
 
 import warnings
 from collections import defaultdict
-from typing import Dict, List, Literal, Optional, Union
+from typing import Dict, Iterator, List, Literal, Optional, Union
 
 from src.typing import StopFormat, TNum
 
@@ -53,16 +53,23 @@ class MetricLogger:
         self.variables: Dict[str, List[TNum]] = defaultdict(list)
 
         self.log_all = variables == "all"
-        if variables != "all":
-            self.selection = variables
+        if isinstance(variables, list):
+            self._selection = variables
 
         self.warned = False
 
     def __getitem__(self, key: str):
         return self.variables[key][-1]
 
-    def keys(self):
-        return self.variables.keys()
+    def items(self, select: bool = False):
+        for metric in self.keys(select=select):
+            yield metric, self.variables[metric]
+
+    def keys(self, select: bool = False) -> Iterator[str]:
+        if select:
+            yield from self.selection
+        else:
+            yield from self.variables.keys()
 
     def update(self, **kwargs: TNum):
         for name, value in kwargs.items():
@@ -78,6 +85,13 @@ class MetricLogger:
             msg = self.__select_logger()
 
         return msg
+
+    @property
+    def selection(self):
+        if self.log_all:
+            return self.variables.keys()
+        else:
+            return self._selection
 
     def __full_logger(self):
         metrics: List[str] = []

@@ -49,7 +49,8 @@ class Training(Trainer):
     def __init__(self,
                  logging_variables: Union[Literal["all"],
                                           List[str]] = "all"):
-        if not all(var in self.available_metrics for var in logging_variables):
+        if logging_variables != "all" and not all(
+                var in self.available_metrics for var in logging_variables):
             raise ValueError(
                 "Encountered not supported metric. "
                 f"Supported are: {self.available_metrics}")

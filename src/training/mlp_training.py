@@ -62,7 +62,8 @@ class Training(Trainer):
                  metrics_average: str = "macro",
                  logging_variables: Union[Literal["all"],
                                           List[str]] = "all"):
-        if not all(var in self.available_metrics for var in logging_variables):
+        if logging_variables != "all" and not all(
+                var in self.available_metrics for var in logging_variables):
             raise ValueError(
                 "Encountered not supported metric. "
                 f"Supported are: {self.available_metrics}")
@@ -70,6 +71,9 @@ class Training(Trainer):
 
         self.n_classes = n_classes
         self.metrics = Metric(average=metrics_average)
+
+    def get_metric_logger(self):
+        return self.metric_logger
 
     def transform_y(self, y):
         if self.n_classes == 2:
