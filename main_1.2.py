@@ -83,8 +83,10 @@ def run_experiment(
             train_data, test_data = data_sampler()
             logger.debug("Finished Subsampling dataset")
 
-            model, metrics = run(
-                run_config=Training(),
+            training_state = Training("all")
+
+            model = run(
+                run_config=training_state,
                 model_config=model_config,
                 train_data=train_data,
                 test_data=test_data,
@@ -99,6 +101,8 @@ def run_experiment(
             model.cpu()
             weights = clean_state(model.state_dict())
             models.append(weights)
+
+            metrics = training_state.get_metric_logger()
 
             stats["macro"][str(round(metrics["macro"], 3))] += 1
             stats["micro"][str(round(metrics["micro"], 3))] += 1

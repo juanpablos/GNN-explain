@@ -52,10 +52,8 @@ class MetricLogger:
     def __init__(self, variables: Union[Literal["all"], List[str]] = "all"):
         self.variables: Dict[str, List[TNum]] = defaultdict(list)
 
-        if variables == "all":
-            self.log = self.__full_logger
-        else:
-            self.log = self.__select_logger
+        self.log_all = variables == "all"
+        if variables != "all":
             self.selection = variables
 
         self.warned = False
@@ -63,12 +61,23 @@ class MetricLogger:
     def __getitem__(self, key: str):
         return self.variables[key][-1]
 
+    def keys(self):
+        return self.variables.keys()
+
     def update(self, **kwargs: TNum):
         for name, value in kwargs.items():
             self.variables[name].append(value)
 
     def get_history(self, key: str):
         return self.variables[key]
+
+    def log(self):
+        if self.log_all:
+            msg = self.__full_logger()
+        else:
+            msg = self.__select_logger()
+
+        return msg
 
     def __full_logger(self):
         metrics: List[str] = []

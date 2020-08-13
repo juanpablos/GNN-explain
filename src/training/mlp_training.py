@@ -1,5 +1,6 @@
 import logging
-from typing import Any, Dict, List
+from src.training.utils import MetricLogger
+from typing import Any, Dict, List, Literal, Union
 
 import numpy as np
 import torch
@@ -31,7 +32,7 @@ class Metric:
         precision, recall, f1score, _ = precision_recall_fscore_support(
             self.acc_y, self.acc_y_pred, average=self.average, beta=1.0)
 
-        return {"precision": precision, "recall": recall, "f1score": f1score}
+        return {"precision": precision, "recall": recall, "f1": f1score}
 
     def accuracy(self):
         return {"acc": accuracy_score(self.acc_y, self.acc_y_pred)}
@@ -42,8 +43,31 @@ class Metric:
 
 
 class Training(Trainer):
+    available_metrics = [
+        "all",
+        "train_loss",
+        "test_loss",
+        "train_precision",
+        "train_recall",
+        "train_f1",
+        "train_acc",
+        "test_precision",
+        "test_recall",
+        "test_f1",
+        "test_acc"
+    ]
 
-    def __init__(self, n_classes: int = 2, metrics_average: str = "macro"):
+    def __init__(self,
+                 n_classes: int = 2,
+                 metrics_average: str = "macro",
+                 logging_variables: Union[Literal["all"],
+                                          List[str]] = "all"):
+        if not all(var in self.available_metrics for var in logging_variables):
+            raise ValueError(
+                "Encountered not supported metric. "
+                f"Supported are: {self.available_metrics}")
+        self.metric_logger = MetricLogger(logging_variables)
+
         self.n_classes = n_classes
         self.metrics = Metric(average=metrics_average)
 
@@ -97,7 +121,6 @@ class Training(Trainer):
               criterion,
               device,
               optimizer,
-              collector: Dict[str, Any],
               **kwargs):
 
         #!########
@@ -121,7 +144,7 @@ class Training(Trainer):
 
         average_loss = np.mean(accum_loss)
 
-        collector["train_loss"] = average_loss
+        self.metric_logger.update(train_loss=average_loss)
 
         return average_loss
 
@@ -130,7 +153,7 @@ class Training(Trainer):
                  test_data,
                  criterion,
                  device,
-                 collector: Dict[str, Any],
+                 using_train_data,
                  **kwargs):
 
         #!########
@@ -156,12 +179,28 @@ class Training(Trainer):
             self.metrics(y, y_pred)
 
         average_loss = np.mean(accum_loss)
-        collector["test_loss"] = average_loss
-        collector.update(self.metrics.precision_recall_fscore())
-        collector.update(self.metrics.accuracy())
+        metrics = self.metrics.precision_recall_fscore()
+        acc = self.metrics.accuracy()["acc"]
+
+        if using_train_data:
+            metrics = {
+                f"train_{name}": value for name,
+                value in metrics.items()}
+
+            self.metric_logger.update(
+                train_acc=acc,
+                **metrics)
+        else:
+            metrics = {
+                f"test_{name}": value for name,
+                value in metrics.items()}
+
+            self.metric_logger.update(
+                test_loss=average_loss,
+                test_acc=acc,
+                **metrics)
 
         return average_loss
 
-    def log(self, info: Dict[str, Any]):
-        return "loss {train_loss: <10.6f} test_loss {test_loss: <10.6f} precision {precision: <10.4f} recall {recall: <10.4f} f1score {f1score: <10.4f} accuracy {acc:.4f}".format(
-            **info)
+    def log(self):
+        return self.metric_logger.log()

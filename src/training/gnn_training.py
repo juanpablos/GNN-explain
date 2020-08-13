@@ -1,4 +1,4 @@
-from typing import Tuple
+from typing import List, Literal, Tuple, Union
 
 import numpy as np
 import torch
@@ -7,6 +7,7 @@ import torch.optim as optim
 from torch_scatter import scatter_mean
 
 from src.gnn import ACGNN
+from src.training.utils import MetricLogger
 from src.typing import Trainer
 
 
@@ -35,6 +36,28 @@ def _accuracy_aux(node_labels, predicted_labels, batch, device):
 
 
 class Training(Trainer):
+    available_metrics = [
+        "all",
+        "train_loss",
+        "test_loss",
+        "train_macro",
+        "train_micro",
+        "test_macro",
+        "test_micro"
+    ]
+
+    def __init__(self,
+                 logging_variables: Union[Literal["all"],
+                                          List[str]] = "all"):
+        if not all(var in self.available_metrics for var in logging_variables):
+            raise ValueError(
+                "Encountered not supported metric. "
+                f"Supported are: {self.available_metrics}")
+        self.metric_logger = MetricLogger(logging_variables)
+
+    def get_metric_logger(self):
+        return self.metric_logger
+
     def get_model(self,
                   name: str,
                   input_dim: int,
@@ -82,7 +105,6 @@ class Training(Trainer):
               criterion,
               device,
               optimizer,
-              collector,
               #   scheduler,
               binary_prediction: bool,
               **kwargs):
@@ -116,7 +138,7 @@ class Training(Trainer):
 
         average_loss = np.mean(accum_loss)
 
-        collector["train_loss"] = average_loss
+        self.metric_logger.update(train_loss=average_loss)
 
         return average_loss
 
@@ -125,7 +147,7 @@ class Training(Trainer):
                  test_data,
                  criterion,
                  device,
-                 collector,
+                 using_train_data,
                  binary_prediction: bool,
                  **kwargs):
 
@@ -174,16 +196,21 @@ class Training(Trainer):
             n_nodes += data.num_nodes
             n_graphs += data.num_graphs
 
-        average_loss = np.mean(accum_loss)
+        average_loss: float = np.mean(accum_loss)
         micro_avg = micro_avg / n_nodes
         macro_avg = macro_avg / n_graphs
 
-        collector["test_loss"] = average_loss
-        collector["micro"] = micro_avg
-        collector["macro"] = macro_avg
+        if using_train_data:
+            self.metric_logger.update(
+                train_micro=micro_avg,
+                train_macro=macro_avg)
+        else:
+            self.metric_logger.update(
+                test_loss=average_loss,
+                test_micro=micro_avg,
+                test_macro=macro_avg)
 
         return average_loss, micro_avg, macro_avg
 
-    def log(self, info):
-        return "loss {train_loss: <10.6f} test_loss {test_loss: <10.6f} micro {micro: <10.4f} macro {macro: .4f}".format(
-            **info)
+    def log(self):
+        return self.metric_logger.log()

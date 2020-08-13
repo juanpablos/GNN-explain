@@ -1,7 +1,6 @@
 import logging
 import os
 import random
-from typing import Any, Dict
 
 import numpy as np
 import torch
@@ -39,7 +38,8 @@ def run(
     batch_size: int = 64,
     test_batch_size: int = 512,
     lr: float = 0.01,
-    stop_when: StopFormat = None
+    stop_when: StopFormat = None,
+    run_train_test: bool = False
 ):
 
     if torch.cuda.is_available():
@@ -72,7 +72,6 @@ def run(
     scheduler = run_config.get_scheduler(optimizer=optimizer)
 
     stop = StopTraining(stop_when)
-    info: Dict[str, Any] = {}
 
     it = 1
     for it in range(1, iterations + 1):
@@ -85,28 +84,31 @@ def run(
             optimizer=optimizer,
             scheduler=scheduler,
             binary_prediction=True,
-            collector=info
         )
 
-        # _, train_micro_acc, train_macro_acc = evaluate(
-        #     model=model,
-        #     test_data=train_loader,
-        #     criterion=criterion,
-        #     device=device,
-        #     binary_prediction=True)
+        if run_train_test:
+            train_test_metrics = run_config.evaluate(
+                model=model,
+                test_data=train_loader,
+                criterion=criterion,
+                device=device,
+                using_train_data=True,
+                binary_prediction=True,
+            )
 
         test_metrics = run_config.evaluate(
             model=model,
             test_data=test_loader,
             criterion=criterion,
             device=device,
+            using_train_data=False,
             binary_prediction=True,
-            collector=info)
+        )
 
-        if stop(**info):
+        if stop(**run_config.get_metric_logger()):
             break
-        logger.debug(f"{it: 03d} {run_config.log(info)}")
+        logger.debug(f"{it: 03d} {run_config.log()}")
 
-    logger.info(f"{it: 03d} {run_config.log(info)}")
+    logger.info(f"{it: 03d} {run_config.log()}")
 
-    return model, info
+    return model

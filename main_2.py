@@ -63,11 +63,11 @@ def run_experiment(
     model_config["input_dim"] = input_shape[0]
     model_config["output_dim"] = n_classes
 
-    train_state = Training(n_classes=n_classes)
+    train_state = Training(n_classes=n_classes, logging_variables="all")
 
     logger.debug("Running")
     logger.debug(f"Input size is {input_shape[0]}")
-    model, metrics = run(
+    model = run(
         run_config=train_state,
         model_config=model_config,
         train_data=train_data,

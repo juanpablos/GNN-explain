@@ -1,7 +1,18 @@
 from abc import abstractmethod
 from typing import (
-    Dict, Iterator, List, Literal, Mapping, Optional, Protocol, Tuple,
-    TypedDict, TypeVar, Union, runtime_checkable)
+    Dict,
+    Iterable,
+    Iterator,
+    List,
+    Literal,
+    Mapping,
+    Optional,
+    Protocol,
+    Tuple,
+    TypedDict,
+    TypeVar,
+    Union,
+    runtime_checkable)
 
 import torch
 import torch.nn as nn
@@ -47,6 +58,7 @@ class GNNModelConfig(MinModelConfig):
 
 class MetricHistory(Protocol):
     def __getitem__(self, key: str) -> TNum: ...
+    def keys(self) -> Iterable[str]: ...
     def log(self) -> str: ...
     def update(self, **kwargs: TNum) -> None: ...
     def get_history(self, key: str) -> List[TNum]: ...
