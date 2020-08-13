@@ -1,7 +1,7 @@
 from abc import abstractmethod
-from typing import (Any, Dict, Iterator, List, Literal, Mapping, Optional,
-                    Protocol, Tuple, TypedDict, TypeVar, Union,
-                    runtime_checkable)
+from typing import (
+    Dict, Iterator, List, Literal, Mapping, Optional, Protocol, Tuple,
+    TypedDict, TypeVar, Union, runtime_checkable)
 
 import torch
 import torch.nn as nn
@@ -13,6 +13,7 @@ T = TypeVar("T")
 S = TypeVar("S")
 T_co = TypeVar("T_co", covariant=True)
 S_co = TypeVar("S_co", covariant=True)
+TNum = TypeVar("TNum", int, float)
 
 
 class NetworkDataConfig(TypedDict):
@@ -44,6 +45,13 @@ class GNNModelConfig(MinModelConfig):
     task: Literal["node", "graph"]
 
 
+class MetricHistory(Protocol):
+    def __getitem__(self, key: str) -> TNum: ...
+    def log(self) -> str: ...
+    def update(self, **kwargs: TNum) -> None: ...
+    def get_history(self, key: str) -> List[TNum]: ...
+
+
 class Trainer(Protocol):
     @abstractmethod
     def get_model(self, **kwargs) -> nn.Module: ...
@@ -69,7 +77,6 @@ class Trainer(Protocol):
               criterion: nn.Module,
               device: torch.device,
               optimizer: optim.Optimizer,
-              collector: Dict[str, Any],
               **kwargs) -> float: ...
 
     @abstractmethod
@@ -78,11 +85,14 @@ class Trainer(Protocol):
                  test_data: Union[torch_loader, torch_geometric_loader],
                  criterion: nn.Module,
                  device: torch.device,
-                 collector: Dict[str, Any],
+                 using_train_data: bool,
                  **kwargs) -> Tuple[float, ...]: ...
 
     @abstractmethod
-    def log(self, info: Dict[str, Any]) -> str: ...
+    def log(self) -> str: ...
+
+    @abstractmethod
+    def get_metric_logger(self) -> MetricHistory: ...
 
 
 @runtime_checkable

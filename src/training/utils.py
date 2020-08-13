@@ -1,7 +1,9 @@
 
-from typing import Optional
+import warnings
+from collections import defaultdict
+from typing import Dict, List, Literal, Optional, Union
 
-from src.typing import StopFormat
+from src.typing import StopFormat, TNum
 
 
 class StopTraining:
@@ -44,3 +46,52 @@ class StopTraining:
             self.stay = self.original_stay
 
         return self.stay < 0
+
+
+class MetricLogger:
+    def __init__(self, variables: Union[Literal["all"], List[str]] = "all"):
+        self.variables: Dict[str, List[TNum]] = defaultdict(list)
+
+        if variables == "all":
+            self.log = self.__full_logger
+        else:
+            self.log = self.__select_logger
+            self.selection = variables
+
+        self.warned = False
+
+    def __getitem__(self, key: str):
+        return self.variables[key][-1]
+
+    def update(self, **kwargs: TNum):
+        for name, value in kwargs.items():
+            self.variables[name].append(value)
+
+    def get_history(self, key: str):
+        return self.variables[key]
+
+    def __full_logger(self):
+        metrics: List[str] = []
+        for name, values in self.variables.items():
+            last_value = values[-1]
+            metrics.append(f"{name} {last_value:<10.6f}")
+        return "".join(metrics)
+
+    def __select_logger(self):
+        metrics: List[str] = []
+        for name in self.selection:
+            try:
+                last_value = self.variables[name][-1]
+                metrics.append(f"{name} {last_value:<10.6f}")
+            except KeyError as e:
+                if not self.warned:
+                    key = e.args[0]
+                    warnings.warn(
+                        "Not all selected metrics are available. "
+                        f"{key} is not present. "
+                        f"Available are: {list(self.variables)}",
+                        UserWarning,
+                        stacklevel=2)
+                    self.warned = True
+
+        return "".join(metrics)
