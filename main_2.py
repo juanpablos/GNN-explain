@@ -6,13 +6,17 @@ from typing import List
 from sklearn.metrics import classification_report
 
 from src.data.loader import FormulaConfig, load_gnn_files
-from src.data.utils import (get_input_dim, get_label_distribution,
-                            train_test_dataset)
+from src.data.utils import (
+    get_input_dim,
+    get_label_distribution,
+    train_test_dataset
+)
 from src.formula_index import FormulaMapping
 from src.run_logic import run, seed_everything
 from src.training.mlp_training import Training
 from src.typing import MinModelConfig, NetworkDataConfig, S
 from src.visualization.confusion_matrix import plot_confusion_matrix
+from src.visualization.curve_plot import plot_training
 
 logger = logging.getLogger("src")
 
@@ -32,7 +36,8 @@ def run_experiment(
         lr: float = 0.01,
         plot_path: str = "./results",
         plot_file_name: str = None,
-        plot_title: str = None
+        plot_title: str = None,
+        plot_historic: bool = True
 ):
 
     logger.info("Loading Files")
@@ -109,6 +114,15 @@ def run_experiment(
         labels=target_names,
         each_label=each_label)
 
+    if plot_historic:
+        metrics = train_state.get_metric_logger()
+        plot_training(
+            metric_history=metrics,
+            save_path=plot_path,
+            file_name=plot_file_name,
+            title=plot_title,
+            use_selected=False)
+
 
 def main():
     seed = random.randint(1, 1 << 30)
@@ -129,10 +143,12 @@ def main():
         "load_all": False
     }
     formulas = FormulaConfig.from_hashes([
-
+        "a8c45da01a",
+        "ea81181317",
+        "1e6e5b82ea"
     ])
 
-    iterations = 20
+    iterations = 5
     train_batch = 32  # 8
     test_batch = 512
 
@@ -151,8 +167,8 @@ def main():
         test_batch_size=test_batch,
         lr=0.001,
         plot_path="./results/exp1",
-        plot_file_name=None,
-        plot_title=None
+        plot_file_name="some_name",
+        plot_title="Hey"
     )
     end = timer()
     logger.info(f"Took {end-start} seconds")
@@ -160,7 +176,7 @@ def main():
 
 if __name__ == "__main__":
     logger.setLevel(logging.DEBUG)
-    logger.propagate = False
+    # logger.propagate = False
 
     ch = logging.StreamHandler()
     ch.setLevel(logging.DEBUG)

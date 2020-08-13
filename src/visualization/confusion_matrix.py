@@ -40,10 +40,10 @@ def plot_confusion_matrix(
         disp.im_.set_clim(0, 1)
     plt.tight_layout()
 
-    figure_name = file_name if file_name is not None else "confusion_matrix.png"
+    figure_name = file_name if file_name is not None else "confusion_matrix"
     figure_title = title if title is not None else ""
 
     plt.title(figure_title)
 
-    plt.savefig(f"{save_path}/{figure_name}")
+    plt.savefig(f"{save_path}/cm/{figure_name}.png")
     plt.close()
