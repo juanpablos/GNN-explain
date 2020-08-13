@@ -1,7 +1,7 @@
 import logging
 import os
 import random
-from typing import Dict
+from typing import Any, Dict
 
 import numpy as np
 import torch
@@ -9,7 +9,7 @@ from torch.utils.data.dataset import Dataset
 from torch_geometric.data import DataLoader
 
 from src.training.utils import StopTraining
-from src.typing import MinModelConfig, StopFormat, TNum, Trainer
+from src.typing import MinModelConfig, StopFormat, Trainer
 
 logger = logging.getLogger(__name__)
 
@@ -72,7 +72,7 @@ def run(
     scheduler = run_config.get_scheduler(optimizer=optimizer)
 
     stop = StopTraining(stop_when)
-    info: Dict[str, TNum] = {}
+    info: Dict[str, Any] = {}
 
     it = 1
     for it in range(1, iterations + 1):

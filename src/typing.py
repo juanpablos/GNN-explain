@@ -1,7 +1,7 @@
 from abc import abstractmethod
-from typing import (
-    Dict, Iterator, List, Literal, Mapping, Optional, Protocol, Tuple,
-    TypedDict, TypeVar, Union, runtime_checkable)
+from typing import (Any, Dict, Iterator, List, Literal, Mapping, Optional,
+                    Protocol, Tuple, TypedDict, TypeVar, Union,
+                    runtime_checkable)
 
 import torch
 import torch.nn as nn
@@ -13,7 +13,6 @@ T = TypeVar("T")
 S = TypeVar("S")
 T_co = TypeVar("T_co", covariant=True)
 S_co = TypeVar("S_co", covariant=True)
-TNum = TypeVar("TNum", int, float)
 
 
 class NetworkDataConfig(TypedDict):
@@ -70,7 +69,7 @@ class Trainer(Protocol):
               criterion: nn.Module,
               device: torch.device,
               optimizer: optim.Optimizer,
-              collector: Dict[str, TNum],
+              collector: Dict[str, Any],
               **kwargs) -> float: ...
 
     @abstractmethod
@@ -79,11 +78,11 @@ class Trainer(Protocol):
                  test_data: Union[torch_loader, torch_geometric_loader],
                  criterion: nn.Module,
                  device: torch.device,
-                 collector: Dict[str, TNum],
+                 collector: Dict[str, Any],
                  **kwargs) -> Tuple[float, ...]: ...
 
     @abstractmethod
-    def log(self, info: Dict[str, TNum]) -> str: ...
+    def log(self, info: Dict[str, Any]) -> str: ...
 
 
 @runtime_checkable

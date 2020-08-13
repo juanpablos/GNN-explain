@@ -1,5 +1,5 @@
 import logging
-from typing import Dict, List
+from typing import Any, Dict, List
 
 import numpy as np
 import torch
@@ -9,7 +9,7 @@ import torch.optim as optim
 from sklearn.metrics import accuracy_score, precision_recall_fscore_support
 
 from src.gnn import MLP
-from src.typing import TNum, Trainer
+from src.typing import Trainer
 
 logger = logging.getLogger(__name__)
 
@@ -27,7 +27,7 @@ class Metric:
         self.acc_y.extend(y_true.tolist())
         self.acc_y_pred.extend(y_pred.tolist())
 
-    def precision_recall_fscore(self) -> Dict[str, TNum]:
+    def precision_recall_fscore(self) -> Dict[str, Any]:
         precision, recall, f1score, _ = precision_recall_fscore_support(
             self.acc_y, self.acc_y_pred, average=self.average, beta=1.0)
 
@@ -97,7 +97,7 @@ class Training(Trainer):
               criterion,
               device,
               optimizer,
-              collector: Dict[str, TNum],
+              collector: Dict[str, Any],
               **kwargs):
 
         #!########
@@ -130,7 +130,7 @@ class Training(Trainer):
                  test_data,
                  criterion,
                  device,
-                 collector: Dict[str, TNum],
+                 collector: Dict[str, Any],
                  **kwargs):
 
         #!########
@@ -162,6 +162,6 @@ class Training(Trainer):
 
         return average_loss
 
-    def log(self, info: Dict[str, TNum]):
+    def log(self, info: Dict[str, Any]):
         return "loss {train_loss: <10.6f} test_loss {test_loss: <10.6f} precision {precision: <10.4f} recall {recall: <10.4f} f1score {f1score: <10.4f} accuracy {acc:.4f}".format(
             **info)
