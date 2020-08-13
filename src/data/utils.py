@@ -1,12 +1,12 @@
 import logging
-from typing import Any, Dict
+from typing import Any, Dict, Tuple, Union, overload
 
 import torch
 from sklearn.model_selection import train_test_split as sk_split
 
-from src.typing import Indexable, LabeledDatasetLike, S, T
+from src.typing import DatasetLike, Indexable, LabeledDatasetLike, S, T
 
-from .datasets import LabeledSubset
+from .datasets import LabeledSubset, Subset
 
 logger = logging.getLogger(__name__)
 
@@ -16,8 +16,26 @@ def clean_state(model_dict: Dict[str, Any]):
     return {k: v for k, v in model_dict.items() if "batch" not in k}
 
 
+@overload
+def train_test_dataset(dataset: LabeledDatasetLike[T, S],
+                       test_size: float = ...,
+                       random_state: int = ...,
+                       shuffle: bool = ...,
+                       stratify: bool = ...) -> Tuple[LabeledSubset[T, S],
+                                                      LabeledSubset[T, S]]: ...
+
+
+@overload
+def train_test_dataset(dataset: DatasetLike[T],
+                       test_size: float = ...,
+                       random_state: int = ...,
+                       shuffle: bool = ...,
+                       stratify: bool = ...) -> Tuple[Subset[T],
+                                                      Subset[T]]: ...
+
+
 def train_test_dataset(
-        dataset: LabeledDatasetLike[T, S],
+        dataset: Union[LabeledDatasetLike[T, S], DatasetLike[T]],
         test_size: float = 0.25,
         random_state: int = None,
         shuffle: bool = True,
@@ -36,7 +54,11 @@ def train_test_dataset(
                                    shuffle=shuffle,
                                    stratify=classes)
 
-    return LabeledSubset(dataset, train_idx), LabeledSubset(dataset, test_idx)
+    if isinstance(dataset, LabeledDatasetLike):
+        return LabeledSubset(dataset, train_idx),\
+            LabeledSubset(dataset, test_idx)
+    else:
+        return Subset(dataset, train_idx), Subset(dataset, test_idx)
 
 
 def get_input_dim(data):

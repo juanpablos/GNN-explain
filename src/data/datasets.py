@@ -1,6 +1,6 @@
 from abc import ABC
 from collections import Counter
-from typing import Dict, Generic, Iterator, List, Mapping, Sequence, Tuple
+from typing import Dict, Iterator, List, Mapping, Sequence, Tuple
 
 import torch
 from torch.utils.data import Dataset
@@ -9,7 +9,7 @@ from src.typing import (DatasetLike, Indexable, IndexableIterable,
                         LabeledDatasetLike, S_co, T_co)
 
 
-class DummyIterable(Generic[T_co]):
+class DummyIterable(Sequence[T_co]):
     def __init__(self, value: T_co, length: int):
         self.value: T_co = value
         self.length: int = length
@@ -20,12 +20,8 @@ class DummyIterable(Generic[T_co]):
     def __getitem__(self, index: int):
         return self.value
 
-    def __iter__(self):
-        for _ in range(self.length):
-            yield self.value
 
-
-class SimpleDataset(Dataset, Generic[T_co]):
+class SimpleDataset(Sequence[T_co], Dataset):
     def __init__(self, dataset: IndexableIterable[T_co]):
         self._dataset: IndexableIterable[T_co] = dataset
 
@@ -50,7 +46,7 @@ class RandomGraphDataset(SimpleDataset[T_co]):
         super().__init__(dataset=[next(generator) for _ in range(limit)])
 
 
-class LabeledDatasetBase(ABC, Generic[T_co, S_co]):
+class LabeledDatasetBase(ABC, Mapping[T_co, S_co]):
     def __init__(self):
         # only declaration
         self._dataset: IndexableIterable[T_co]
@@ -172,7 +168,7 @@ class LabeledDataset(LabeledDatasetBase[T_co, S_co], Dataset):
         return cls(dataset=dataset, labels=labels)
 
 
-class Subset(Dataset, Generic[T_co]):
+class Subset(Sequence[T_co], Dataset):
     def __init__(
             self,
             dataset: DatasetLike[T_co],
@@ -199,11 +195,10 @@ class Subset(Dataset, Generic[T_co]):
         return self._indices
 
     def apply_subset(self):
-        dataset = [self._dataset[ind] for ind in self.indices]
-        return SimpleDataset(dataset=dataset)
+        return SimpleDataset(dataset=list(self))
 
 
-class LabeledSubset(Dataset, Generic[T_co, S_co]):
+class LabeledSubset(Mapping[T_co, S_co], Dataset):
     def __init__(self,
                  dataset: LabeledDatasetLike[T_co, S_co],
                  indices=Sequence[int]):
@@ -239,8 +234,7 @@ class LabeledSubset(Dataset, Generic[T_co, S_co]):
     def apply_subset(self):
         dataset: List[T_co] = []
         labels: List[S_co] = []
-        for ind in self.indices:
-            x, y = self._dataset[ind]
+        for x, y in self.items():
             dataset.append(x)
             labels.append(y)
         return LabeledDataset(dataset=dataset, labels=labels)

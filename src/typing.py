@@ -12,7 +12,8 @@ from typing import (
     TypedDict,
     TypeVar,
     Union,
-    runtime_checkable)
+    runtime_checkable
+)
 
 import torch
 import torch.nn as nn
