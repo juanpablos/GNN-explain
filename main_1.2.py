@@ -11,7 +11,8 @@ from typing import Any, Dict
 import torch
 
 from src.data.datasets import RandomGraphDataset
-from src.data.utils import SubsetSampler, clean_state
+from src.data.sampler import SubsetSampler
+from src.data.utils import clean_state
 from src.generate_graphs import graph_stream
 from src.graphs import *
 from src.run_logic import run, seed_everything

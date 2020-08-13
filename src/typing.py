@@ -16,18 +16,9 @@ S_co = TypeVar("S_co", covariant=True)
 TNum = TypeVar("TNum", int, float)
 
 
-class FormulaHashInfo(TypedDict):
-    limit: Optional[int]
-    label: int
-
-
-FormulaHash = Dict[str, FormulaHashInfo]
-
-
 class NetworkDataConfig(TypedDict):
     root: str
     model_hash: str
-    formula_hashes: FormulaHash
     load_all: bool
 
 

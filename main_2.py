@@ -1,15 +1,17 @@
 import logging
 import random
 from timeit import default_timer as timer
+from typing import List
 
 from sklearn.metrics import classification_report
 
+from src.data.loader import FormulaConfig, load_gnn_files
 from src.data.utils import (get_input_dim, get_label_distribution,
-                            load_gnn_files, train_test_dataset)
+                            train_test_dataset)
 from src.formula_index import FormulaMapping
 from src.run_logic import run, seed_everything
 from src.training.mlp_training import Training
-from src.typing import MinModelConfig, NetworkDataConfig
+from src.typing import MinModelConfig, NetworkDataConfig, S
 from src.visualization.confusion_matrix import plot_confusion_matrix
 
 logger = logging.getLogger("src")
@@ -18,6 +20,7 @@ logger = logging.getLogger("src")
 def run_experiment(
         model_config: MinModelConfig,
         data_config: NetworkDataConfig,
+        formulas_to_load: List[FormulaConfig[S]],
         iterations: int = 100,
         gpu_num: int = 0,
         seed: int = 10,
@@ -33,7 +36,8 @@ def run_experiment(
 ):
 
     logger.info("Loading Files")
-    dataset, label_mapping = load_gnn_files(**data_config)
+    dataset, label_mapping = load_gnn_files(
+        formulas=formulas_to_load, **data_config)
     n_classes = len(dataset.label_info)
     logger.debug(f"{n_classes} classes detected")
 
@@ -122,26 +126,11 @@ def main():
         "root": "data/gnns",
         "model_hash": "testing",  # "6106dbd778",
         # * if load_all is true formula_hashes is ignored and each formula in the directory receives a different label
-        "load_all": False,
-        "formula_hashes": {
-            "ea81181317": {
-                "limit": None,
-                "label": 0
-            },
-            "9dfdcfb080": {
-                "limit": None,
-                "label": 1
-            },
-            # "9eb3668544": {
-            #     "limit": None,
-            #     "label": 2
-            # },
-            # "2231100a27": {
-            #     "limit": None,
-            #     "label": 3
-            # }
-        }
+        "load_all": False
     }
+    formulas = FormulaConfig.from_hashes([
+
+    ])
 
     iterations = 20
     train_batch = 32  # 8
@@ -151,6 +140,7 @@ def main():
     run_experiment(
         model_config=model_config,
         data_config=data_config,
+        formulas_to_load=formulas,
         iterations=iterations,
         gpu_num=0,
         seed=seed,
