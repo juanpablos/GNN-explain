@@ -83,10 +83,8 @@ class Role(Concept):
 
 
 class Operator(Element):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args):
         self.operands = args
-        for k, v in kwargs.items():
-            setattr(self, k, v)
 
     def __repr__(self):
         args = ",".join([repr(el) for el in self.operands])
@@ -95,17 +93,18 @@ class Operator(Element):
 
 class NEG(Operator):
     def __init__(self, expression):
-        super().__init__(expression=expression)
+        super().__init__()
+        self.expression = expression
 
     def __repr__(self):
-        expr = self.expression  # type: ignore
+        expr = self.expression
         return f"{self.__class__.__name__}({expr!r})"
 
     def __str__(self):
-        return f"¬({self.expression})"  # type: ignore
+        return f"¬({self.expression})"
 
     def __call__(self, **kwargs):
-        first = self.expression(**kwargs)  # type: ignore
+        first = self.expression(**kwargs)
         return np.logical_not(first)  # type: ignore
 
 
