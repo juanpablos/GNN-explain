@@ -150,23 +150,34 @@ class Exist(Element):
         self.symbol = "∃"
 
     def __repr__(self):
+        # ** Exist(None, None) is the same as Exist(1, None)
+        lower = self.lower
+        if lower is None and self.upper is None:
+            lower = 1
         return (f"{self.__class__.__name__}"
-                f"({self.expression!r},{self.lower},{self.upper})")
+                f"({self.expression!r},{lower},{self.upper})")
 
     def __str__(self):
         s = self.symbol
 
-        if self.lower is None and self.upper is None:
-            return f"{s}({self.variable}){self.expression}"
-        elif self.lower is not None and self.upper is not None:
-            return f"{s}({self.lower}<={self.variable}<={self.upper}){self.expression}"
-        elif self.lower is not None:
-            return f"{s}({self.lower}<={self.variable}){self.expression}"
+        lower = self.lower
+        if lower is None and self.upper is None:
+            lower = 1
+
+        if lower is not None and self.upper is not None:
+            return f"{s}({lower}<={self.variable}<={self.upper}){self.expression}"
+        elif lower is not None:
+            return f"{s}({lower}<={self.variable}){self.expression}"
         else:
             return f"{s}({self.variable}<={self.upper}){self.expression}"
 
     def __call__(self, **kwargs):
-        lower = self.lower if self.lower is not None else 1
+        lower = self.lower
+        if lower is None:
+            # ! lower is only forced 1 if upper is also None
+            # ! it can be that we have Exist(None, 3), in which case
+            # ! 0 elements are also valid
+            lower = 1 if self.upper is None else 0
         upper = self.upper if self.upper is not None else float("inf")
 
         res = self.expression(**kwargs)
