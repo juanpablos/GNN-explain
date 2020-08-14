@@ -1,4 +1,5 @@
 import logging
+import os
 
 import matplotlib.pyplot as plt
 from sklearn.metrics import ConfusionMatrixDisplay, confusion_matrix
@@ -45,5 +46,6 @@ def plot_confusion_matrix(
 
     plt.title(figure_title)
 
+    os.makedirs(f"{save_path}/cm/", exist_ok=True)
     plt.savefig(f"{save_path}/cm/{figure_name}.png")
     plt.close()

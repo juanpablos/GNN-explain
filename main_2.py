@@ -34,6 +34,7 @@ def run_experiment(
         batch_size: int = 64,
         test_batch_size: int = 512,
         lr: float = 0.01,
+        run_train_test: bool = False,
         plot_path: str = "./results",
         plot_file_name: str = None,
         plot_title: str = None,
@@ -82,7 +83,8 @@ def run_experiment(
         data_workers=data_workers,
         batch_size=batch_size,
         test_batch_size=test_batch_size,
-        lr=lr)
+        lr=lr,
+        run_train_test=run_train_test)
 
     # * get the last evaluation values
     _y = train_state.metrics.acc_y
@@ -124,33 +126,44 @@ def run_experiment(
             use_selected=False)
 
 
-def main():
+def main(
+        train_batch: int = 32,
+        lr: float = 0.001,
+        hidden_layers: List[int] = None):
+
     seed = random.randint(1, 1 << 30)
     seed_everything(seed)
+
+    hidden_layers = [128] if hidden_layers is None else hidden_layers
 
     model_config: MinModelConfig = {
         "num_layers": 3,
         "input_dim": None,
         "hidden_dim": 128,
-        "hidden_layers": [512],
+        "hidden_layers": hidden_layers,
         "output_dim": None
     }
 
     data_config: NetworkDataConfig = {
         "root": "data/gnns",
-        "model_hash": "testing",  # "6106dbd778",
+        "model_hash": "6106dbd778",  # "6106dbd778",
         # * if load_all is true formula_hashes is ignored and each formula in the directory receives a different label
         "load_all": False
     }
     formulas = FormulaConfig.from_hashes([
-        "a8c45da01a",
         "ea81181317",
-        "1e6e5b82ea"
+        "9eb3668544",
+        "9dfdcfb080",
+        "2231100a27"
     ])
 
-    iterations = 5
-    train_batch = 32  # 8
+    iterations = 20
     test_batch = 512
+
+    name = "red4+"
+    hid = "".join(
+        [f"{l}l{val}" for l, val in enumerate(hidden_layers, start=1)])
+    msg = f"{name}-{hid}-{train_batch}b-{lr}lr"
 
     start = timer()
     run_experiment(
@@ -165,10 +178,11 @@ def main():
         data_workers=0,
         batch_size=train_batch,
         test_batch_size=test_batch,
-        lr=0.001,
-        plot_path="./results/exp1",
-        plot_file_name="some_name",
-        plot_title="Hey"
+        lr=lr,
+        run_train_test=True,
+        plot_path="./results/testing",
+        plot_file_name=msg,
+        plot_title=msg  # maybe a better message
     )
     end = timer()
     logger.info(f"Took {end-start} seconds")
@@ -191,4 +205,9 @@ if __name__ == "__main__":
 
     logger.addHandler(ch)
     # logger.addHandler(fh)
-    main()
+
+    for __batch in [8, 16, 32, 64, 128]:
+        for __lr in [0.001, 0.005, 0.01]:
+            main(train_batch=__batch, lr=__lr, hidden_layers=[512])
+
+    # main()

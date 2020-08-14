@@ -1,4 +1,5 @@
 import logging
+import os
 
 import matplotlib.pyplot as plt
 
@@ -69,5 +70,6 @@ def plot_training(
                      va="center")
 
     plt.tight_layout()
+    os.makedirs(f"{save_path}/train/", exist_ok=True)
     plt.savefig(f"{save_path}/train/{file_name}.png")
     plt.close()
