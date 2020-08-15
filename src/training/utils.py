@@ -33,7 +33,8 @@ class StopTraining:
                 _conds = [c for c in self.conditions if c not in kwargs]
                 raise ValueError(
                     "Not all selected metrics are available "
-                    f"from the training: {_conds}")
+                    f"from the training: {_conds}. "
+                    f"Available are: {list(kwargs)}")
             self.check = False
 
         current_state = [

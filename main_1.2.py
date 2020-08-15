@@ -104,8 +104,8 @@ def run_experiment(
 
             metrics = training_state.get_metric_logger()
 
-            stats["macro"][str(round(metrics["macro"], 3))] += 1
-            stats["micro"][str(round(metrics["micro"], 3))] += 1
+            stats["macro"][str(round(metrics["test_macro"], 3))] += 1
+            stats["micro"][str(round(metrics["test_micro"], 3))] += 1
 
     except KeyboardInterrupt:
         logger.info("Manually Interrumpted")
@@ -166,7 +166,7 @@ def main(use_formula: FOC = None):
         "output_dim": 2,
         "aggregate_type": "add",
         "combine_type": "identity",
-        "num_layers": 2,
+        "num_layers": 3,
         "mlp_layers": 1,  # the number of layers in A and V
         "combine_layers": 2,  # layers in the combine MLP if combine_type=mlp
         "task": "node"
@@ -207,8 +207,8 @@ def main(use_formula: FOC = None):
     stop_when: StopFormat = {
         "operation": "and",  # and or or
         "conditions": {
-            "micro": 0.999,
-            "macro": 0.999
+            "test_micro": 0.999,
+            "test_macro": 0.999
         },
         "stay": 2
     }
@@ -290,7 +290,10 @@ if __name__ == "__main__":
     # main()
 
     __formulas = [
-
+        # AND(Property('RED'), Exist(AND(Role('EDGE'), Property('RED')), 4, None)),
+        # AND(Property('RED'), Exist(AND(Role('EDGE'), Property('BLUE')), 4, None)),
+        AND(Property('RED'), Exist(AND(Role('EDGE'), Property('GREEN')), 4, None)),
+        AND(Property('RED'), Exist(AND(Role('EDGE'), Property('BLACK')), 4, None))
     ]
     if __formulas:
         __times = {}
