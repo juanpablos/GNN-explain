@@ -2,9 +2,9 @@ import logging
 import os
 
 import matplotlib.pyplot as plt
-
+import matplotlib.ticker as ticker
+import numpy as np
 from src.typing import MetricHistory
-
 logger = logging.getLogger(__name__)
 
 
@@ -20,14 +20,14 @@ def plot_training(
     plt.title(title if title is not None else "")
 
     logger.debug("Plotting metrics")
-    length = 0
+    x_axis = None
     for name, historic in metric_history.items(select=use_selected):
-        if length == 0:
-            length = len(historic)
+        if x_axis is None:
+            x_axis = np.arange(len(historic)) + 1
         if any(m in name for m in ["precision", "recall", "f1", "acc"]):
-            ax2.plot(historic, label=name)
+            ax2.plot(x_axis, historic, label=name)
         else:
-            ax1.plot(historic, label=name)  # type: ignore
+            ax1.plot(x_axis, historic, label=name)  # type: ignore
 
     ax1.set_xlabel("Epochs")  # type: ignore
 
@@ -37,8 +37,9 @@ def plot_training(
     ax1.set_ylim(bottom=0)  # type: ignore
     ax2.set_ylim((0, 1))
 
-    ax1.set_xticks(list(range(length)))  # type: ignore
-    ax1.set_xticklabels(list(range(1, length + 1)))  # type: ignore
+    ax1.xaxis.set_major_locator(ticker.MaxNLocator())  # type: ignore
+
+    ax2.yaxis.set_major_locator(ticker.MultipleLocator(0.1))
 
     ax1.margins(0)  # type: ignore
     ax2.margins(0)
@@ -50,7 +51,7 @@ def plot_training(
 
     for line, label in zip(mat1, lab1):
         y = line.get_ydata()[-1]
-        ax1.annotate(label,  # type: ignore
+        ax1.annotate(f"{label} ({y:.2f})",  # type: ignore
                      xy=(1, y),
                      xytext=(6, 0),
                      color=line.get_color(),
@@ -60,7 +61,7 @@ def plot_training(
                      va="center")
     for line, label in zip(mat2, lab2):
         y = line.get_ydata()[-1]
-        ax2.annotate(label,  # type: ignore
+        ax2.annotate(f"{label} ({y:.2f})",  # type: ignore
                      xy=(1, y),
                      xytext=(6, 0),
                      color=line.get_color(),

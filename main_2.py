@@ -127,11 +127,14 @@ def run_experiment(
 
 
 def main(
+        name: str = None,
+        seed: int = None,
         train_batch: int = 32,
         lr: float = 0.001,
         hidden_layers: List[int] = None):
 
-    seed = random.randint(1, 1 << 30)
+    if seed is None:
+        seed = random.randint(1, 1 << 30)
     seed_everything(seed)
 
     hidden_layers = [128] if hidden_layers is None else hidden_layers
@@ -151,18 +154,20 @@ def main(
         "load_all": False
     }
     formulas = FormulaConfig.from_hashes([
-        "ea81181317",
-        "9eb3668544",
-        "9dfdcfb080",
-        "2231100a27"
+        "005983a86d",
+        "9e8ef42478",
+        "c37cb98a75",
+        "2f2adf5f6f"
     ])
 
     iterations = 20
     test_batch = 512
 
-    name = "red4+"
+    if name is None:
+        name = "red3-4"
+
     hid = "".join(
-        [f"{l}l{val}" for l, val in enumerate(hidden_layers, start=1)])
+        [f"{l}L{val}" for l, val in enumerate(hidden_layers, start=1)])
     msg = f"{name}-{hid}-{train_batch}b-{lr}lr"
 
     start = timer()
@@ -180,7 +185,7 @@ def main(
         test_batch_size=test_batch,
         lr=lr,
         run_train_test=True,
-        plot_path="./results/testing",
+        plot_path="./results/exp2",
         plot_file_name=msg,
         plot_title=msg  # maybe a better message
     )
@@ -206,8 +211,7 @@ if __name__ == "__main__":
     logger.addHandler(ch)
     # logger.addHandler(fh)
 
-    for __batch in [8, 16, 32, 64, 128]:
-        for __lr in [0.001, 0.005, 0.01]:
-            main(train_batch=__batch, lr=__lr, hidden_layers=[512])
-
-    # main()
+    # for __batch in [128, 256, 512]:
+    #     for __lr in [0.0005, 0.001, 0.005]:
+    #         main(seed=42, train_batch=__batch, lr=__lr, hidden_layers=[8192])
+    main(seed=0, train_batch=256, lr=0.005, hidden_layers=[2048])
