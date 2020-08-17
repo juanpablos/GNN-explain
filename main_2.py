@@ -147,26 +147,27 @@ def main(
         "output_dim": None
     }
 
+    model_hash = "6b1087e092-3L"  # "6106dbd778",
     data_config: NetworkDataConfig = {
         "root": "data/gnns",
-        "model_hash": "6106dbd778",  # "6106dbd778",
+        "model_hash": model_hash,
         # * if load_all is true formula_hashes is ignored and each formula in the directory receives a different label
         "load_all": False
     }
     formulas = FormulaConfig.from_hashes([
-        "005983a86d",
-        "9e8ef42478",
-        "c37cb98a75",
-        "2f2adf5f6f"
+        "ea81181317",
+        "9eb3668544",
+        "2231100a27",
+        "9dfdcfb080"
     ])
 
     iterations = 20
     test_batch = 512
 
     if name is None:
-        name = "red3-4"
+        name = "red4+"
 
-    hid = "".join(
+    hid = "+".join(
         [f"{l}L{val}" for l, val in enumerate(hidden_layers, start=1)])
     msg = f"{name}-{hid}-{train_batch}b-{lr}lr"
 
@@ -185,7 +186,7 @@ def main(
         test_batch_size=test_batch,
         lr=lr,
         run_train_test=True,
-        plot_path="./results/exp2",
+        plot_path=f"./results/exp2/{model_hash}",
         plot_file_name=msg,
         plot_title=msg  # maybe a better message
     )
@@ -211,7 +212,11 @@ if __name__ == "__main__":
     logger.addHandler(ch)
     # logger.addHandler(fh)
 
-    # for __batch in [128, 256, 512]:
-    #     for __lr in [0.0005, 0.001, 0.005]:
-    #         main(seed=42, train_batch=__batch, lr=__lr, hidden_layers=[8192])
-    main(seed=0, train_batch=256, lr=0.005, hidden_layers=[2048])
+    __layers = [64, 64]
+    for __batch in [128, 256, 512]:
+        for __lr in [0.0005, 0.001, 0.005]:
+
+            logger.info(f"Running NN config: batch: {__batch}, "
+                        f"lr: {__lr}, layers: {__layers}")
+            main(seed=42, train_batch=__batch, lr=__lr, hidden_layers=__layers)
+    # main(seed=0, train_batch=64, lr=0.005, hidden_layers=[1024])
