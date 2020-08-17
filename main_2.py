@@ -147,7 +147,7 @@ def main(
         "output_dim": None
     }
 
-    model_hash = "6b1087e092-3L"  # "6106dbd778",
+    model_hash = "6106dbd778"  # "6106dbd778",
     data_config: NetworkDataConfig = {
         "root": "data/gnns",
         "model_hash": model_hash,
@@ -155,17 +155,17 @@ def main(
         "load_all": False
     }
     formulas = FormulaConfig.from_hashes([
-        "ea81181317",
-        "9eb3668544",
-        "2231100a27",
-        "9dfdcfb080"
+        "7fbb4bd0b3",
+        "395f941b4e",
+        "548c9f191e",
+        "ea81181317"
     ])
 
     iterations = 20
     test_batch = 512
 
     if name is None:
-        name = "red4+"
+        name = "red-redN+"
 
     hid = "+".join(
         [f"{l}L{val}" for l, val in enumerate(hidden_layers, start=1)])
@@ -212,11 +212,11 @@ if __name__ == "__main__":
     logger.addHandler(ch)
     # logger.addHandler(fh)
 
-    __layers = [64, 64]
-    for __batch in [128, 256, 512]:
-        for __lr in [0.0005, 0.001, 0.005]:
+    __layers = [2048]
+    # for __batch in [128, 256, 512]:
+    #     for __lr in [0.0005, 0.001, 0.005]:
 
-            logger.info(f"Running NN config: batch: {__batch}, "
-                        f"lr: {__lr}, layers: {__layers}")
-            main(seed=42, train_batch=__batch, lr=__lr, hidden_layers=__layers)
-    # main(seed=0, train_batch=64, lr=0.005, hidden_layers=[1024])
+    #         logger.info(f"Running NN config: batch: {__batch}, "
+    #                     f"lr: {__lr}, layers: {__layers}")
+    #         main(seed=42, train_batch=__batch, lr=__lr, hidden_layers=__layers)
+    main(seed=0, train_batch=128, lr=0.005, hidden_layers=__layers)
