@@ -102,13 +102,16 @@ class Training(Trainer):
                   input_dim: int,
                   hidden_dim: int,
                   output_dim: int,
+                  use_batch_norm: bool = True,
                   hidden_layers: List[int] = None,
                   **kwargs):
         return MLP(num_layers=num_layers,
                    input_dim=input_dim,
                    hidden_dim=hidden_dim,
+                   output_dim=output_dim,
+                   use_batch_norm=use_batch_norm,
                    hidden_layers=hidden_layers,
-                   output_dim=output_dim)
+                   **kwargs)
 
     def get_optim(self, model, lr):
         # return optim.Rprop(model.parameters(), lr=lr)

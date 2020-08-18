@@ -14,7 +14,8 @@ class MLP(nn.Module):
             hidden_dim: int,
             output_dim: int,
             use_batch_norm: bool = True,
-            hidden_layers: Optional[List[int]] = None):
+            hidden_layers: Optional[List[int]] = None,
+            **kwargs):
         """
         A simple MLP class with batchnorm.
 

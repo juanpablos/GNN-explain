@@ -70,6 +70,7 @@ class Training(Trainer):
                   combine_layers: int,
                   mlp_layers: int,
                   task: str,
+                  use_batch_norm: bool = True,
                   truncated_fn: Tuple[int, int] = None,
                   **kwargs):
 
@@ -84,7 +85,9 @@ class Training(Trainer):
                 combine_layers=combine_layers,
                 mlp_layers=mlp_layers,
                 task=task,
-                truncated_fn=truncated_fn
+                use_batch_norm=use_batch_norm,
+                truncated_fn=truncated_fn,
+                **kwargs
             )
         else:
             raise NotImplementedError
