@@ -156,16 +156,16 @@ def main(
     }
     formulas = FormulaConfig.from_hashes([
         "7fbb4bd0b3",
-        "395f941b4e",
-        "548c9f191e",
-        "ea81181317"
+        "515f9bc675",
+        "9147102212",
+        "2231100a27"
     ])
 
     iterations = 20
     test_batch = 512
 
     if name is None:
-        name = "red-redN+"
+        name = "red-atomicN"
 
     hid = "+".join(
         [f"{l}L{val}" for l, val in enumerate(hidden_layers, start=1)])

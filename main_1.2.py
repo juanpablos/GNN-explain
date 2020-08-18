@@ -166,7 +166,7 @@ def main(use_formula: FOC = None):
         "output_dim": 2,
         "aggregate_type": "add",
         "combine_type": "identity",
-        "num_layers": 3,
+        "num_layers": 2,
         "mlp_layers": 1,  # the number of layers in A and V
         "combine_layers": 2,  # layers in the combine MLP if combine_type=mlp
         "task": "node"
@@ -195,7 +195,7 @@ def main(use_formula: FOC = None):
         "m": 4
     }
 
-    save_path = f"data/gnns/{model_config_hash}-new"
+    save_path = f"data/gnns/{model_config_hash}-wd"
     # save_path = f"data/gnns/{model_config_hash}"
     # ! manual operation
     os.makedirs(save_path, exist_ok=True)
@@ -292,7 +292,7 @@ if __name__ == "__main__":
     __formulas = [
         # AND(Property('RED'), Exist(AND(Role('EDGE'), Property('RED')), 4, None)),
         # AND(Property('RED'), Exist(AND(Role('EDGE'), Property('BLUE')), 4, None)),
-        AND(Property('RED'), Exist(AND(Role('EDGE'), Property('GREEN')), 4, None)),
+        # AND(Property('RED'), Exist(AND(Role('EDGE'), Property('GREEN')), 4, None)),
         AND(Property('RED'), Exist(AND(Role('EDGE'), Property('BLACK')), 4, None))
     ]
     if __formulas:
