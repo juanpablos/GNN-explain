@@ -12,7 +12,7 @@ import torch
 
 from src.data.datasets import RandomGraphDataset
 from src.data.sampler import SubsetSampler
-from src.data.utils import clean_state
+# from src.data.utils import clean_state
 from src.generate_graphs import graph_stream
 from src.graphs import *
 from src.run_logic import run, seed_everything
@@ -99,7 +99,8 @@ def run_experiment(
                 stop_when=stop_when)
 
             model.cpu()
-            weights = clean_state(model.state_dict())
+            weights = model.state_dict()
+            # weights = clean_state(model.state_dict())
             models.append(weights)
 
             metrics = training_state.get_metric_logger()
