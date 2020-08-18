@@ -91,7 +91,7 @@ def run_experiment(
     _y_pred = train_state.metrics.acc_y_pred
 
     try:
-        formula_mapping = FormulaMapping("src/formulas.json")
+        formula_mapping = FormulaMapping("data/formulas.json")
         label_formula = {label: str(formula_mapping[h])
                          for h, label in label_mapping.items()}
     except Exception as e:
