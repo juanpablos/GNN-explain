@@ -13,6 +13,7 @@ class MLP(nn.Module):
             input_dim: int,
             hidden_dim: int,
             output_dim: int,
+            use_batch_norm: bool = True,
             hidden_layers: Optional[List[int]] = None):
         """
         A simple MLP class with batchnorm.
@@ -53,25 +54,38 @@ class MLP(nn.Module):
         else:
             # multi layer model
             self.is_linear = False
-            self.batch_norms = nn.ModuleList()
 
+            # create the linear layers
             last_dim = input_dim
             for hidden in layers:
                 self.linears.append(nn.Linear(last_dim, hidden))
-                self.batch_norms.append(nn.BatchNorm1d(hidden))
-
                 last_dim = hidden
 
             self.linears.append(nn.Linear(last_dim, output_dim))
 
+            self.batch_norms = nn.ModuleList()
+            if use_batch_norm:
+                # add the batchnorms if selected
+                for hidden in layers:
+                    self.batch_norms.append(nn.BatchNorm1d(hidden))
+            else:
+                # fill with placeholders if batchnorm is not used
+                identity = nn.Identity()
+                for _ in layers:
+                    self.batch_norms.append(identity)
+
     def forward(self, x):
         if self.is_linear:
-            return self.linears[0](x)
+            h = self.linears[0](x)
         else:
             h = x
-            for layer in range(self.num_layers - 1):
-                h = torch.relu(self.batch_norms[layer](self.linears[layer](h)))
-            return self.linears[self.num_layers - 1](h)
+            # use the fact that len(linears)-1 == len(batchnorms)
+            # if use_batch_norm==False, norm(layer(h))==layer(h)
+            for layer, norm in zip(self.linears, self.batch_norms):
+                h = torch.relu(norm(layer(h)))
+            h = self.linears[-1](h)
+
+        return h
 
     def reset_parameters(self):
         reset(self.linears)

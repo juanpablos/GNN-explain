@@ -114,8 +114,8 @@ class Training(Trainer):
         # return optim.Rprop(model.parameters(), lr=lr)
         # return optim.RMSprop(model.parameters(), lr=lr)
         # return optim.SGD(model.parameters(), lr=lr)
-        # return optim.Adam(model.parameters(), lr=lr)
-        return optim.AdamW(model.parameters(), lr=lr)
+        # return optim.AdamW(model.parameters(), lr=lr)
+        return optim.Adam(model.parameters(), lr=lr)
 
     def get_scheduler(self, **kwargs):
         pass

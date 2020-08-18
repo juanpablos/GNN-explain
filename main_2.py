@@ -144,7 +144,8 @@ def main(
         "input_dim": None,
         "hidden_dim": 128,
         "hidden_layers": hidden_layers,
-        "output_dim": None
+        "output_dim": None,
+        "use_batch_norm": True
     }
 
     model_hash = "6106dbd778"  # "6106dbd778",

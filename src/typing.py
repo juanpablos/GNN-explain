@@ -45,6 +45,7 @@ class MinModelConfig(TypedDict):
     hidden_dim: int
     output_dim: Optional[int]
     hidden_layers: Optional[List[int]]
+    use_batch_norm: bool
 
 
 class GNNModelConfig(MinModelConfig):

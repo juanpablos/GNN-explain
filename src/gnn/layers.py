@@ -12,6 +12,7 @@ class ACConv(MessagePassing):
             combine_type: str,
             combine_layers: int,
             mlp_layers: int,
+            use_batch_norm: bool = True,
             **kwargs):
 
         if aggregate_type not in ["add", "mean", "max"]:
@@ -27,7 +28,8 @@ class ACConv(MessagePassing):
             "num_layers": mlp_layers,
             "input_dim": input_dim,
             "hidden_dim": output_dim,
-            "output_dim": output_dim
+            "output_dim": output_dim,
+            "use_batch_norm": use_batch_norm
         }
 
         if combine_type == "identity":
@@ -36,21 +38,24 @@ class ACConv(MessagePassing):
                 num_layers=0,
                 input_dim=output_dim,
                 hidden_dim=output_dim,
-                output_dim=output_dim
+                output_dim=output_dim,
+                use_batch_norm=use_batch_norm
             )
         elif combine_type == "linear":
             self.combine = MLP(
                 num_layers=1,
                 input_dim=output_dim,
                 hidden_dim=output_dim,
-                output_dim=output_dim
+                output_dim=output_dim,
+                use_batch_norm=use_batch_norm
             )
         else:
             self.combine = MLP(
                 num_layers=combine_layers,
                 input_dim=output_dim,
                 hidden_dim=output_dim,
-                output_dim=output_dim
+                output_dim=output_dim,
+                use_batch_norm=use_batch_norm
             )
 
         self.V = MLP(**_args)
