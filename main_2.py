@@ -1,8 +1,10 @@
 import logging
+import os
 import random
 from timeit import default_timer as timer
 from typing import List
 
+import torch
 from sklearn.metrics import classification_report
 
 from src.data.loader import FormulaConfig, load_gnn_files
@@ -35,10 +37,10 @@ def run_experiment(
         test_batch_size: int = 512,
         lr: float = 0.01,
         run_train_test: bool = False,
-        plot_path: str = "./results",
+        results_path: str = "./results",
+        model_name: str = None,
         plot_file_name: str = None,
-        plot_title: str = None,
-        plot_historic: bool = True
+        plot_title: str = None
 ):
 
     logger.info("Loading Files")
@@ -86,12 +88,19 @@ def run_experiment(
         lr=lr,
         run_train_test=run_train_test)
 
+    if model_name is not None:
+        model.cpu()
+        os.makedirs(f"{results_path}/models/", exist_ok=True)
+        torch.save(
+            model.state_dict(),
+            f"{results_path}/models/{model_name}.pt")
+
     # * get the last evaluation values
     _y = train_state.metrics.acc_y
     _y_pred = train_state.metrics.acc_y_pred
 
     try:
-        formula_mapping = FormulaMapping("data/formulas.json")
+        formula_mapping = FormulaMapping("./data/formulas.json")
         label_formula = {label: str(formula_mapping[h])
                          for h, label in label_mapping.items()}
     except Exception as e:
@@ -107,20 +116,20 @@ def run_experiment(
     test_label_info = test_data.apply_subset().label_info
     each_label = next(iter(test_label_info.values()))
 
-    plot_confusion_matrix(
-        _y,
-        _y_pred,
-        save_path=plot_path,
-        file_name=plot_file_name,
-        title=plot_title,
-        labels=target_names,
-        each_label=each_label)
+    if plot_file_name is not None:
+        plot_confusion_matrix(
+            _y,
+            _y_pred,
+            save_path=results_path,
+            file_name=plot_file_name,
+            title=plot_title,
+            labels=target_names,
+            each_label=each_label)
 
-    if plot_historic:
         metrics = train_state.get_metric_logger()
         plot_training(
             metric_history=metrics,
-            save_path=plot_path,
+            save_path=results_path,
             file_name=plot_file_name,
             title=plot_title,
             use_selected=False)
@@ -131,7 +140,9 @@ def main(
         seed: int = None,
         train_batch: int = 32,
         lr: float = 0.001,
-        hidden_layers: List[int] = None):
+        hidden_layers: List[int] = None,
+        save_model: bool = True,
+        make_plots: bool = True):
 
     if seed is None:
         seed = random.randint(1, 1 << 30)
@@ -148,7 +159,7 @@ def main(
         "use_batch_norm": True
     }
 
-    model_hash = "6106dbd778"  # "6106dbd778",
+    model_hash = "f4034364ea-nosave"  # "f4034364ea",
     data_config: NetworkDataConfig = {
         "root": "data/gnns",
         "model_hash": model_hash,
@@ -156,21 +167,34 @@ def main(
         "load_all": False
     }
     formulas = FormulaConfig.from_hashes([
-        "7fbb4bd0b3",
-        "515f9bc675",
-        "9147102212",
-        "2231100a27"
+        "dc670b1bec",
+        "4805042859",
+        "688d12b701",
+        "652c706f1b",
+
+        # "7916873139",
+        # "a2e5ecf2db",
+        # "56b465adb3",
+        # "b6b4960f78"
     ])
 
     iterations = 20
     test_batch = 512
 
     if name is None:
-        name = "red-atomicN"
+        name = "atomic"
 
     hid = "+".join(
         [f"{l}L{val}" for l, val in enumerate(hidden_layers, start=1)])
     msg = f"{name}-{hid}-{train_batch}b-{lr}lr"
+
+    results_path = f"./results/exp2/{model_hash}"
+    plot_file = None
+    if make_plots:
+        plot_file = msg
+    model_name = None
+    if save_model:
+        model_name = msg
 
     start = timer()
     run_experiment(
@@ -187,9 +211,10 @@ def main(
         test_batch_size=test_batch,
         lr=lr,
         run_train_test=True,
-        plot_path=f"./results/exp2/{model_hash}",
-        plot_file_name=msg,
-        plot_title=msg  # maybe a better message
+        results_path=results_path,
+        model_name=model_name,
+        plot_file_name=plot_file,
+        plot_title=msg  # ? maybe a better message
     )
     end = timer()
     logger.info(f"Took {end-start} seconds")
@@ -220,4 +245,11 @@ if __name__ == "__main__":
     #         logger.info(f"Running NN config: batch: {__batch}, "
     #                     f"lr: {__lr}, layers: {__layers}")
     #         main(seed=42, train_batch=__batch, lr=__lr, hidden_layers=__layers)
-    main(seed=0, train_batch=128, lr=0.005, hidden_layers=__layers)
+    main(
+        seed=0,
+        train_batch=128,
+        lr=0.005,
+        hidden_layers=__layers,
+        save_model=True,
+        make_plots=False
+    )
