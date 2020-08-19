@@ -68,7 +68,7 @@ def load_gnn_files(root: str, model_hash: str,
         formula_configs = FormulaConfig.from_hashes(dir_formulas.keys())
     else:
         if not all(f in dir_formulas for f in formulas):
-            _not = [f for f in formulas if f not in dir_formulas]
+            _not = [f.formula for f in formulas if f not in dir_formulas]
             raise ValueError(
                 "Not all requested formula hashes are present "
                 f"in the directory: {_not}")
