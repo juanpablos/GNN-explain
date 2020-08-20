@@ -50,7 +50,12 @@ class StopTraining:
 
 
 class MetricLogger:
-    def __init__(self, variables: Union[Literal["all"], List[str]] = "all"):
+    def __init__(self,
+                 variables: Union[Literal["all"],
+                                  List[str],
+                                  None] = "all"):
+        if variables is None:
+            variables = []
         self.variables: Dict[str, List[TNum]] = defaultdict(list)
 
         self.log_all = variables == "all"

@@ -61,7 +61,12 @@ class Training(Trainer):
                  n_classes: int = 2,
                  metrics_average: str = "macro",
                  logging_variables: Union[Literal["all"],
-                                          List[str]] = "all"):
+                                          List[str],
+                                          None] = "all"):
+
+        if logging_variables is None:
+            logging_variables = []
+
         if logging_variables != "all" and not all(
                 var in self.available_metrics for var in logging_variables):
             raise ValueError(
