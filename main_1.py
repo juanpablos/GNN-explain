@@ -29,28 +29,8 @@ logger = logging.getLogger("src")
 
 
 def get_formula():
-    f = FOC(AND(
-            Property("GREEN"),
-            OR(
-                Exist(
-                    AND(
-                        Role("EDGE"),
-                        Property("BLUE")
-                    ),
-                    2,
-                    4
-                ),
-                Exist(
-                    AND(
-                        Role("EDGE"),
-                        Property("RED")
-                    ),
-                    4,
-                    6
-                )
-            )
-            ))
-    return f
+    f = AND(Property('RED'), Exist(AND(Role('EDGE'), Property('RED')), 4, None))
+    return FOC(f)
 
 
 def run_experiment(
@@ -113,8 +93,8 @@ def run_experiment(
 
             metrics = training_state.get_metric_logger()
 
-            stats["macro"][str(round(metrics["macro"], 3))] += 1
-            stats["micro"][str(round(metrics["micro"], 3))] += 1
+            stats["macro"][str(round(metrics["test_macro"], 3))] += 1
+            stats["micro"][str(round(metrics["test_micro"], 3))] += 1
 
     except KeyboardInterrupt:
         logger.info("Manually Interrumpted")
@@ -181,7 +161,7 @@ def main(use_formula: FOC = None):
         "mlp_layers": 1,  # the number of layers in A and V
         "combine_layers": 2,  # layers in the combine MLP if combine_type=mlp
         "task": "node",
-        "use_batch_norm": False
+        "use_batch_norm": True
     }
     model_config_hash = hashlib.md5(
         json.dumps(
@@ -207,7 +187,7 @@ def main(use_formula: FOC = None):
         "m": 4
     }
 
-    save_path = f"data/gnns/test-{model_config_hash}"
+    save_path = f"data/gnns/{model_config_hash}-batchnorm-testing"
     # ! manual operation
     os.makedirs(save_path, exist_ok=True)
     # * model_name - number of models - model hash - formula hash
@@ -218,8 +198,8 @@ def main(use_formula: FOC = None):
     stop_when: StopFormat = {
         "operation": "and",  # and or or
         "conditions": {
-            "micro": 0.999,
-            "macro": 0.999
+            "test_micro": 0.999,
+            "test_macro": 0.999
         },
         "stay": 2
     }
