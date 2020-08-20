@@ -134,7 +134,7 @@ class NetworkDataset(LabeledDatasetBase[torch.Tensor, S_co], Dataset):
             if i == limit:
                 break
 
-        self._dataset = torch.stack(dataset)
+        self._dataset = dataset
         self._labels = DummyIterable(label, length=len(dataset))
 
 
