@@ -16,14 +16,23 @@ class Element(ABC):
     def __repr__(self):
         raise NotImplementedError
 
+    @abstractmethod
+    def __str__(self):
+        raise NotImplementedError
+
     def _visit(self, visitor):
-        try:
-            return getattr(visitor, f"_visit_{self.__class__.__name__}")(self)
-        except AttributeError:
-            return getattr(visitor, "_visit_Element")(self)
+        getattr(visitor, f"_visit_{self.__class__.__name__}")(self)
 
 
-class Property(Element):
+class IndependentElement(Element):
+    ...
+
+
+class DependentElement(Element):
+    ...
+
+
+class Property(IndependentElement):
     """Returns a 1d vector with the nodes that satisfy the condition"""
     # REV: seach for a better way to do this
     available = {
@@ -52,7 +61,7 @@ class Property(Element):
         return f"{self.name}({self.variable})"
 
 
-class Role(Element):
+class Role(DependentElement):
     """Returns a 2d matrix with the relations between nodes that satisfy the condition"""
 
     def __init__(
@@ -78,8 +87,8 @@ class Role(Element):
         return f"{self.name}({self.variable1}, {self.variable2})"
 
 
-class Operator(Element):
-    def __init__(self, *args):
+class Operator(IndependentElement):
+    def __init__(self, *args: Element):
         self.operands = args
 
     def __repr__(self):
@@ -88,7 +97,7 @@ class Operator(Element):
 
 
 class NEG(Operator):
-    def __init__(self, expression):
+    def __init__(self, expression: Element):
         super().__init__()
         self.expression = expression
 
@@ -105,7 +114,7 @@ class NEG(Operator):
 
 
 class AND(Operator):
-    def __init__(self, first, second, *args):
+    def __init__(self, first: Element, second: Element, *args: Element):
         super().__init__(first, second, *args)
 
     def __str__(self):
@@ -118,7 +127,7 @@ class AND(Operator):
 
 
 class OR(Operator):
-    def __init__(self, first, second, *args):
+    def __init__(self, first: Element, second: Element, *args: Element):
         super().__init__(first, second, *args)
 
     def __str__(self):
@@ -130,10 +139,10 @@ class OR(Operator):
         return reduce(np.logical_or, intermediate)  # type: ignore
 
 
-class Exist(Element):
+class Exist(IndependentElement):
     def __init__(
             self,
-            expression,
+            expression: Element,
             lower: int = None,
             upper: int = None,
             *,
@@ -185,8 +194,8 @@ class Exist(Element):
         return (per_node >= lower) & (per_node <= upper)
 
 
-class ForAll(Element):
-    def __init__(self, expression, *, variable: str = None):
+class ForAll(IndependentElement):
+    def __init__(self, expression: Element, *, variable: str = None):
         self.variable = variable if variable is not None else "."
         self.expression = expression
         self.symbol = "∀"
@@ -210,7 +219,7 @@ class ForAll(Element):
 
 
 class FOC:
-    def __init__(self, expression):
+    def __init__(self, expression: IndependentElement):
         self.expression = expression
 
     def __call__(self, graph: nx.Graph) -> np.ndarray:
