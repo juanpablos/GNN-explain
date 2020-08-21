@@ -16,18 +16,14 @@ class Element(ABC):
     def __repr__(self):
         raise NotImplementedError
 
-
-class Concept(ABC):
-    @abstractmethod
-    def __call__(self, **kwargs):
-        raise NotImplementedError
-
-    @abstractmethod
-    def __repr__(self):
-        raise NotImplementedError
+    def _visit(self, visitor):
+        try:
+            return getattr(visitor, f"_visit_{self.__class__.__name__}")(self)
+        except AttributeError:
+            return getattr(visitor, "_visit_Element")(self)
 
 
-class Property(Concept):
+class Property(Element):
     """Returns a 1d vector with the nodes that satisfy the condition"""
     # REV: seach for a better way to do this
     available = {
@@ -56,7 +52,7 @@ class Property(Concept):
         return f"{self.name}({self.variable})"
 
 
-class Role(Concept):
+class Role(Element):
     """Returns a 2d matrix with the relations between nodes that satisfy the condition"""
 
     def __init__(
