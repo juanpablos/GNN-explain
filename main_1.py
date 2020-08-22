@@ -29,7 +29,8 @@ logger = logging.getLogger("src")
 
 
 def get_formula():
-    f = AND(Property('RED'), Exist(AND(Role('EDGE'), Property('RED')), 4, None))
+    f = AND(Property('GREEN'), Exist(
+        AND(Role('EDGE'), Property('BLACK')), None, 4))
     return FOC(f)
 
 
@@ -187,7 +188,7 @@ def main(use_formula: FOC = None):
         "m": 4
     }
 
-    save_path = f"data/gnns/{model_config_hash}-batchnorm-testing"
+    save_path = f"data/gnns/{model_config_hash}-savebatch"
     # ! manual operation
     os.makedirs(save_path, exist_ok=True)
     # * model_name - number of models - model hash - formula hash

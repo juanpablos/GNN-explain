@@ -171,7 +171,7 @@ def main(use_formula: FOC = None):
         "mlp_layers": 1,  # the number of layers in A and V
         "combine_layers": 2,  # layers in the combine MLP if combine_type=mlp
         "task": "node",
-        "use_batch_norm": False
+        "use_batch_norm": True
     }
     model_config_hash = hashlib.md5(
         json.dumps(
@@ -197,7 +197,7 @@ def main(use_formula: FOC = None):
         "m": 4
     }
 
-    save_path = f"data/gnns/{model_config_hash}-wd"
+    save_path = f"data/gnns/{model_config_hash}-savebatch"
     # save_path = f"data/gnns/{model_config_hash}"
     # ! manual operation
     os.makedirs(save_path, exist_ok=True)
@@ -292,10 +292,10 @@ if __name__ == "__main__":
     # main()
 
     __formulas = [
-        # AND(Property('RED'), Exist(AND(Role('EDGE'), Property('RED')), 4, None)),
-        # AND(Property('RED'), Exist(AND(Role('EDGE'), Property('BLUE')), 4, None)),
-        # AND(Property('RED'), Exist(AND(Role('EDGE'), Property('GREEN')), 4, None)),
-        AND(Property('RED'), Exist(AND(Role('EDGE'), Property('BLACK')), 4, None))
+        AND(Property('BLUE'), Exist(AND(Role('EDGE'), Property('GREEN')), None, 3)),
+        AND(Property('GREEN'), Exist(AND(Role('EDGE'), Property('RED')), None, 3)),
+        AND(Property('GREEN'), Exist(AND(Role('EDGE'), Property('GREEN')), None, 4)),
+        AND(Property('GREEN'), Exist(AND(Role('EDGE'), Property('BLACK')), None, 4))
     ]
     if __formulas:
         __times = {}
