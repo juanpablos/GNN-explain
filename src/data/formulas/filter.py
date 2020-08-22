@@ -70,17 +70,22 @@ class RestrictionFilter(Filterer):
 
 
 class FilterApply:
-    def __init__(self, filters: List[Filterer] = None):
+    def __init__(self,
+                 filters: List[Filterer] = None,
+                 condition: Union[Literal["and"],
+                                  Literal["or"]] = "and"):
         if filters is None:
             self.filters = []
         else:
             self.filters = filters
 
+        self.condition = all if condition == "and" else any
+
     def add(self, filterer: Filterer):
         self.filters.append(filterer)
 
     def _apply(self, formula):
-        return all(filterer(formula) for filterer in self.filters)
+        return self.condition(filterer(formula) for filterer in self.filters)
 
     def __call__(self, formulas: Mapping[str, Element]):
         if not self.filters:
