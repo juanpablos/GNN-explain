@@ -75,7 +75,7 @@ class FilterApply:
                  condition: Union[Literal["and"],
                                   Literal["or"]] = "and"):
         if filters is None:
-            self.filters = []
+            self.filters: List[Filterer] = []
         else:
             self.filters = filters
 
@@ -84,13 +84,12 @@ class FilterApply:
     def add(self, filterer: Filterer):
         self.filters.append(filterer)
 
-    def _apply(self, formula):
+    def _apply(self, formula: Element):
         return self.condition(filterer(formula) for filterer in self.filters)
 
     def __call__(self, formulas: Mapping[str, Element]):
         if not self.filters:
             raise ValueError(
                 "There must be at least 1 filter set to be applied")
-        return {
-            _hash: formula for _hash, formula in formulas.items()
-            if self._apply(formula)}
+        return {_hash: formula for _hash, formula
+                in formulas.items() if self._apply(formula)}

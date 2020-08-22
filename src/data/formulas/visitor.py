@@ -22,7 +22,6 @@ class Visitor(ABC, Generic[T_co]):
         if isinstance(node, NEG):
             node.expression._visit(self)
         else:
-
             for el in node.operands:
                 el._visit(self)
 
