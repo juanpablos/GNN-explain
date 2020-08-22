@@ -1,5 +1,6 @@
 from abc import ABC
 from collections import Counter
+from src.data.utils import clean_state
 from typing import Dict, Generic, Iterator, List, Mapping, Sequence, Tuple
 
 import torch
@@ -110,12 +111,13 @@ class NetworkDataset(LabeledDatasetBase[torch.Tensor, S_co], Dataset):
     A Pytorch dataset that loads a pickle file storing a list of the outputs of torch.nn.Module.state_dict(), that is basically a Dict[str, Tensor]. This dataset loads that file, for each network it flattens the tensors into a single vector and stores a tuple (flattened vector, label). Stores exactly the first 'limit' elements of the list.
     """
 
-    def __init__(self, file: str, label: S_co, limit: int = None):
+    def __init__(self, file: str, label: S_co, limit: int = None,
+                 _legacy_load_without_batch: bool = False):
         super().__init__()
         # the weights in a vector
-        self.__load(file, label, limit)
+        self.__load(file, label, limit, _legacy_load_without_batch)
 
-    def __load(self, file_name, label: S_co, limit):
+    def __load(self, file_name, label: S_co, limit, no_batch):
         networks = torch.load(file_name)
 
         dataset = []
@@ -128,6 +130,12 @@ class NetworkDataset(LabeledDatasetBase[torch.Tensor, S_co], Dataset):
                     "Limit is larger than the size of the dataset")
 
         for i, weights in enumerate(networks, start=1):
+
+            # legacy
+            if no_batch:
+                weights = clean_state(weights)
+            # /legacy
+
             concat_weights = torch.cat([w.flatten() for w in weights.values()])
             dataset.append(concat_weights)
 

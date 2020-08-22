@@ -40,12 +40,14 @@ def run_experiment(
         results_path: str = "./results",
         model_name: str = None,
         plot_file_name: str = None,
-        plot_title: str = None
+        plot_title: str = None,
+        _legacy_load_without_batch: bool = False
 ):
 
     logger.info("Loading Files")
     dataset, label_mapping = load_gnn_files(
-        formulas=formulas_to_load, **data_config)
+        formulas=formulas_to_load, **data_config,
+        _legacy_load_without_batch=_legacy_load_without_batch)
     n_classes = len(dataset.label_info)
     logger.debug(f"{n_classes} classes detected")
 
@@ -214,7 +216,8 @@ def main(
         results_path=results_path,
         model_name=model_name,
         plot_file_name=plot_file,
-        plot_title=msg  # ? maybe a better message
+        plot_title=msg,  # ? maybe a better message
+        _legacy_load_without_batch=True # ! remove eventually
     )
     end = timer()
     logger.info(f"Took {end-start} seconds")

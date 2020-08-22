@@ -45,7 +45,8 @@ class FormulaConfig(Generic[S_co]):
 
 def load_gnn_files(root: str, model_hash: str,
                    formulas: Iterable[FormulaConfig[S]],
-                   load_all: bool):
+                   load_all: bool,
+                   _legacy_load_without_batch: bool = False):
 
     def _prepare_files(path: str):
         files: Dict[str, str] = {}
@@ -84,7 +85,8 @@ def load_gnn_files(root: str, model_hash: str,
         dataset = NetworkDataset(
             file=file_path,
             label=label,
-            limit=limit)
+            limit=limit,
+            _legacy_load_without_batch=_legacy_load_without_batch)
 
         datasets.append(dataset)
         mapping[formula_hash] = label
