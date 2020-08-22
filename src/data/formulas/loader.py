@@ -4,9 +4,8 @@ import logging
 import os
 from typing import Dict, Generic, Iterable, List, Type, Union
 
+from src.data.datasets import LabeledDataset, NetworkDataset
 from src.typing import S, S_co
-
-from .datasets import LabeledDataset, NetworkDataset
 
 logger = logging.getLogger(__name__)
 

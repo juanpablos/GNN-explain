@@ -7,7 +7,7 @@ from typing import List
 import torch
 from sklearn.metrics import classification_report
 
-from src.data.loader import FormulaConfig, load_gnn_files
+from src.data.formulas.loader import FormulaConfig, load_gnn_files
 from src.data.utils import (
     get_input_dim,
     get_label_distribution,
