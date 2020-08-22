@@ -82,11 +82,11 @@ class Trainer(Protocol):
         model: nn.Module,
         lr: float) -> optim.Optimizer: ...
 
-    @abstractmethod
-    def get_scheduler(
-        self,
-        optimizer: optim.Optimizer,
-        step: int = ...) -> Optional[optim.lr_scheduler.StepLR]: ...
+    # @abstractmethod
+    # def get_scheduler(
+    #     self,
+    #     optimizer: optim.Optimizer,
+    #     step: int = ...) -> Optional[optim.lr_scheduler.StepLR]: ...
 
     @abstractmethod
     def train(self,

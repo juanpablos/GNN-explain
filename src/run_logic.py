@@ -69,7 +69,7 @@ def run(
 
     criterion = run_config.get_loss()
     optimizer = run_config.get_optim(model=model, lr=lr)
-    scheduler = run_config.get_scheduler(optimizer=optimizer)
+    # scheduler = run_config.get_scheduler(optimizer=optimizer)
 
     stop = StopTraining(stop_when)
 
@@ -82,7 +82,6 @@ def run(
             criterion=criterion,
             device=device,
             optimizer=optimizer,
-            scheduler=scheduler,
             binary_prediction=True,
         )
 

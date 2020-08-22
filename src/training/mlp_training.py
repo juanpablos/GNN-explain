@@ -103,6 +103,7 @@ class Training(Trainer):
             raise ValueError("Number of classes cannot be less than 2")
 
     def get_model(self,
+                  *,
                   num_layers: int,
                   input_dim: int,
                   hidden_dim: int,

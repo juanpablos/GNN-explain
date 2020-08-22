@@ -60,6 +60,7 @@ class Training(Trainer):
         return self.metric_logger
 
     def get_model(self,
+                  *
                   name: str,
                   input_dim: int,
                   hidden_dim: int,
@@ -109,7 +110,7 @@ class Training(Trainer):
               criterion,
               device,
               optimizer,
-              #   scheduler,
+              *,
               binary_prediction: bool,
               **kwargs):
 
@@ -152,6 +153,7 @@ class Training(Trainer):
                  criterion,
                  device,
                  using_train_data,
+                 *
                  binary_prediction: bool,
                  **kwargs):
 
