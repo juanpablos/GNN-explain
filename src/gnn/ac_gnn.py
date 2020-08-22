@@ -3,8 +3,8 @@ from typing import Tuple
 import torch
 import torch.nn as nn
 
-from .layers import ACConv
-from .utils import reset
+from src.gnn.layers import ACConv
+from src.gnn.utils import reset
 
 
 class ACGNN(torch.nn.Module):

@@ -1,7 +1,7 @@
 from typing import List
 
-from .data.graph_transform import stream_transform
-from .graphs import *
+from src.data.graph_transform import stream_transform
+from src.graphs import *
 
 
 def graph_stream(formula: FOC,

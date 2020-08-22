@@ -1,7 +1,7 @@
 import json
 from typing import Dict
 
-from .graphs.foc import *
+from src.graphs.foc import *
 
 
 class FormulaMapping:

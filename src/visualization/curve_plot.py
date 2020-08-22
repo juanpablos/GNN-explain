@@ -4,7 +4,9 @@ import os
 import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
 import numpy as np
+
 from src.typing import MetricHistory
+
 logger = logging.getLogger(__name__)
 
 

@@ -3,9 +3,8 @@ from typing import Any, Generic
 
 import numpy as np
 
+from src.data.datasets import Subset
 from src.typing import DatasetLike, T
-
-from .datasets import Subset
 
 
 class SubsetSampler(Generic[T]):

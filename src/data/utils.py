@@ -4,9 +4,8 @@ from typing import Any, Dict, Union
 import torch
 from sklearn.model_selection import train_test_split as sk_split
 
+from src.data.datasets import LabeledSubset, Subset
 from src.typing import DatasetLike, Indexable, LabeledDatasetLike, S, T
-
-from .datasets import LabeledSubset, Subset
 
 logger = logging.getLogger(__name__)
 
