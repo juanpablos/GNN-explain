@@ -108,7 +108,7 @@ def run_experiment(
         _error_file = f"{save_path}/{file_name.format(len(models))}.error"
         with open(_error_file, "w") as o:
             o.write(f"Problem in file {save_path}/{file_name.format('X')}\n")
-            o.write(f"Exception encountered: {e}\n")
+            o.write(f"Exception encountered: {e.__class__.__name__} {e}\n")
             o.write(f"Only {len(models)} models were written\n")
     finally:
         logger.info(f"Saving computed models...")

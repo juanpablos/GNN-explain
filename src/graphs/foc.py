@@ -10,15 +10,15 @@ __all__ = ["AND", "FOC", "NEG", "OR", "Exist", "ForAll", "Property", "Role"]
 class Element(ABC):
     @abstractmethod
     def __call__(self, **kwargs):
-        raise NotImplementedError
+        raise NotImplementedError("Element is abstract")
 
     @abstractmethod
     def __repr__(self):
-        raise NotImplementedError
+        raise NotImplementedError("Element is abstract")
 
     @abstractmethod
     def __str__(self):
-        raise NotImplementedError
+        raise NotImplementedError("Element is abstract")
 
     def _visit(self, visitor):
         getattr(visitor, f"_visit_{self.__class__.__name__}")(self)

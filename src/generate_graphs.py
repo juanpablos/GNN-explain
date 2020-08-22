@@ -82,4 +82,4 @@ def generate_graphs(formula,
         verbose=0)
 
     # TODO: offline graph reading
-    raise NotImplementedError
+    raise NotImplementedError("Offline graph reading is not yet implemented")

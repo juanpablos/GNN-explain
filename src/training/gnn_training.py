@@ -19,7 +19,8 @@ def _loss_aux(output, loss, data, binary):
                                                    value=1.)
     else:
         # TODO: missing option when not just predicting 0/1
-        raise NotImplementedError()
+        raise NotImplementedError(
+            "GNN trainig only supports binary classifiction")
 
     return loss(output, labels)
 
@@ -91,7 +92,7 @@ class Training(Trainer):
                 **kwargs
             )
         else:
-            raise NotImplementedError
+            raise NotImplementedError("Only acgnn supported")
 
     def get_loss(self):
         return nn.BCEWithLogitsLoss(reduction="mean")
