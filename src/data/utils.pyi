@@ -1,12 +1,9 @@
-from typing import Any, Dict, Tuple, overload
+from typing import Dict, Tuple, overload
 
 import torch
 
 from src.data.datasets import LabeledSubset, Subset
 from src.typing import DatasetLike, LabeledDatasetLike, S, T
-
-
-def clean_state(model_dict: Dict[str, Any]) -> Dict[str, Any]: ...
 
 
 @overload

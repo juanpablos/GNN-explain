@@ -1,5 +1,5 @@
 import logging
-from typing import Any, Dict, Union
+from typing import Union
 
 import torch
 from sklearn.model_selection import train_test_split as sk_split
@@ -8,11 +8,6 @@ from src.data.datasets import LabeledSubset, Subset
 from src.typing import DatasetLike, Indexable, LabeledDatasetLike, S, T
 
 logger = logging.getLogger(__name__)
-
-
-def clean_state(model_dict: Dict[str, Any]):
-    """Removes the weights associated with batchnorm"""
-    return {k: v for k, v in model_dict.items() if "batch" not in k}
 
 
 def train_test_dataset(

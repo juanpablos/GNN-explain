@@ -1,6 +1,5 @@
 from abc import ABC
 from collections import Counter
-from src.data.utils import clean_state
 from typing import Dict, Generic, Iterator, List, Mapping, Sequence, Tuple
 
 import torch
@@ -104,6 +103,11 @@ class LabeledDatasetBase(ABC, Generic[T_co, S_co]):
             raise TypeError(
                 "The elements in the sequence have less than 2 items. "
                 f"Not enough elements to unpack: {len(data_element)}")
+
+
+def clean_state(model_dict):
+    """Removes the weights associated with batchnorm"""
+    return {k: v for k, v in model_dict.items() if "batch" not in k}
 
 
 class NetworkDataset(LabeledDatasetBase[torch.Tensor, S_co], Dataset):
