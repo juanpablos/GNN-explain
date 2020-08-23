@@ -21,9 +21,6 @@ class Filterer(Visitor[bool]):
     def reset(self):
         self.result = False
 
-    def validate(self, formula: Element):
-        pass
-
 
 class AtomicFilter(Filterer):
     def __init__(self,
