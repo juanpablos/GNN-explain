@@ -21,9 +21,15 @@ class Filterer(Visitor[bool]):
     def reset(self):
         self.result = False
 
+    def validate(self, formula: Element):
+        pass
+
 
 class AtomicFilter(Filterer):
-    def __init__(self, atomic: Union[Literal["all"], Iterable[str]]):
+    def __init__(self,
+                 atomic: Union[Literal["all"],
+                               Iterable[str]],
+                 hop: int = None):
         super().__init__()
         if atomic == "all":
             self.selected = __available
@@ -31,16 +37,11 @@ class AtomicFilter(Filterer):
             _check_atomic(atomic)
             self.selected = atomic
 
-    def _visit_Property(self, node: Property):
-        if node.name in self.selected:
-            self.result = True
-
-
-class AtomicHopFilter(AtomicFilter):
-    def __init__(self, atomic: Union[Literal["all"], Iterable[str]], hop: int):
-        super().__init__(atomic)
         self.current_hop = 0
-        self.target_hop = hop
+        if hop is None:
+            self.target_hop = -1
+        else:
+            self.target_hop = hop
 
     def _visit_Exist(self, node: Exist):
         self.current_hop += 1
@@ -48,7 +49,8 @@ class AtomicHopFilter(AtomicFilter):
         self.current_hop -= 1
 
     def _visit_Property(self, node: Property):
-        if node.name in self.selected and self.current_hop == self.target_hop:
+        if node.name in self.selected and \
+                (self.target_hop == -1 or self.current_hop == self.target_hop):
             self.result = True
 
 

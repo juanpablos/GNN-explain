@@ -48,9 +48,12 @@ class Visitor(ABC, Generic[T_co]):
 
     def __call__(self, node: Element) -> T_co:
         node._visit(self)
+        self.validate(node)
         res = self.result
         self.reset()
         return res
 
     @abstractmethod
     def reset(self): ...
+    @abstractmethod
+    def validate(self, formula: Element): ...
