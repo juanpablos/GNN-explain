@@ -22,6 +22,11 @@ class Filterer(Visitor[bool]):
         self.result = False
 
 
+class NoFilter(Filterer):
+    def __call__(self, node: Element):
+        return True
+
+
 class AtomicFilter(Filterer):
     def __init__(self,
                  atomic: Union[Literal["all"],

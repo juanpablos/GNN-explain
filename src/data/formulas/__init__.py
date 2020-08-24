@@ -1,4 +1,10 @@
-from .filter import AtomicFilter, FilterApply, RestrictionFilter, SelectFilter
+from .filter import (
+    AtomicFilter,
+    FilterApply,
+    NoFilter,
+    RestrictionFilter,
+    SelectFilter
+)
 from .labeler import (
     BinaryAtomicLabeler,
     BinaryHopLabeler,
