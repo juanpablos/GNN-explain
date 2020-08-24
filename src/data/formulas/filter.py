@@ -92,3 +92,12 @@ class FilterApply:
                 "There must be at least 1 filter set to be applied")
         return {_hash: formula for _hash, formula
                 in formulas.items() if self._apply(formula)}
+
+
+class SelectFilter:
+    def __init__(self, hashes: List[str]):
+        self.hashes = hashes
+
+    def __call__(self, formulas: Mapping[str, Element]):
+        return {_hash: formula for _hash, formula
+                in formulas.items() if _hash in self.hashes}
