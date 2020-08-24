@@ -1,9 +1,8 @@
-
-from src.typing import T_co
-from typing import Dict, List
+from typing import Dict, Generic, List, Mapping, Optional, Tuple
 
 from src.data.formulas.visitor import Visitor
 from src.graphs.foc import Element, Exist, Property
+from src.typing import T, T_co
 
 
 class CategoricalLabeler(Visitor[T_co]):
@@ -78,6 +77,20 @@ class BinaryHopLabeler(BinaryCategoricalLabeler):
             self.result = 1
 
 
+class BinaryRestrictionLabeler(BinaryCategoricalLabeler):
+    def __init__(self, lower: Optional[int], upper: Optional[int]):
+        super().__init__()
+        self.lower = lower
+        self.upper = upper
+
+        self.classes[f"restriction({lower},{upper})"] = 1
+
+    def _visit_Exist(self, node: Exist):
+        if self.lower == node.lower and self.upper == node.upper:
+            self.result = 1
+        super()._visit_Exist(node)
+
+
 # *----- multiclass
 
 
@@ -113,7 +126,7 @@ class MultiLabelCategoricalLabeler(CategoricalLabeler[List[int]]):
         self.result = list(set(self.result))
 
 
-class MultiClassAtomicLabeler(MultiLabelCategoricalLabeler):
+class MultiLabelAtomicLabeler(MultiLabelCategoricalLabeler):
     def __init__(self):
         super().__init__()
 
@@ -125,6 +138,34 @@ class MultiClassAtomicLabeler(MultiLabelCategoricalLabeler):
         self.result.append(self.classes[node.name])
 
 
+class MultilabelRestrictionLabeler(MultiLabelCategoricalLabeler):
+    def __init__(self):
+        super().__init__()
+        self.current_hop = 0
+        self.pairs: Dict[Tuple[Optional[int], Optional[int]], int] = {}
+        # ?? should we support/assign label to atomic formulas?
+        # something like Restriction(None) or something
+
+    def _visit_Exist(self, node: Exist):
+        self.current_hop += 1
+        if (node.lower, node.upper) not in self.pairs:
+            self.pairs[(node.lower, node.upper)] = self.current_counter
+            _cls = (f"Restriction({node.lower},{node.upper},"
+                    f"hop={self.current_hop})")
+            self.classes[_cls] = self.current_counter
+            self.current_counter += 1
+
+        self.result.append(self.pairs[(node.lower, node.upper)])
+        super()._visit_Exist(node)
+        self.current_hop -= 1
+
+
 # ------- apply --------
-class LabelerApply:
-    ...
+class LabelerApply(Generic[T]):
+    def __init__(self, labeler: CategoricalLabeler[T]):
+        self.labeler = labeler
+
+    def __call__(self, formulas: Mapping[str, Element]):
+        labels = {_hash: self.labeler(formula)
+                  for _hash, formula in formulas.items()}
+        return labels, self.labeler.classes
