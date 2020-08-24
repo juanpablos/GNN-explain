@@ -7,17 +7,17 @@ from typing import List
 import torch
 from sklearn.metrics import classification_report
 
+from src.data.formula_index import FormulaMapping
 from src.data.formulas import *
-from src.data.loader import FormulaConfig, load_gnn_files
+from src.data.loader import load_gnn_files
 from src.data.utils import (
     get_input_dim,
     get_label_distribution,
     train_test_dataset
 )
-from src.formula_index import FormulaMapping
 from src.run_logic import run, seed_everything
 from src.training.mlp_training import Training
-from src.typing import MinModelConfig, NetworkDataConfig, S
+from src.typing import MinModelConfig, NetworkDataConfig
 from src.visualization.confusion_matrix import plot_confusion_matrix
 from src.visualization.curve_plot import plot_training
 
@@ -27,7 +27,6 @@ logger = logging.getLogger("src")
 def run_experiment(
         model_config: MinModelConfig,
         data_config: NetworkDataConfig,
-        formulas_to_load: List[FormulaConfig[S]],
         iterations: int = 100,
         gpu_num: int = 0,
         seed: int = 10,
@@ -47,8 +46,7 @@ def run_experiment(
 
     logger.info("Loading Files")
     dataset, label_mapping = load_gnn_files(
-        formulas=formulas_to_load, **data_config,
-        _legacy_load_without_batch=_legacy_load_without_batch)
+        **data_config, _legacy_load_without_batch=_legacy_load_without_batch)
     n_classes = len(dataset.label_info)
     logger.debug(f"{n_classes} classes detected")
 
@@ -162,24 +160,24 @@ def main(
         "use_batch_norm": True
     }
 
-    model_hash = "f4034364ea-nosave"  # "f4034364ea",
-    data_config: NetworkDataConfig = {
-        "root": "data/gnns",
-        "model_hash": model_hash,
-        # * if load_all is true formula_hashes is ignored and each formula in the directory receives a different label
-        "load_all": False
-    }
-    formulas = FormulaConfig.from_hashes([
+    model_hash = "f4034364ea-nosave"  # "f4034364ea"
+    # filters = []
+    # selector = FilterApply(condition="and")
+    selector = SelectFilter(hashes=[
         "dc670b1bec",
         "4805042859",
         "688d12b701",
-        "652c706f1b",
-
-        # "7916873139",
-        # "a2e5ecf2db",
-        # "56b465adb3",
-        # "b6b4960f78"
+        "652c706f1b"
     ])
+    label_logic = BinaryAtomicLabeler(atomic="RED")
+    labeler = LabelerApply(labeler=label_logic)
+    data_config: NetworkDataConfig = {
+        "root": "data/gnns",
+        "model_hash": model_hash,
+        "selector": selector,
+        "labeler": labeler,
+        "mapping": FormulaMapping("./data/formulas.json")
+    }
 
     iterations = 20
     test_batch = 512
@@ -203,7 +201,6 @@ def main(
     run_experiment(
         model_config=model_config,
         data_config=data_config,
-        formulas_to_load=formulas,
         iterations=iterations,
         gpu_num=0,
         seed=seed,
