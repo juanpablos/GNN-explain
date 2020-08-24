@@ -7,7 +7,8 @@ from typing import List
 import torch
 from sklearn.metrics import classification_report
 
-from src.data.formulas.loader import FormulaConfig, load_gnn_files
+from src.data.formulas import *
+from src.data.loader import FormulaConfig, load_gnn_files
 from src.data.utils import (
     get_input_dim,
     get_label_distribution,
@@ -217,7 +218,7 @@ def main(
         model_name=model_name,
         plot_file_name=plot_file,
         plot_title=msg,  # ? maybe a better message
-        _legacy_load_without_batch=True # ! remove eventually
+        _legacy_load_without_batch=True  # ! remove eventually
     )
     end = timer()
     logger.info(f"Took {end-start} seconds")
