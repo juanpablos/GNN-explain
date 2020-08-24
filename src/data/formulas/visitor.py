@@ -20,10 +20,10 @@ class Visitor(ABC, Generic[T_co]):
 
     def _visit_Operator(self, node: Operator):
         if isinstance(node, NEG):
-            node.expression._visit(self)
+            node.expression._accept(self)
         else:
             for el in node.operands:
-                el._visit(self)
+                el._accept(self)
 
     def _visit_AND(self, node: AND):
         self._visit_Operator(node)
@@ -35,10 +35,10 @@ class Visitor(ABC, Generic[T_co]):
         self._visit_Operator(node)
 
     def _visit_Exist(self, node: Exist):
-        node.expression._visit(self)
+        node.expression._accept(self)
 
     def _visit_ForAll(self, node: ForAll):
-        node.expression._visit(self)
+        node.expression._accept(self)
 
     def _visit_Property(self, node: Property):
         pass
@@ -47,7 +47,7 @@ class Visitor(ABC, Generic[T_co]):
         pass
 
     def __call__(self, node: Element) -> T_co:
-        node._visit(self)
+        node._accept(self)
         self.process(node)
         res = self.result
         self.reset()

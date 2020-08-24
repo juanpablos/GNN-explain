@@ -20,7 +20,7 @@ class Element(ABC):
     def __str__(self):
         raise NotImplementedError("Element is abstract")
 
-    def _visit(self, visitor):
+    def _accept(self, visitor):
         getattr(visitor, f"_visit_{self.__class__.__name__}")(self)
 
 
