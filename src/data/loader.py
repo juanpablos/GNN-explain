@@ -59,6 +59,7 @@ def load_gnn_files(root: str,
 
     datasets: List[NetworkDataset[int]] = []
 
+    logger.info(f"Loading {len(selected_labels)} formulas")
     for formula_hash, label in selected_labels.items():
         file = dir_formulas[formula_hash]
         formula_object = selected_formulas[formula_hash]

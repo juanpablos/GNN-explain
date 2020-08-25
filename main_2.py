@@ -45,6 +45,9 @@ def run_experiment(
 ):
 
     logger.info("Loading Files")
+    # class_mapping: label_id -> label_name
+    # hash_formula: formula_hash -> formula_object
+    # hash_label: formula_hash -> label_id
     dataset, class_mapping, hash_formula, hash_label = load_gnn_files(
         **data_config, _legacy_load_without_batch=_legacy_load_without_batch)
     n_classes = len(class_mapping)
@@ -110,18 +113,19 @@ def run_experiment(
     target_names = list(class_mapping.values())
     print(classification_report(_y, _y_pred, target_names=target_names))
 
-    test_label_info = test_data.apply_subset().label_info
-    n_each_label = next(iter(test_label_info.values()))
-
     if plot_file_name is not None:
+        test_label_info = test_data.apply_subset().label_info
+        cm_labels = [
+            f"{label_name} ({test_label_info[label]})"
+            for label, label_name in class_mapping.items()]
         plot_confusion_matrix(
             _y,
             _y_pred,
             save_path=results_path,
             file_name=plot_file_name,
             title=plot_title,
-            labels=target_names,
-            each_label=n_each_label)
+            labels=cm_labels,
+            normalize_cm=True)
 
         metrics = train_state.get_metric_logger()
         plot_training(
@@ -156,17 +160,19 @@ def main(
         "use_batch_norm": True
     }
 
-    model_hash = "f4034364ea-nosavebatch"
+    model_hash = "f4034364ea-savebatch"
 
     # * filters
-    # filters = []
     # selector = FilterApply(condition="and")
-    selector = SelectFilter(hashes=[
-        "0c957889eb",
-        "bfd9f60763",
-        "aae49a2efc",
-        "0478e039d0"
-    ])
+    # selector.add(AtomicFilter(atomic="all"))
+    # selector.add(RestrictionFilter(lower=1, upper=2))
+    # selector = SelectFilter(hashes=[
+    #     "150edbf88b",
+    #     "bfd9f60763",
+    #     # "bfd9f60763",
+    #     # "0478e039d0"
+    # ])
+    selector = NoFilter()
 
     # * labelers
     label_logic = BinaryAtomicLabeler(atomic="RED")

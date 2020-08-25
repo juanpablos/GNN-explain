@@ -15,12 +15,13 @@ def plot_confusion_matrix(
         title: str = None,
         *,
         labels=None,
-        each_label: int = None):
+        normalize_cm: bool = True):
     logger.info(f"Calculating confusion matrix")
 
-    normalize = None
-    if each_label is not None:
+    if normalize_cm:
         normalize = "true"
+    else:
+        normalize = None
 
     matrix_og = confusion_matrix(y, y_pred, normalize=normalize)
 
@@ -34,10 +35,7 @@ def plot_confusion_matrix(
 
     plt.setp(ax.get_xticklabels(), rotation=30,  # type:ignore
              horizontalalignment='right')
-    if each_label is None:
-        plt.title("Confusion matrix")
-    else:
-        plt.title(f"Confusion matrix: {each_label} elements each class")
+    if normalize_cm:
         disp.im_.set_clim(0, 1)
     plt.tight_layout()
 
