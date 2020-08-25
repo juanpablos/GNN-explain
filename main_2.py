@@ -18,6 +18,7 @@ from src.data.utils import (
 from src.run_logic import run, seed_everything
 from src.training.mlp_training import Training
 from src.typing import MinModelConfig, NetworkDataConfig
+from src.utils import write_result_info
 from src.visualization.confusion_matrix import plot_confusion_matrix
 from src.visualization.curve_plot import plot_training
 
@@ -41,6 +42,7 @@ def run_experiment(
         model_name: str = None,
         plot_file_name: str = None,
         plot_title: str = None,
+        info_file_name: str = "info",
         _legacy_load_without_batch: bool = False
 ):
 
@@ -92,11 +94,12 @@ def run_experiment(
         lr=lr,
         run_train_test=run_train_test)
 
-    os.makedirs(f"{results_path}/info/", exist_ok=True)
-    with open(f"{results_path}/info/{model_name}.txt", "w",
-              encoding="utf-8") as o:
-        for _hash, formula in hash_formula.items():
-            o.write(f"{_hash}\t{hash_label[_hash]}\t{formula}\n")
+    write_result_info(
+        path=results_path,
+        file_name=info_file_name,
+        hash_formula=hash_formula,
+        hash_label=hash_label,
+        classes=class_mapping)
 
     if model_name is not None:
         model.cpu()
@@ -160,7 +163,7 @@ def main(
         "use_batch_norm": True
     }
 
-    model_hash = "f4034364ea-savebatch"
+    model_hash = "f4034364ea-ebatch"
 
     # * filters
     # selector = FilterApply(condition="and")
@@ -221,6 +224,7 @@ def main(
         model_name=model_name,
         plot_file_name=plot_file,
         plot_title=msg,  # ? maybe a better message
+        info_file_name=msg,
         _legacy_load_without_batch=True  # ! remove eventually
     )
     end = timer()

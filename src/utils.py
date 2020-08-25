@@ -2,10 +2,11 @@ import csv
 import json
 import logging
 import os
+from collections import defaultdict
 from collections.abc import Mapping
 from typing import Any, Dict
 
-from src.graphs.foc import FOC
+from src.graphs.foc import FOC, Element
 from src.typing import GNNModelConfig
 
 logger = logging.getLogger(__name__)
@@ -56,7 +57,7 @@ def cleanup(exists, path, file):
 
 
 def write_metadata(
-        destination: str,
+        file_path: str,
         model_config: GNNModelConfig,
         model_config_hash: str,
         formula: FOC,
@@ -72,7 +73,7 @@ def write_metadata(
     * formula hash, formula string, model hash, seed,
     *    model config, data config, others
     """
-    with open(destination, "a", newline='', encoding='utf-8') as f:
+    with open(file_path, "a", newline='', encoding='utf-8') as f:
         writer = csv.writer(f, quotechar="|")
         writer.writerow([
             formula_hash,
@@ -83,3 +84,28 @@ def write_metadata(
             json.dumps(data_config),
             json.dumps(kwargs)
         ])
+
+
+def write_result_info(
+        path: str,
+        file_name: str,
+        hash_formula: Dict[str, Element],
+        hash_label: Dict[str, Any],
+        classes: Dict[Any, str]):
+
+    os.makedirs(f"{path}/info/", exist_ok=True)
+
+    # format:
+    # label_id label_name n_formulas
+    # \t hash formula
+
+    # label_id -> list[hashes]
+    groups = defaultdict(list)
+    for _hash, label in hash_label.items():
+        groups[label].append(_hash)
+
+    with open(f"{path}/info/{file_name}.txt", "w", encoding="utf-8") as o:
+        for label_id, hashes in groups.items():
+            o.write(f"{label_id}\t{classes[label_id]}\t{len(hashes)}\n")
+            for _hash in hashes:
+                o.write(f"\t{_hash}\t{hash_formula[_hash]}\n")
