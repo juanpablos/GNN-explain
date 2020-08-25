@@ -52,11 +52,12 @@ class BinaryAtomicLabeler(BinaryCategoricalLabeler):
         else:
             self.target_hop = hop
 
-        # FIX this is horrible, pls fix
-        positive_text = "{} {} hop" if not negate else "NEG({} {} hop)"
         txt_hop = str(hop) if hop is not None else "any"
+        txt = f"{atomic} {txt_hop} hop"
+        if negate:
+            txt = f"NEG({txt})"
         # possitive class
-        self.classes[1] = positive_text.format(atomic, txt_hop)
+        self.classes[1] = txt
 
     def _visit_Exist(self, node: Exist):
         self.current_hop += 1
@@ -69,6 +70,9 @@ class BinaryAtomicLabeler(BinaryCategoricalLabeler):
             # if the atomic is seen, then mark as 1
             self.result = 1
 
+    def __str__(self):
+        return f"BinaryAtomic({self.selected},{self.target_hop},{self.negate})"
+
 
 class BinaryHopLabeler(BinaryCategoricalLabeler):
     def __init__(self, hop: int, negate: bool = False):
@@ -79,8 +83,11 @@ class BinaryHopLabeler(BinaryCategoricalLabeler):
         self.max_hop = self.current_hop
         self.target_hop = hop
 
+        txt = f"is {hop} hop"
+        if negate:
+            txt = f"NEG({txt})"
         # possitive class
-        self.classes[1] = f"is {hop} hop"
+        self.classes[1] = txt
 
     def _visit_Exist(self, node: Exist):
         self.current_hop += 1
@@ -92,20 +99,33 @@ class BinaryHopLabeler(BinaryCategoricalLabeler):
         if self.max_hop == self.target_hop:
             self.result = 1
 
+    def __str__(self):
+        return f"BinaryHop({self.target_hop},{self.negate})"
+
 
 class BinaryRestrictionLabeler(BinaryCategoricalLabeler):
-    def __init__(self, lower: Optional[int], upper: Optional[int]):
-        super().__init__()
+    def __init__(
+            self,
+            lower: Optional[int],
+            upper: Optional[int],
+            negate: bool = False):
+        super().__init__(negate=negate)
         self.lower = lower
         self.upper = upper
 
+        txt = f"restriction({lower},{upper})"
+        if negate:
+            txt = f"NEG({txt})"
         # possitive class
-        self.classes[1] = f"restriction({lower},{upper})"
+        self.classes[1] = txt
 
     def _visit_Exist(self, node: Exist):
         if self.lower == node.lower and self.upper == node.upper:
             self.result = 1
         super()._visit_Exist(node)
+
+    def __str__(self):
+        return f"BinaryRestriction({self.lower},{self.upper},{self.negate})"
 
 
 # *----- multiclass
@@ -124,6 +144,9 @@ class SequentialCategoricalLabeler(CategoricalLabeler[int, int]):
         self.classes[self.result] = str(node)
         self.current_counter += 1
         return self.result
+
+    def __str__(self):
+        return "Sequential()"
 
 
 class MultiLabelCategoricalLabeler(CategoricalLabeler[List[int], int]):
@@ -158,6 +181,9 @@ class MultiLabelAtomicLabeler(MultiLabelCategoricalLabeler):
 
         self.result.append(self.inverse_classes[node.name])
 
+    def __str__(self):
+        return "MultiLabelAtomic()"
+
 
 class MultilabelRestrictionLabeler(MultiLabelCategoricalLabeler):
     def __init__(self):
@@ -184,6 +210,9 @@ class MultilabelRestrictionLabeler(MultiLabelCategoricalLabeler):
 
         self.current_hop -= 1
 
+    def __str__(self):
+        return "MultiLabelRestriction()"
+
 # *------- apply --------
 
 
@@ -195,3 +224,6 @@ class LabelerApply(Generic[T, S]):
         labels = {_hash: self.labeler(formula)
                   for _hash, formula in formulas.items()}
         return labels, self.labeler.classes
+
+    def __str__(self):
+        return str(self.labeler)

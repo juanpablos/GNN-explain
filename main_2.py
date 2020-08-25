@@ -154,8 +154,8 @@ def main(
     # filters = []
     # selector = FilterApply(condition="and")
     selector = SelectFilter(hashes=[
-        "dc670b1bec",
-        "4805042859",
+        "0c957889eb",
+        "bfd9f60763",
         # "688d12b701",
         # "652c706f1b"
     ])
@@ -173,7 +173,7 @@ def main(
     test_batch = 512
 
     if name is None:
-        name = "atomic"
+        name = f"{selector}-{labeler}"
 
     hid = "+".join(
         [f"{l}L{val}" for l, val in enumerate(hidden_layers, start=1)])

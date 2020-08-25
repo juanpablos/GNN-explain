@@ -22,11 +22,6 @@ class Filterer(Visitor[bool]):
         self.result = False
 
 
-class NoFilter(Filterer):
-    def __call__(self, node: Element):
-        return True
-
-
 class AtomicFilter(Filterer):
     def __init__(self,
                  atomic: Union[Literal["all"],
@@ -55,6 +50,9 @@ class AtomicFilter(Filterer):
                 (self.target_hop == -1 or self.current_hop == self.target_hop):
             self.result = True
 
+    def __str__(self):
+        return f"AtomicFilter({self.selected},{self.target_hop})"
+
 
 class RestrictionFilter(Filterer):
     def __init__(self, lower: int = None, upper: int = None):
@@ -71,6 +69,9 @@ class RestrictionFilter(Filterer):
 
         # ?? may be stop here
         super()._visit_Exist(node)
+
+    def __str__(self):
+        return f"RestrictionFilter({self.lower},{self.upper})"
 
 
 class FilterApply:
@@ -98,13 +99,31 @@ class FilterApply:
         return {_hash: formula for _hash, formula
                 in formulas.items() if self._apply(formula)}
 
+    def __str__(self):
+        return f""
+
 
 class SelectFilter:
-    def __init__(self, hashes: List[str]):
+    def __init__(self, hashes: List[str], name: str = None):
         self.hashes = hashes
+        self.name = name
 
     def __call__(self, formulas: Mapping[str, Element]):
         if not all(_hash in formulas for _hash in self.hashes):
             _not = [_hash for _hash in self.hashes if _hash not in formulas]
             raise ValueError(f"Not all selected hashes are available: {_not}")
         return {_hash: formulas[_hash] for _hash in self.hashes}
+
+    def __str__(self):
+        if self.name is None:
+            return f"ManualFilter({len(self.hashes)})"
+        else:
+            return self.name
+
+
+class NoFilter(Filterer):
+    def __call__(self, node: Element):
+        return True
+
+    def __str__(self):
+        return "NoFilter()"
