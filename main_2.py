@@ -163,7 +163,7 @@ def main(
         "use_batch_norm": True
     }
 
-    model_hash = "f4034364ea-ebatch"
+    model_hash = "f4034364ea-batch"
 
     # * filters
     # selector = FilterApply(condition="and")
@@ -178,7 +178,7 @@ def main(
     selector = NoFilter()
 
     # * labelers
-    label_logic = BinaryAtomicLabeler(atomic="RED")
+    label_logic = BinaryAtomicLabeler(atomic="BLACK")
     labeler = LabelerApply(labeler=label_logic)
     data_config: NetworkDataConfig = {
         "root": "data/gnns",

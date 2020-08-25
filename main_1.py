@@ -10,7 +10,6 @@ from typing import Any, Dict
 import torch
 
 from src.data.datasets import RandomGraphDataset
-# from src.data.utils import clean_state
 from src.generate_graphs import graph_stream
 from src.graphs import *
 from src.run_logic import run, seed_everything
@@ -89,7 +88,6 @@ def run_experiment(
 
             model.cpu()
             weights = model.state_dict()
-            # weights = clean_state(model.state_dict())
             models.append(weights)
 
             metrics = training_state.get_metric_logger()
@@ -145,7 +143,7 @@ def main(use_formula: FOC = None):
     # seed = 10
     seed_everything(seed)
 
-    n_models = 10
+    n_models = 50
     model_name = "acgnn"
 
     input_dim = 4
@@ -188,7 +186,7 @@ def main(use_formula: FOC = None):
         "m": 4
     }
 
-    save_path = f"data/gnns/{model_config_hash}-savebatch"
+    save_path = f"data/gnns/{model_config_hash}-testing"
     # ! manual operation
     os.makedirs(save_path, exist_ok=True)
     # * model_name - number of models - model hash - formula hash
