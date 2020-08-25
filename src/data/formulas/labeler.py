@@ -2,22 +2,22 @@ from typing import Dict, Generic, List, Mapping, Optional, Tuple
 
 from src.data.formulas.visitor import Visitor
 from src.graphs.foc import Element, Exist, Property
-from src.typing import T, T_co
+from src.typing import S, S_co, T, T_co
 
 
-class CategoricalLabeler(Visitor[T_co]):
+class CategoricalLabeler(Visitor[T_co], Generic[T_co, S_co]):
     def __init__(self):
-        self.classes: Dict[str, int] = {}
+        self.classes: Dict[S_co, str] = {}
 
 # *----- binary
 
 
-class BinaryCategoricalLabeler(CategoricalLabeler[int]):
+class BinaryCategoricalLabeler(CategoricalLabeler[int, int]):
     def __init__(self, negate: bool = False):
         super().__init__()
         self.result = 0
         self.negate = negate
-        self.classes["other"] = 0
+        self.classes[0] = "other"
 
     def reset(self):
         self.result = 0
@@ -41,7 +41,7 @@ class BinaryAtomicLabeler(BinaryCategoricalLabeler):
         # FIX this is horrible, pls fix
         positive_text = "{} {} hop" if not negate else "NEG({} {} hop)"
         txt_hop = str(hop) if hop is not None else "any"
-        self.classes[positive_text.format(atomic, txt_hop)] = 1
+        self.classes[1] = positive_text.format(atomic, txt_hop)
 
     def _visit_Exist(self, node: Exist):
         self.current_hop += 1
@@ -64,7 +64,7 @@ class BinaryHopLabeler(BinaryCategoricalLabeler):
         self.max_hop = self.current_hop
         self.target_hop = hop
 
-        self.classes[f"is {hop} hop"] = 1
+        self.classes[1] = f"is {hop} hop"
 
     def _visit_Exist(self, node: Exist):
         self.current_hop += 1
@@ -83,7 +83,7 @@ class BinaryRestrictionLabeler(BinaryCategoricalLabeler):
         self.lower = lower
         self.upper = upper
 
-        self.classes[f"restriction({lower},{upper})"] = 1
+        self.classes[1] = f"restriction({lower},{upper})"
 
     def _visit_Exist(self, node: Exist):
         if self.lower == node.lower and self.upper == node.upper:
@@ -94,7 +94,7 @@ class BinaryRestrictionLabeler(BinaryCategoricalLabeler):
 # *----- multiclass
 
 
-class SequentialCategoricalLabeler(CategoricalLabeler[int]):
+class SequentialCategoricalLabeler(CategoricalLabeler[int, int]):
     def __init__(self):
         super().__init__()
         self.current_counter = 0
@@ -104,12 +104,12 @@ class SequentialCategoricalLabeler(CategoricalLabeler[int]):
 
     def __call__(self, node: Element):
         self.result = self.current_counter
+        self.classes[self.result] = str(node)
         self.current_counter += 1
-        self.classes[str(node)] = self.result
         return self.result
 
 
-class MultiLabelCategoricalLabeler(CategoricalLabeler[List[int]]):
+class MultiLabelCategoricalLabeler(CategoricalLabeler[List[int], int]):
     def __init__(self):
         super().__init__()
         self.current_counter = 0
@@ -129,13 +129,16 @@ class MultiLabelCategoricalLabeler(CategoricalLabeler[List[int]]):
 class MultiLabelAtomicLabeler(MultiLabelCategoricalLabeler):
     def __init__(self):
         super().__init__()
+        # TODO: unify inverse logic between multilabel labelers
+        self.inverse_classes: Dict[str, int] = {}
 
     def _visit_Property(self, node: Property):
         if node.name not in self.classes:
-            self.classes[node.name] = self.current_counter
+            self.classes[self.current_counter] = node.name
+            self.inverse_classes[node.name] = self.current_counter
             self.current_counter += 1
 
-        self.result.append(self.classes[node.name])
+        self.result.append(self.inverse_classes[node.name])
 
 
 class MultilabelRestrictionLabeler(MultiLabelCategoricalLabeler):
@@ -148,21 +151,25 @@ class MultilabelRestrictionLabeler(MultiLabelCategoricalLabeler):
 
     def _visit_Exist(self, node: Exist):
         self.current_hop += 1
+
         if (node.lower, node.upper) not in self.pairs:
             self.pairs[(node.lower, node.upper)] = self.current_counter
             _cls = (f"Restriction({node.lower},{node.upper},"
                     f"hop={self.current_hop})")
-            self.classes[_cls] = self.current_counter
+            self.classes[self.current_counter] = _cls
             self.current_counter += 1
 
         self.result.append(self.pairs[(node.lower, node.upper)])
+
         super()._visit_Exist(node)
+
         self.current_hop -= 1
 
+# *------- apply --------
 
-# ------- apply --------
-class LabelerApply(Generic[T]):
-    def __init__(self, labeler: CategoricalLabeler[T]):
+
+class LabelerApply(Generic[T, S]):
+    def __init__(self, labeler: CategoricalLabeler[T, S]):
         self.labeler = labeler
 
     def __call__(self, formulas: Mapping[str, Element]):
