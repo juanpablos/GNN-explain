@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Generic
+from typing import Generic, TypeVar
 
 from src.graphs.foc import (
     AND,
@@ -12,7 +12,8 @@ from src.graphs.foc import (
     Property,
     Role
 )
-from src.typing import T_co
+
+T_co = TypeVar("T_co", covariant=True)
 
 
 class Visitor(ABC, Generic[T_co]):

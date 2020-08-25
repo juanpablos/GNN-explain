@@ -1,6 +1,5 @@
 from abc import abstractmethod
 from typing import (
-    TYPE_CHECKING,
     Dict,
     Iterator,
     List,
@@ -21,10 +20,9 @@ import torch.optim as optim
 from torch.utils.data.dataloader import DataLoader as torch_loader
 from torch_geometric.data import DataLoader as torch_geometric_loader
 
-if TYPE_CHECKING:
-    from src.data.formula_index import FormulaMapping
-    from src.data.formulas.filter import FilterApply, SelectFilter
-    from src.data.formulas.labeler import LabelerApply
+from src.data.formula_index import FormulaMapping
+from src.data.formulas.filter import FilterApply, SelectFilter
+from src.data.formulas.labeler import LabelerApply
 
 T = TypeVar("T")
 S = TypeVar("S")

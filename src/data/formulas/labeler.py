@@ -1,8 +1,21 @@
-from typing import Dict, Generic, List, Mapping, Optional, Tuple, OrderedDict
+from typing import (
+    Dict,
+    Generic,
+    List,
+    Mapping,
+    Optional,
+    OrderedDict,
+    Tuple,
+    TypeVar
+)
 
 from src.data.formulas.visitor import Visitor
 from src.graphs.foc import Element, Exist, Property
-from src.typing import S, S_co, T, T_co
+
+T = TypeVar("T")
+S = TypeVar("S")
+T_co = TypeVar("T_co", covariant=True)
+S_co = TypeVar("S_co", covariant=True)
 
 
 class CategoricalLabeler(Visitor[T_co], Generic[T_co, S_co]):
