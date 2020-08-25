@@ -45,7 +45,7 @@ def run_experiment(
 ):
 
     logger.info("Loading Files")
-    dataset, class_mapping = load_gnn_files(
+    dataset, class_mapping, hash_formula, hash_label = load_gnn_files(
         **data_config, _legacy_load_without_batch=_legacy_load_without_batch)
     n_classes = len(class_mapping)
     logger.debug(f"{n_classes} classes detected")
@@ -88,6 +88,12 @@ def run_experiment(
         test_batch_size=test_batch_size,
         lr=lr,
         run_train_test=run_train_test)
+
+    os.makedirs(f"{results_path}/info/", exist_ok=True)
+    with open(f"{results_path}/info/{model_name}.txt", "w",
+              encoding="utf-8") as o:
+        for _hash, formula in hash_formula.items():
+            o.write(f"{_hash}\t{hash_label[_hash]}\t{formula}\n")
 
     if model_name is not None:
         model.cpu()
@@ -151,14 +157,18 @@ def main(
     }
 
     model_hash = "f4034364ea-nosavebatch"
+
+    # * filters
     # filters = []
     # selector = FilterApply(condition="and")
     selector = SelectFilter(hashes=[
         "0c957889eb",
         "bfd9f60763",
-        # "688d12b701",
-        # "652c706f1b"
+        "aae49a2efc",
+        "0478e039d0"
     ])
+
+    # * labelers
     label_logic = BinaryAtomicLabeler(atomic="RED")
     labeler = LabelerApply(labeler=label_logic)
     data_config: NetworkDataConfig = {

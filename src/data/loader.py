@@ -61,7 +61,7 @@ def load_gnn_files(root: str,
 
     for formula_hash, label in selected_labels.items():
         file = dir_formulas[formula_hash]
-        formula_object = dir_mapping[formula_hash]
+        formula_object = selected_formulas[formula_hash]
 
         logger.info(f"\tLoading {formula_hash}: {formula_object}: {label}")
 
@@ -74,4 +74,5 @@ def load_gnn_files(root: str,
 
         datasets.append(dataset)
 
-    return LabeledDataset.from_iterable(datasets), classes
+    return LabeledDataset.from_iterable(datasets), \
+        classes, selected_formulas, selected_labels
