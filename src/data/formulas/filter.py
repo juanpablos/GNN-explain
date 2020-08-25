@@ -4,12 +4,12 @@ from src.data.formulas.visitor import Visitor
 from src.graphs.foc import Element, Exist, Property
 
 # REV: seach for a better way to do this
-__available = ["RED", "BLUE", "GREEN", "BLACK"]
+_available = ["RED", "BLUE", "GREEN", "BLACK"]
 
 
 def _check_atomic(atomic):
-    if not all(at in __available for at in atomic):
-        _not = [at for at in atomic if at not in __available]
+    if not all(at in _available for at in atomic):
+        _not = [at for at in atomic if at not in _available]
         raise ValueError(
             f"Not all selected atomic formulas are available. {_not}")
 
@@ -29,7 +29,7 @@ class AtomicFilter(Filterer):
                  hop: int = None):
         super().__init__()
         if atomic == "all":
-            self.selected = __available
+            self.selected = _available
         else:
             _check_atomic(atomic)
             self.selected = atomic
@@ -100,7 +100,8 @@ class FilterApply:
                 in formulas.items() if self._apply(formula)}
 
     def __str__(self):
-        return f""
+        filter_str = ",".join(str(filt) for filt in self.filters)
+        return f"{self.condition}({filter_str})"
 
 
 class SelectFilter:
