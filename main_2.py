@@ -45,9 +45,9 @@ def run_experiment(
 ):
 
     logger.info("Loading Files")
-    dataset, label_mapping = load_gnn_files(
+    dataset, class_mapping = load_gnn_files(
         **data_config, _legacy_load_without_batch=_legacy_load_without_batch)
-    n_classes = len(dataset.label_info)
+    n_classes = len(class_mapping)
     logger.debug(f"{n_classes} classes detected")
 
     logger.debug("Splitting data")
@@ -100,22 +100,11 @@ def run_experiment(
     _y = train_state.metrics.acc_y
     _y_pred = train_state.metrics.acc_y_pred
 
-    try:
-        formula_mapping = FormulaMapping("./data/formulas.json")
-        label_formula = {label: str(formula_mapping[h])
-                         for h, label in label_mapping.items()}
-    except Exception as e:
-        logger.error("Exception encountered when using formula mapping")
-        logger.error("Message:", e)
-        # fallback when cannot use the formula mapping
-        label_formula = {label: str(label) for label in label_mapping.values()}
-
-    target_names = [label_formula[k] for k in sorted(label_formula)]
+    target_names = [class_mapping[k] for k in sorted(class_mapping)]
     print(classification_report(_y, _y_pred, target_names=target_names))
-    # print(json.dumps(label_formula, indent=2, ensure_ascii=False))
 
     test_label_info = test_data.apply_subset().label_info
-    each_label = next(iter(test_label_info.values()))
+    n_each_label = next(iter(test_label_info.values()))
 
     if plot_file_name is not None:
         plot_confusion_matrix(
@@ -125,7 +114,7 @@ def run_experiment(
             file_name=plot_file_name,
             title=plot_title,
             labels=target_names,
-            each_label=each_label)
+            each_label=n_each_label)
 
         metrics = train_state.get_metric_logger()
         plot_training(
