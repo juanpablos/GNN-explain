@@ -104,5 +104,7 @@ class SelectFilter:
         self.hashes = hashes
 
     def __call__(self, formulas: Mapping[str, Element]):
-        return {_hash: formula for _hash, formula
-                in formulas.items() if _hash in self.hashes}
+        if not all(_hash in formulas for _hash in self.hashes):
+            _not = [_hash for _hash in self.hashes if _hash not in formulas]
+            raise ValueError(f"Not all selected hashes are available: {_not}")
+        return {_hash: formulas[_hash] for _hash in self.hashes}
