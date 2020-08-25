@@ -33,7 +33,7 @@ def load_gnn_files(root: str,
 
     if model_hash not in os.listdir(root):
         raise FileExistsError(
-            f"No directory for the current model hash: {root}")
+            f"No directory for the current model hash: {root}/{model_hash}")
 
     if isinstance(labeler, MultiLabelCategoricalLabeler):
         # TODO: implement multi label

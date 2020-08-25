@@ -105,7 +105,8 @@ def write_result_info(
         groups[label].append(_hash)
 
     with open(f"{path}/info/{file_name}.txt", "w", encoding="utf-8") as o:
-        for label_id, hashes in groups.items():
-            o.write(f"{label_id}\t{classes[label_id]}\t{len(hashes)}\n")
+        for label_id, label_name in classes.items():
+            hashes = groups[label_id]
+            o.write(f"{label_id}\t{label_name}\t{len(hashes)}\n")
             for _hash in hashes:
                 o.write(f"\t{_hash}\t{hash_formula[_hash]}\n")
