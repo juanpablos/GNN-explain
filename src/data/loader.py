@@ -1,94 +1,72 @@
-from __future__ import annotations
-
 import logging
 import os
-from typing import Dict, Generic, Iterable, List, Type, Union
+from typing import Dict, List, Union
 
 from src.data.datasets import LabeledDataset, NetworkDataset
-from src.typing import S, S_co
+from src.data.formula_index import FormulaMapping
+from src.data.formulas.filter import FilterApply, SelectFilter
+from src.data.formulas.labeler import (
+    LabelerApply,
+    MultiLabelCategoricalLabeler
+)
+from src.typing import S, T
 
 logger = logging.getLogger(__name__)
 
 
-class FormulaConfig(Generic[S_co]):
-    def __init__(
-            self,
-            formula_hash: str,
-            formula_label: S_co,
-            limit: int = None):
-        self.formula = formula_hash
-        self.label = formula_label
-        self.limit = limit
-
-    def get_content(self):
-        return self.formula, self.label, self.limit
-
-    def __eq__(self, other: Union[str, FormulaConfig]):
-        if isinstance(other, str):
-            return self.formula == other
-        elif isinstance(other, FormulaConfig):
-            return self.formula == other.formula
-        else:
-            return False
-
-    def __hash__(self):
-        return hash(self.formula)
-
-    @classmethod
-    def from_hashes(cls: Type[FormulaConfig[int]], hashes: Iterable[str]):
-        configs: List[FormulaConfig[int]] = []
-        for l, h in enumerate(hashes):
-            configs.append(cls(h, formula_label=l))
-
-        return configs
+def __prepare_files(path: str):
+    files: Dict[str, str] = {}
+    # reproducibility, always sorted files
+    for file in sorted(os.listdir(path)):
+        if file.endswith(".pt"):
+            _hash = file.split(".")[0].split("-")[-1]
+            files[_hash] = file
+    return files
 
 
-def load_gnn_files(root: str, model_hash: str,
-                   formulas: Iterable[FormulaConfig[S]],
-                   load_all: bool,
+def load_gnn_files(root: str,
+                   model_hash: str,
+                   selector: Union[SelectFilter, FilterApply],
+                   labeler: LabelerApply[T, S],
+                   formula_mapping: FormulaMapping,
                    _legacy_load_without_batch: bool = False):
-
-    def _prepare_files(path: str):
-        files: Dict[str, str] = {}
-        # reproducibility, always sorted files
-        for file in sorted(os.listdir(path)):
-            if file.endswith(".pt"):
-                _hash = file.split(".")[0].split("-")[-1]
-                files[_hash] = file
-        return files
 
     if model_hash not in os.listdir(root):
         raise FileExistsError(
             f"No directory for the current model hash: {root}")
 
+    if isinstance(labeler, MultiLabelCategoricalLabeler):
+        # TODO: implement multi label
+        raise NotImplementedError(
+            "Multilabel classification is yet to be implemented")
+
     model_path = os.path.join(root, model_hash)
-    dir_formulas = _prepare_files(model_path)
+    # select all formulas available in directory
+    # formula_hash -> file_path
+    dir_formulas = __prepare_files(model_path)
+    # mapping from formula_hash -> formula object
+    dir_mapping = {_hash: formula_mapping[_hash] for _hash in dir_formulas}
 
-    if load_all:
-        formula_configs = FormulaConfig.from_hashes(dir_formulas.keys())
-    else:
-        if not all(f in dir_formulas for f in formulas):
-            _not = [f.formula for f in formulas if f not in dir_formulas]
-            raise ValueError(
-                "Not all requested formula hashes are present "
-                f"in the directory: {_not}")
+    # mapping from the selected formula_hash -> formula object
+    selected_formulas = selector(dir_mapping)
+    # mapping from the selected formula_hash -> label
+    # classes is a dictionary class_id -> class_str
+    selected_labels, classes = labeler(selected_formulas)
 
-        formula_configs = formulas
-
-    mapping: Dict[str, int] = {}
     datasets: List[NetworkDataset[int]] = []
-    for configs in formula_configs:
-        formula_hash, label, limit = configs.get_content()
+
+    for formula_hash, label in selected_labels.items():
+        file = dir_formulas[formula_hash]
+
         logger.info(f"\tLoading {formula_hash}")
 
-        file_path = os.path.join(model_path, dir_formulas[formula_hash])
+        file_path = os.path.join(model_path, file)
         dataset = NetworkDataset(
             file=file_path,
             label=label,
-            limit=limit,
+            # limit=limit,
             _legacy_load_without_batch=_legacy_load_without_batch)
 
         datasets.append(dataset)
-        mapping[formula_hash] = label
 
-    return LabeledDataset.from_iterable(datasets), mapping
+    return LabeledDataset.from_iterable(datasets), classes
