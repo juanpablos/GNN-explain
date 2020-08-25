@@ -49,10 +49,10 @@ def load_gnn_files(root: str,
     # mapping from formula_hash -> formula object
     dir_mapping = {_hash: formula_mapping[_hash] for _hash in dir_formulas}
 
-    logger.debug("Running formula selector")
+    logger.debug(f"Running formula selector {selector}")
     # mapping from the selected formula_hash -> formula object
     selected_formulas = selector(dir_mapping)
-    logger.debug("Running formula labeler")
+    logger.debug(f"Running formula labeler {labeler}")
     # mapping from the selected formula_hash -> label
     # classes is a dictionary class_id -> class_str
     selected_labels, classes = labeler(selected_formulas)
@@ -61,8 +61,9 @@ def load_gnn_files(root: str,
 
     for formula_hash, label in selected_labels.items():
         file = dir_formulas[formula_hash]
+        formula_object = dir_mapping[formula_hash]
 
-        logger.info(f"\tLoading {formula_hash}")
+        logger.info(f"\tLoading {formula_hash}: {formula_object}: {label}")
 
         file_path = os.path.join(model_path, file)
         dataset = NetworkDataset(
