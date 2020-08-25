@@ -100,7 +100,8 @@ def run_experiment(
     _y = train_state.metrics.acc_y
     _y_pred = train_state.metrics.acc_y_pred
 
-    target_names = [class_mapping[k] for k in sorted(class_mapping)]
+    # class_mapping is an ordered dict
+    target_names = list(class_mapping.keys())
     print(classification_report(_y, _y_pred, target_names=target_names))
 
     test_label_info = test_data.apply_subset().label_info

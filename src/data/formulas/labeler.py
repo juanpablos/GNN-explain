@@ -1,4 +1,4 @@
-from typing import Dict, Generic, List, Mapping, Optional, Tuple
+from typing import Dict, Generic, List, Mapping, Optional, Tuple, OrderedDict
 
 from src.data.formulas.visitor import Visitor
 from src.graphs.foc import Element, Exist, Property
@@ -7,7 +7,7 @@ from src.typing import S, S_co, T, T_co
 
 class CategoricalLabeler(Visitor[T_co], Generic[T_co, S_co]):
     def __init__(self):
-        self.classes: Dict[S_co, str] = {}
+        self.classes: OrderedDict[S_co, str] = OrderedDict()
 
 # *----- binary
 
@@ -17,6 +17,7 @@ class BinaryCategoricalLabeler(CategoricalLabeler[int, int]):
         super().__init__()
         self.result = 0
         self.negate = negate
+        # default class
         self.classes[0] = "other"
 
     def reset(self):
@@ -41,6 +42,7 @@ class BinaryAtomicLabeler(BinaryCategoricalLabeler):
         # FIX this is horrible, pls fix
         positive_text = "{} {} hop" if not negate else "NEG({} {} hop)"
         txt_hop = str(hop) if hop is not None else "any"
+        # possitive class
         self.classes[1] = positive_text.format(atomic, txt_hop)
 
     def _visit_Exist(self, node: Exist):
@@ -64,6 +66,7 @@ class BinaryHopLabeler(BinaryCategoricalLabeler):
         self.max_hop = self.current_hop
         self.target_hop = hop
 
+        # possitive class
         self.classes[1] = f"is {hop} hop"
 
     def _visit_Exist(self, node: Exist):
@@ -83,6 +86,7 @@ class BinaryRestrictionLabeler(BinaryCategoricalLabeler):
         self.lower = lower
         self.upper = upper
 
+        # possitive class
         self.classes[1] = f"restriction({lower},{upper})"
 
     def _visit_Exist(self, node: Exist):
@@ -130,6 +134,7 @@ class MultiLabelAtomicLabeler(MultiLabelCategoricalLabeler):
     def __init__(self):
         super().__init__()
         # TODO: unify inverse logic between multilabel labelers
+        # no need for this to be ordered
         self.inverse_classes: Dict[str, int] = {}
 
     def _visit_Property(self, node: Property):
@@ -145,6 +150,7 @@ class MultilabelRestrictionLabeler(MultiLabelCategoricalLabeler):
     def __init__(self):
         super().__init__()
         self.current_hop = 0
+        # no need for this to be ordered
         self.pairs: Dict[Tuple[Optional[int], Optional[int]], int] = {}
         # ?? should we support/assign label to atomic formulas?
         # something like Restriction(None) or something
