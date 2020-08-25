@@ -228,7 +228,7 @@ def main(use_formula: FOC = None):
     unique_test = True
 
     write_metadata(
-        destination=f"{save_path}/.meta.csv",
+        file_path=f"{save_path}/.meta.csv",
         model_config=model_config,
         model_config_hash=model_config_hash,
         formula=formula,
