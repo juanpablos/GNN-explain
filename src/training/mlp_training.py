@@ -88,9 +88,9 @@ class Training(Trainer):
 
     def activation(self, output):
         if self.n_classes == 2:
-            return F.sigmoid(output)
+            return torch.sigmoid(output)
         else:
-            return F.log_softmax(output, dim=1)
+            return torch.log_softmax(output, dim=1)
 
     def get_loss(self):
         if self.n_classes > 2:

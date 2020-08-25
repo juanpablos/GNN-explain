@@ -44,11 +44,15 @@ def load_gnn_files(root: str,
     # select all formulas available in directory
     # formula_hash -> file_path
     dir_formulas = __prepare_files(model_path)
+
+    logger.debug("Creating formula objects")
     # mapping from formula_hash -> formula object
     dir_mapping = {_hash: formula_mapping[_hash] for _hash in dir_formulas}
 
+    logger.debug("Running formula selector")
     # mapping from the selected formula_hash -> formula object
     selected_formulas = selector(dir_mapping)
+    logger.debug("Running formula labeler")
     # mapping from the selected formula_hash -> label
     # classes is a dictionary class_id -> class_str
     selected_labels, classes = labeler(selected_formulas)

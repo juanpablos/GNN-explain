@@ -101,7 +101,7 @@ def run_experiment(
     _y_pred = train_state.metrics.acc_y_pred
 
     # class_mapping is an ordered dict
-    target_names = list(class_mapping.keys())
+    target_names = list(class_mapping.values())
     print(classification_report(_y, _y_pred, target_names=target_names))
 
     test_label_info = test_data.apply_subset().label_info
@@ -150,14 +150,14 @@ def main(
         "use_batch_norm": True
     }
 
-    model_hash = "f4034364ea-nosave"  # "f4034364ea"
+    model_hash = "f4034364ea-nosavebatch"
     # filters = []
     # selector = FilterApply(condition="and")
     selector = SelectFilter(hashes=[
         "dc670b1bec",
         "4805042859",
-        "688d12b701",
-        "652c706f1b"
+        # "688d12b701",
+        # "652c706f1b"
     ])
     label_logic = BinaryAtomicLabeler(atomic="RED")
     labeler = LabelerApply(labeler=label_logic)
@@ -179,7 +179,7 @@ def main(
         [f"{l}L{val}" for l, val in enumerate(hidden_layers, start=1)])
     msg = f"{name}-{hid}-{train_batch}b-{lr}lr"
 
-    results_path = f"./results/exp2/{model_hash}"
+    results_path = f"./results/testing/{model_hash}"
     plot_file = None
     if make_plots:
         plot_file = msg
@@ -242,5 +242,5 @@ if __name__ == "__main__":
         lr=0.005,
         hidden_layers=__layers,
         save_model=True,
-        make_plots=False
+        make_plots=True
     )

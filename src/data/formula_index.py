@@ -1,6 +1,7 @@
 import json
 from typing import Dict
 
+from src.graphs.foc import *
 from src.graphs.foc import Element
 
 
