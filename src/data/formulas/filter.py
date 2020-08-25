@@ -100,8 +100,15 @@ class FilterApply:
                 in formulas.items() if self._apply(formula)}
 
     def __str__(self):
-        filter_str = ",".join(str(filt) for filt in self.filters)
-        return f"{self.condition}({filter_str})"
+        if not self.filters:
+            raise ValueError(
+                "There must be at least 1 filter set to be applied")
+
+        if len(self.filters) == 1:
+            return f"{self.filters[0]}"
+        else:
+            filter_str = ",".join(str(filt) for filt in self.filters)
+            return f"{self.condition}({filter_str})"
 
 
 class SelectFilter:
@@ -122,9 +129,9 @@ class SelectFilter:
             return self.name
 
 
-class NoFilter(Filterer):
-    def __call__(self, node: Element):
-        return True
+class NoFilter:
+    def __call__(self, formulas: Mapping[str, Element]):
+        return formulas
 
     def __str__(self):
         return "NoFilter()"
