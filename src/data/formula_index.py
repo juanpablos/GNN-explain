@@ -1,7 +1,7 @@
 import json
 from typing import Dict
 
-from src.graphs.foc import *
+from src.graphs.foc import Element
 
 
 class FormulaMapping:
@@ -9,5 +9,5 @@ class FormulaMapping:
         with open(file) as f:
             self.mapping: Dict[str, str] = json.load(f)
 
-    def __getitem__(self, key: str) -> FOC:
-        return FOC(eval(self.mapping[key]))
+    def __getitem__(self, key: str) -> Element:
+        return eval(self.mapping[key])

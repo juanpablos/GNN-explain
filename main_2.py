@@ -176,7 +176,7 @@ def main(
         "model_hash": model_hash,
         "selector": selector,
         "labeler": labeler,
-        "mapping": FormulaMapping("./data/formulas.json")
+        "formula_mapping": FormulaMapping("./data/formulas.json")
     }
 
     iterations = 20

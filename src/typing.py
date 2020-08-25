@@ -38,7 +38,7 @@ class NetworkDataConfig(TypedDict):
     model_hash: str
     selector: Union[FilterApply, SelectFilter]
     labeler: LabelerApply
-    mapping: FormulaMapping
+    formula_mapping: FormulaMapping
 
 
 class StopFormat(TypedDict):
