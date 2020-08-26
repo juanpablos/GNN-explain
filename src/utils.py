@@ -108,20 +108,19 @@ def write_result_info(
         groups[label].append(_hash)
 
     with open(f"{path}/info/{file_name}.txt", "w", encoding="utf-8") as o:
-        o.write(f"Labels\n")
+        # format:
+        # label_id, label_name, n_formulas with label
+        # - formula_hash, formula_repr [, n_mistakes/total formulas in test]
         for label_id, label_name in classes.items():
             hashes = groups[label_id]
             o.write(f"{label_id}\t{label_name}\t{len(hashes)}\n")
             for _hash in hashes:
-                o.write(f"\t{_hash}\t{hash_formula[_hash]}\n")
+                o.write(f"\t{_hash}\t{hash_formula[_hash]}")
 
-        o.write(f"\nNumber of Mistakes\n")
-        if write_mistakes:
-            if mistakes:
-                for formula, n_mistakes in mistakes.items():
-                    total_points = formula_count[formula]
-                    o.write(f"\t{formula}\t{n_mistakes}/{total_points}\n")
-            else:
-                o.write("No mistakes\n")
-        else:
-            o.write("Not available\n")
+                if write_mistakes:
+                    n_mistakes = mistakes.get(hash_formula[_hash], 0)
+                    count = formula_count[hash_formula[_hash]]
+
+                    o.write(f"\t{n_mistakes}/{count}")
+
+                o.write("\n")

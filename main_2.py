@@ -54,9 +54,9 @@ def run_experiment(
     # hash_formula: formula_hash -> formula_object
     # hash_label: formula_hash -> label_id
     # data_reconstruction: point_index -> formula_object
-    dataset, class_mapping, \
-        hash_formula, hash_label, \
-        data_reconstruction = load_gnn_files(
+    # formula_label_mapping: formula_object -> label_id
+    dataset, class_mapping, hash_formula, \
+        hash_label, data_reconstruction = load_gnn_files(
             **data_config, _legacy_load_without_batch=_legacy_load_without_batch)
     n_classes = len(class_mapping)
     logger.debug(f"{n_classes} classes detected")
@@ -200,7 +200,7 @@ def main(
         "formula_mapping": FormulaMapping("./data/formulas.json")
     }
 
-    iterations = 20
+    iterations = 2
     test_batch = 512
 
     if name is None:
