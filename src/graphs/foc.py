@@ -23,6 +23,14 @@ class Element(ABC):
     def _accept(self, visitor):
         getattr(visitor, f"_visit_{self.__class__.__name__}")(self)
 
+    def __eq__(self, other):
+        if self.__class__ == other.__class__:
+            return repr(self) == repr(other)
+        return False
+
+    def __hash__(self):
+        return hash(repr(self))
+
 
 class IndependentElement(Element):
     ...
