@@ -29,6 +29,7 @@ def load_gnn_files(root: str,
                    selector: Union[SelectFilter, FilterApply],
                    labeler: LabelerApply[T, S],
                    formula_mapping: FormulaMapping,
+                   keep_formula_name: bool = True,
                    _legacy_load_without_batch: bool = False):
 
     if model_hash not in os.listdir(root):
@@ -70,7 +71,7 @@ def load_gnn_files(root: str,
         dataset = NetworkDataset(
             file=file_path,
             label=label,
-            # limit=limit,
+            formula=formula_object,
             _legacy_load_without_batch=_legacy_load_without_batch)
 
         datasets.append(dataset)

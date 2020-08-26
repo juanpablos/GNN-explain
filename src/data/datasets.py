@@ -1,3 +1,4 @@
+import bisect
 from abc import ABC
 from collections import Counter
 from typing import Dict, Generic, Iterator, List, Mapping, Sequence, Tuple
@@ -5,6 +6,7 @@ from typing import Dict, Generic, Iterator, List, Mapping, Sequence, Tuple
 import torch
 from torch.utils.data import Dataset
 
+from src.graphs.foc import Element
 from src.typing import (
     DatasetLike,
     Indexable,
@@ -115,11 +117,17 @@ class NetworkDataset(LabeledDatasetBase[torch.Tensor, S_co], Dataset):
     A Pytorch dataset that loads a pickle file storing a list of the outputs of torch.nn.Module.state_dict(), that is basically a Dict[str, Tensor]. This dataset loads that file, for each network it flattens the tensors into a single vector and stores a tuple (flattened vector, label). Stores exactly the first 'limit' elements of the list.
     """
 
-    def __init__(self, file: str, label: S_co, limit: int = None,
-                 _legacy_load_without_batch: bool = False):
+    def __init__(
+            self,
+            file: str,
+            label: S_co,
+            formula: Element,
+            limit: int = None,
+            _legacy_load_without_batch: bool = False):
         super().__init__()
         # the weights in a vector
         self.__load(file, label, limit, _legacy_load_without_batch)
+        self.formula = formula
 
     def __load(self, file_name, label: S_co, limit, no_batch):
         networks = torch.load(file_name)
@@ -260,3 +268,32 @@ class LabeledSubset(Dataset, Generic[T_co, S_co]):
             dataset.append(x)
             labels.append(y)
         return LabeledDataset(dataset=dataset, labels=labels)
+
+
+class NetworkDatasetCollectionWrapper(Dataset, Generic[T_co, S_co]):
+
+    def __init__(self, datasets: Sequence[NetworkDataset[S_co]]):
+        if len(datasets) < 1:
+            raise ValueError("datasets cannot be an empty sequence")
+        self.datasets = datasets
+        for d in self.datasets:
+            assert isinstance(
+                d, NetworkDataset), "elements should be NetworkDatasets"
+        self.cumulative_sizes = self.cumsum(datasets)
+
+    def __len__(self):
+        return self.cumulative_sizes[-1]
+
+    def __getitem__(self, index: int) -> Element:
+        dataset_index = bisect.bisect_right(self.cumulative_sizes, index)
+        return self.datasets[dataset_index].formula
+
+    @staticmethod
+    def cumsum(sequence: Sequence):
+        seq: List[int] = []
+        curr = 0
+        for s in sequence:
+            l = len(s)
+            seq.append(curr + l)
+            curr += l
+        return seq
