@@ -231,7 +231,7 @@ class Subset(Dataset, Generic[T_co]):
 class LabeledSubset(Dataset, Generic[T_co, S_co]):
     def __init__(self,
                  dataset: LabeledDatasetLike[T_co, S_co],
-                 indices=Sequence[int]):
+                 indices: Sequence[int]):
         self._dataset = dataset
         self._indices = indices
 
@@ -270,7 +270,7 @@ class LabeledSubset(Dataset, Generic[T_co, S_co]):
         return LabeledDataset(dataset=dataset, labels=labels)
 
 
-class NetworkDatasetCollectionWrapper(Dataset, Generic[T_co, S_co]):
+class NetworkDatasetCollectionWrapper(Dataset, Generic[S_co]):
 
     def __init__(self, datasets: Sequence[NetworkDataset[S_co]]):
         if len(datasets) < 1:
