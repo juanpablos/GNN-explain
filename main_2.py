@@ -113,6 +113,7 @@ def run_experiment(
         hash_formula=hash_formula,
         hash_label=hash_label,
         classes=class_mapping,
+        write_mistakes=get_mistakes,
         mistakes=mistakes,
         formula_count=formula_count)
 
@@ -180,16 +181,16 @@ def main(
     # selector = FilterApply(condition="and")
     # selector.add(AtomicFilter(atomic="all"))
     # selector.add(RestrictionFilter(lower=1, upper=2))
-    # selector = SelectFilter(hashes=[
-    #     "150edbf88b",
-    #     "bfd9f60763",
-    #     # "bfd9f60763",
-    #     # "0478e039d0"
-    # ])
-    selector = NoFilter()
+    selector = SelectFilter(hashes=[
+        "dc670b1bec",
+        "4805042859",
+        "688d12b701",
+        "652c706f1b"
+    ])
+    # selector = NoFilter()
 
     # * labelers
-    label_logic = BinaryAtomicLabeler(atomic="BLACK")
+    label_logic = BinaryAtomicLabeler(atomic="RED")
     labeler = LabelerApply(labeler=label_logic)
     data_config: NetworkDataConfig = {
         "root": "data/gnns",
@@ -237,7 +238,7 @@ def main(
         plot_title=msg,  # ? maybe a better message
         info_file_name=msg,
         # * this should only be available when binary in experiment 3
-        get_mistakes=isinstance(labeler, BinaryCategoricalLabeler),
+        get_mistakes=isinstance(label_logic, BinaryCategoricalLabeler),
         _legacy_load_without_batch=True  # ! remove eventually
     )
     end = timer()

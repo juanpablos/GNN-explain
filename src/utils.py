@@ -92,6 +92,7 @@ def write_result_info(
         hash_formula: Dict[str, Element],
         hash_label: Dict[str, Any],
         classes: Dict[Any, str],
+        write_mistakes: bool,
         mistakes: Dict[Element, int],
         formula_count: Dict[Element, int]):
 
@@ -115,9 +116,12 @@ def write_result_info(
                 o.write(f"\t{_hash}\t{hash_formula[_hash]}\n")
 
         o.write(f"\nNumber of Mistakes\n")
-        if mistakes and formula_count:
-            for formula, n_mistakes in mistakes.items():
-                total_points = formula_count[formula]
-                o.write(f"\t{formula}\t{n_mistakes}/{total_points}\n")
+        if write_mistakes:
+            if mistakes:
+                for formula, n_mistakes in mistakes.items():
+                    total_points = formula_count[formula]
+                    o.write(f"\t{formula}\t{n_mistakes}/{total_points}\n")
+            else:
+                o.write("No mistakes\n")
         else:
             o.write("Not available\n")
