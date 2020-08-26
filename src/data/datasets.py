@@ -275,10 +275,13 @@ class NetworkDatasetCollectionWrapper(Dataset, Generic[S_co]):
     def __init__(self, datasets: Sequence[NetworkDataset[S_co]]):
         if len(datasets) < 1:
             raise ValueError("datasets cannot be an empty sequence")
-        self.datasets = datasets
-        for d in self.datasets:
+
+        self.formulas: List[Element] = []
+        for d in datasets:
             assert isinstance(
                 d, NetworkDataset), "elements should be NetworkDatasets"
+            self.formulas.append(d.formula)
+
         self.cumulative_sizes = self.cumsum(datasets)
 
     def __len__(self):
@@ -286,7 +289,7 @@ class NetworkDatasetCollectionWrapper(Dataset, Generic[S_co]):
 
     def __getitem__(self, index: int) -> Element:
         dataset_index = bisect.bisect_right(self.cumulative_sizes, index)
-        return self.datasets[dataset_index].formula
+        return self.formulas[dataset_index]
 
     @staticmethod
     def cumsum(sequence: Sequence):
