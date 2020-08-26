@@ -20,26 +20,26 @@ class Metric:
         if average not in ["binary", "micro", "macro"]:
             raise ValueError(
                 "Argument `average` must be one of `binary`, `micro`, `macro`")
-        self.acc_y = []
-        self.acc_y_pred = []
+        self.y_true = []
+        self.y_pred = []
         self.average = average
 
     def __call__(self, y_true: torch.Tensor, y_pred: torch.Tensor):
-        self.acc_y.extend(y_true.tolist())
-        self.acc_y_pred.extend(y_pred.tolist())
+        self.y_true.extend(y_true.tolist())
+        self.y_pred.extend(y_pred.tolist())
 
     def precision_recall_fscore(self) -> Dict[str, Any]:
         precision, recall, f1score, _ = precision_recall_fscore_support(
-            self.acc_y, self.acc_y_pred, average=self.average, beta=1.0)
+            self.y_true, self.y_pred, average=self.average, beta=1.0)
 
         return {"precision": precision, "recall": recall, "f1": f1score}
 
     def accuracy(self):
-        return {"acc": accuracy_score(self.acc_y, self.acc_y_pred)}
+        return {"acc": accuracy_score(self.y_true, self.y_pred)}
 
     def clear(self):
-        self.acc_y.clear()
-        self.acc_y_pred.clear()
+        self.y_true.clear()
+        self.y_pred.clear()
 
 
 class Training(Trainer):
