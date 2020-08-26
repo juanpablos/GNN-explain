@@ -181,16 +181,16 @@ def main(
     # selector = FilterApply(condition="and")
     # selector.add(AtomicFilter(atomic="all"))
     # selector.add(RestrictionFilter(lower=1, upper=2))
-    selector = SelectFilter(hashes=[
-        "dc670b1bec",
-        "4805042859",
-        "688d12b701",
-        "652c706f1b"
-    ])
-    # selector = NoFilter()
+    # selector = SelectFilter(hashes=[
+    #     "dc670b1bec",
+    #     "4805042859",
+    #     "688d12b701",
+    #     "652c706f1b"
+    # ])
+    selector = NoFilter()
 
     # * labelers
-    label_logic = BinaryAtomicLabeler(atomic="RED")
+    label_logic = BinaryAtomicLabeler(atomic="BLUE")
     labeler = LabelerApply(labeler=label_logic)
     data_config: NetworkDataConfig = {
         "root": "data/gnns",
@@ -200,7 +200,7 @@ def main(
         "formula_mapping": FormulaMapping("./data/formulas.json")
     }
 
-    iterations = 2
+    iterations = 20
     test_batch = 512
 
     if name is None:

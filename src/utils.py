@@ -2,9 +2,8 @@ import csv
 import json
 import logging
 import os
-from collections import defaultdict
 from collections.abc import Mapping
-from typing import Any, Dict
+from typing import Any, DefaultDict, Dict, List
 
 from src.graphs.foc import FOC, Element
 from src.typing import GNNModelConfig
@@ -103,9 +102,12 @@ def write_result_info(
     # \t hash formula
 
     # label_id -> list[hashes]
-    groups = defaultdict(list)
+    groups: DefaultDict[Any, List[str]] = DefaultDict(list)
     for _hash, label in hash_label.items():
         groups[label].append(_hash)
+
+    max_formula_len = max(len(str(formula))
+                          for formula in hash_formula.values())
 
     with open(f"{path}/info/{file_name}.txt", "w", encoding="utf-8") as o:
         # format:
@@ -114,13 +116,20 @@ def write_result_info(
         for label_id, label_name in classes.items():
             hashes = groups[label_id]
             o.write(f"{label_id}\t{label_name}\t{len(hashes)}\n")
-            for _hash in hashes:
-                o.write(f"\t{_hash}\t{hash_formula[_hash]}")
 
-                if write_mistakes:
+            if write_mistakes:
+                template = "\t{hash}\t{formula:<{pad}}{err}\n"
+                key = lambda h: mistakes.get(hash_formula[h], 0)
+                for _hash in sorted(hashes, key=key, reverse=True):
                     n_mistakes = mistakes.get(hash_formula[_hash], 0)
                     count = formula_count[hash_formula[_hash]]
 
-                    o.write(f"\t{n_mistakes}/{count}")
-
-                o.write("\n")
+                    line = template.format(
+                        hash=_hash,
+                        formula=str(hash_formula[_hash]),
+                        err=f"{n_mistakes}/{count}",
+                        pad=max_formula_len + 4)
+                    o.write(line)
+            else:
+                for _hash in hashes:
+                    o.write(f"\t{_hash}\t{hash_formula[_hash]}\n")
