@@ -2,7 +2,11 @@ import logging
 import os
 from typing import Dict, List, Union
 
-from src.data.datasets import LabeledDataset, NetworkDataset
+from src.data.datasets import (
+    LabeledDataset,
+    NetworkDataset,
+    NetworkDatasetCollectionWrapper
+)
 from src.data.formula_index import FormulaMapping
 from src.data.formulas.filter import FilterApply, SelectFilter
 from src.data.formulas.labeler import (
@@ -29,7 +33,6 @@ def load_gnn_files(root: str,
                    selector: Union[SelectFilter, FilterApply],
                    labeler: LabelerApply[T, S],
                    formula_mapping: FormulaMapping,
-                   keep_formula_name: bool = True,
                    _legacy_load_without_batch: bool = False):
 
     if model_hash not in os.listdir(root):
@@ -77,4 +80,5 @@ def load_gnn_files(root: str,
         datasets.append(dataset)
 
     return LabeledDataset.from_iterable(datasets), \
-        classes, selected_formulas, selected_labels
+        classes, selected_formulas, selected_labels, \
+        NetworkDatasetCollectionWrapper(datasets)

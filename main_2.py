@@ -9,12 +9,14 @@ from sklearn.metrics import classification_report
 
 from src.data.formula_index import FormulaMapping
 from src.data.formulas import *
+from src.data.formulas.labeler import BinaryCategoricalLabeler
 from src.data.loader import load_gnn_files
 from src.data.utils import (
     get_input_dim,
     get_label_distribution,
     train_test_dataset
 )
+from src.eval_utils import evaluate_model
 from src.run_logic import run, seed_everything
 from src.training.mlp_training import Training
 from src.typing import MinModelConfig, NetworkDataConfig
@@ -43,6 +45,7 @@ def run_experiment(
         plot_file_name: str = None,
         plot_title: str = None,
         info_file_name: str = "info",
+        get_mistakes: bool = True,
         _legacy_load_without_batch: bool = False
 ):
 
@@ -50,8 +53,11 @@ def run_experiment(
     # class_mapping: label_id -> label_name
     # hash_formula: formula_hash -> formula_object
     # hash_label: formula_hash -> label_id
-    dataset, class_mapping, hash_formula, hash_label = load_gnn_files(
-        **data_config, _legacy_load_without_batch=_legacy_load_without_batch)
+    # data_reconstruction: point_index -> formula_object
+    dataset, class_mapping, \
+        hash_formula, hash_label, \
+        data_reconstruction = load_gnn_files(
+            **data_config, _legacy_load_without_batch=_legacy_load_without_batch)
     n_classes = len(class_mapping)
     logger.debug(f"{n_classes} classes detected")
 
@@ -94,12 +100,21 @@ def run_experiment(
         lr=lr,
         run_train_test=run_train_test)
 
+    # mistakes is a counter for each formula mistake in test:
+    # mistakes: formula -> int
+    # formula_count is a counter for each formula in the rest set
+    # formula_count: formula -> int
+    _y, _y_pred, mistakes, formula_count = evaluate_model(
+        model=model, test_data=test_data, reconstruction=data_reconstruction, trainer=train_state, gpu=gpu_num, additional_info=get_mistakes)
+
     write_result_info(
         path=results_path,
         file_name=info_file_name,
         hash_formula=hash_formula,
         hash_label=hash_label,
-        classes=class_mapping)
+        classes=class_mapping,
+        mistakes=mistakes,
+        formula_count=formula_count)
 
     if model_name is not None:
         model.cpu()
@@ -107,10 +122,6 @@ def run_experiment(
         torch.save(
             model.state_dict(),
             f"{results_path}/models/{model_name}.pt")
-
-    # * get the last evaluation values
-    _y = train_state.metrics.acc_y
-    _y_pred = train_state.metrics.acc_y_pred
 
     # class_mapping is an ordered dict
     target_names = list(class_mapping.values())
@@ -225,6 +236,8 @@ def main(
         plot_file_name=plot_file,
         plot_title=msg,  # ? maybe a better message
         info_file_name=msg,
+        # * this should only be available when binary in experiment 3
+        get_mistakes=isinstance(labeler, BinaryCategoricalLabeler),
         _legacy_load_without_batch=True  # ! remove eventually
     )
     end = timer()
