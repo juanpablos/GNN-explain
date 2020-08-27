@@ -85,6 +85,20 @@ def write_metadata(
         ])
 
 
+def get_next_file_name(path: str, file_name: str, ext: str):
+    if os.path.exists(f"{path}/{file_name}.{ext}"):
+        counter = 1
+        while os.path.exists(f"{path}/{file_name} ({counter}).{ext}"):
+            counter += 1
+
+        count = f" ({counter})"
+        file_name = file_name + count
+
+        return file_name, count
+    else:
+        return file_name, ""
+
+
 def write_result_info(
         path: str,
         file_name: str,
@@ -108,6 +122,10 @@ def write_result_info(
 
     max_formula_len = max(len(str(formula))
                           for formula in hash_formula.values())
+
+    file_name, counter = get_next_file_name(path=f"{path}/info",
+                                            file_name=file_name,
+                                            ext="txt")
 
     with open(f"{path}/info/{file_name}.txt", "w", encoding="utf-8") as o:
         # format:
@@ -133,3 +151,5 @@ def write_result_info(
             else:
                 for _hash in hashes:
                     o.write(f"\t{_hash}\t{hash_formula[_hash]}\n")
+
+    return counter

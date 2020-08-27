@@ -111,7 +111,9 @@ def run_experiment(
     _y, _y_pred, mistakes, formula_count = evaluate_model(
         model=model, test_data=test_data, reconstruction=data_reconstruction, trainer=train_state, gpu=gpu_num, additional_info=get_mistakes)
 
-    write_result_info(
+    # returns a number to put after the file name in case it already exists
+    # "" or " (N)"
+    ext = write_result_info(
         path=results_path,
         file_name=info_file_name,
         hash_formula=hash_formula,
@@ -126,7 +128,7 @@ def run_experiment(
         os.makedirs(f"{results_path}/models/", exist_ok=True)
         torch.save(
             model.state_dict(),
-            f"{results_path}/models/{model_name}.pt")
+            f"{results_path}/models/{model_name}{ext}.pt")
 
     # class_mapping is an ordered dict
     target_names = list(class_mapping.values())
@@ -141,7 +143,7 @@ def run_experiment(
             _y,
             _y_pred,
             save_path=results_path,
-            file_name=plot_file_name,
+            file_name=plot_file_name + ext,
             title=plot_title,
             labels=cm_labels,
             normalize_cm=True)
@@ -150,7 +152,7 @@ def run_experiment(
         plot_training(
             metric_history=metrics,
             save_path=results_path,
-            file_name=plot_file_name,
+            file_name=plot_file_name + ext,
             title=plot_title,
             use_selected=False)
 
