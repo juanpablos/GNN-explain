@@ -218,7 +218,8 @@ class Subset(Dataset, Generic[T_co]):
 
     @property
     def dataset(self):
-        return self._dataset.dataset
+        # ?? change this to only compute this once?
+        return self.apply_subset().dataset
 
     @property
     def indices(self):
@@ -247,15 +248,18 @@ class LabeledSubset(Dataset, Generic[T_co, S_co]):
 
     @property
     def dataset(self):
-        return self._dataset.dataset
+        # ?? change this to only compute this once?
+        return self.apply_subset().dataset
 
     @property
     def labels(self):
-        return self._dataset.labels
+        # ?? change this to only compute this once?
+        return self.apply_subset().labels
 
     @property
     def label_info(self):
-        return self._dataset.label_info
+        # ?? change this to only compute this once?
+        return self.apply_subset().label_info
 
     @property
     def indices(self):

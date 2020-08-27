@@ -37,6 +37,7 @@ class NetworkDataConfig(TypedDict):
     selector: Union[FilterApply, SelectFilter, NoFilter]
     labeler: LabelerApply
     formula_mapping: FormulaMapping
+    testing_selection: Optional[List[str]]
 
 
 class StopFormat(TypedDict):

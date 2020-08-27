@@ -1,6 +1,6 @@
 import logging
 import os
-from typing import Dict, List, Union
+from typing import Dict, List, Optional, Union
 
 from src.data.datasets import (
     LabeledDataset,
@@ -33,6 +33,7 @@ def load_gnn_files(root: str,
                    selector: Union[SelectFilter, FilterApply],
                    labeler: LabelerApply[T, S],
                    formula_mapping: FormulaMapping,
+                   testing_selection: Optional[List[str]] = None,
                    _legacy_load_without_batch: bool = False):
 
     if model_hash not in os.listdir(root):
@@ -57,11 +58,16 @@ def load_gnn_files(root: str,
     # mapping from the selected formula_hash -> formula object
     selected_formulas = selector(dir_mapping)
     logger.debug(f"Running formula labeler {labeler}")
-    # mapping from the selected formula_hash -> label
-    # classes is a dictionary class_id -> class_str
+    # mapping from the selected formula_hash -> label_id
+    # classes is a dictionary label_id -> label_name
     selected_labels, classes = labeler(selected_formulas)
 
     datasets: List[NetworkDataset[int]] = []
+
+    train_dataset: List[NetworkDataset[int]] = []
+    test_dataset: List[NetworkDataset[int]] = []
+    if testing_selection is not None:
+        logger.info("Pre-splitting for testing with selected formulas")
 
     logger.info(f"Loading {len(selected_labels)} formulas")
     for formula_hash, label in selected_labels.items():
@@ -77,8 +83,22 @@ def load_gnn_files(root: str,
             formula=formula_object,
             _legacy_load_without_batch=_legacy_load_without_batch)
 
+        if testing_selection is not None:
+            if formula_hash in testing_selection:
+                test_dataset.append(dataset)
+            else:
+                train_dataset.append(dataset)
+
         datasets.append(dataset)
 
-    return LabeledDataset.from_iterable(datasets), \
-        classes, selected_formulas, selected_labels, \
-        NetworkDatasetCollectionWrapper(datasets)
+    if testing_selection is None:
+        return (LabeledDataset.from_iterable(datasets),
+                classes, selected_formulas, selected_labels,
+                NetworkDatasetCollectionWrapper(datasets))
+
+    else:
+        assert len(test_dataset) > 0, "test_dataset is empty"
+        return ((LabeledDataset.from_iterable(train_dataset),
+                 LabeledDataset.from_iterable(test_dataset)),
+                classes, selected_formulas, selected_labels,
+                NetworkDatasetCollectionWrapper(test_dataset))

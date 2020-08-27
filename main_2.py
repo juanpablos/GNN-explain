@@ -55,27 +55,31 @@ def run_experiment(
     # hash_label: formula_hash -> label_id
     # data_reconstruction: point_index -> formula_object
     # formula_label_mapping: formula_object -> label_id
-    dataset, class_mapping, hash_formula, \
-        hash_label, data_reconstruction = load_gnn_files(
-            **data_config, _legacy_load_without_batch=_legacy_load_without_batch)
+    (datasets, class_mapping,
+     hash_formula, hash_label,
+     data_reconstruction) = load_gnn_files(
+        **data_config,
+        _legacy_load_without_batch=_legacy_load_without_batch)
+
+    if isinstance(datasets, tuple):
+        logger.debug("Using selected data as test")
+        # * only here because return type problems when **[TypedDict]
+        train_data, test_data = datasets
+    else:
+        logger.debug("Splitting data")
+        train_data, test_data = train_test_dataset(dataset=datasets,
+                                                   test_size=test_size,
+                                                   random_state=seed,
+                                                   shuffle=True,
+                                                   stratify=stratify)
+
     n_classes = len(class_mapping)
     logger.debug(f"{n_classes} classes detected")
 
-    logger.debug("Splitting data")
-    train_data, test_data = train_test_dataset(dataset=dataset,
-                                               test_size=test_size,
-                                               random_state=seed,
-                                               shuffle=True,
-                                               stratify=stratify)
-
-    if stratify:
-        logger.debug(
-            f"Dataset distribution {get_label_distribution(dataset)}")
-    else:
-        logger.debug(
-            f"Train dataset distribution {get_label_distribution(train_data)}")
-        logger.debug(
-            f"Test dataset distribution {get_label_distribution(test_data)}")
+    logger.debug(
+        f"Train dataset distribution {get_label_distribution(train_data)}")
+    logger.debug(
+        f"Test dataset distribution {get_label_distribution(test_data)}")
 
     input_shape = get_input_dim(train_data)
     assert len(input_shape) == 1, "The input dimension is different from 1"
@@ -129,7 +133,7 @@ def run_experiment(
     print(classification_report(_y, _y_pred, target_names=target_names))
 
     if plot_file_name is not None:
-        test_label_info = test_data.apply_subset().label_info
+        test_label_info = test_data.label_info
         cm_labels = [
             f"{label_name} ({test_label_info[label]})"
             for label, label_name in class_mapping.items()]
@@ -188,16 +192,20 @@ def main(
     #     "652c706f1b"
     # ])
     selector = NoFilter()
+    testing_selection: List[str] = [
+
+    ]
 
     # * labelers
-    label_logic = BinaryAtomicLabeler(atomic="BLUE")
+    label_logic = BinaryAtomicLabeler(atomic="BLACK")
     labeler = LabelerApply(labeler=label_logic)
     data_config: NetworkDataConfig = {
         "root": "data/gnns",
         "model_hash": model_hash,
         "selector": selector,
         "labeler": labeler,
-        "formula_mapping": FormulaMapping("./data/formulas.json")
+        "formula_mapping": FormulaMapping("./data/formulas.json"),
+        "testing_selection": None  # testing_selection
     }
 
     iterations = 20
@@ -210,7 +218,7 @@ def main(
         [f"{l}L{val}" for l, val in enumerate(hidden_layers, start=1)])
     msg = f"{name}-{hid}-{train_batch}b-{lr}lr"
 
-    results_path = f"./results/testing/{model_hash}"
+    results_path = f"./results/exp3/{model_hash}"
     plot_file = None
     if make_plots:
         plot_file = msg

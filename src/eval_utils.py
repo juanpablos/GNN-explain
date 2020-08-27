@@ -1,17 +1,22 @@
-from typing import DefaultDict
+from typing import DefaultDict, Union
 
 import torch
 from torch.utils.data import DataLoader
 
-from src.data.datasets import LabeledSubset, NetworkDatasetCollectionWrapper
+from src.data.datasets import (
+    LabeledDataset,
+    LabeledSubset,
+    NetworkDatasetCollectionWrapper
+)
 from src.graphs.foc import Element
 from src.training.mlp_training import Training
-from src.typing import S_co, T_co
+from src.typing import S, T
 
 
 def evaluate_model(model: torch.nn.Module,
-                   test_data: LabeledSubset[T_co, S_co],
-                   reconstruction: NetworkDatasetCollectionWrapper[S_co],
+                   test_data: Union[LabeledSubset[T, S],
+                                    LabeledDataset[T, S]],
+                   reconstruction: NetworkDatasetCollectionWrapper[S],
                    trainer: Training,
                    additional_info: bool,
                    gpu: int = 0):
@@ -44,8 +49,13 @@ def evaluate_model(model: torch.nn.Module,
 
     mistakes: DefaultDict[Element, int] = DefaultDict(int)
     formula_count: DefaultDict[Element, int] = DefaultDict(int)
+
     if additional_info:
-        test_indices = test_data.indices
+        if isinstance(test_data, LabeledDataset):
+            test_indices = list(range(len(test_data)))
+        else:
+            test_indices = test_data.indices
+
         for true, pred, index in zip(y_true, y_pred, test_indices):
             formula = reconstruction[index]
             if true != pred:
