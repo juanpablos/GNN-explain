@@ -216,11 +216,14 @@ def main(
     if name is None:
         name = f"{selector}-{labeler}"
 
+    if testing_selection is not None:
+        name = f"{name}-ManualTest({len(testing_selection)})"
+
     hid = "+".join(
         [f"{l}L{val}" for l, val in enumerate(hidden_layers, start=1)])
     msg = f"{name}-{hid}-{train_batch}b-{lr}lr"
 
-    results_path = f"./results/exp3/{model_hash}"
+    results_path = f"./results/testing/{model_hash}"
     plot_file = None
     if make_plots:
         plot_file = msg

@@ -57,17 +57,28 @@ def load_gnn_files(root: str,
     logger.debug(f"Running formula selector {selector}")
     # mapping from the selected formula_hash -> formula object
     selected_formulas = selector(dir_mapping)
+    if testing_selection is not None:
+        logger.debug("Adding exclusive testing formulas")
+        for _hash in testing_selection:
+            selected_formulas[_hash] = formula_mapping[_hash]
+
     logger.debug(f"Running formula labeler {labeler}")
     # mapping from the selected formula_hash -> label_id
     # classes is a dictionary label_id -> label_name
     selected_labels, classes = labeler(selected_formulas)
 
+    # contains all formulas in use in the experiment
     datasets: List[NetworkDataset[int]] = []
 
+    # contains formulas used for training when test manually selected
     train_dataset: List[NetworkDataset[int]] = []
+    # contains formulas used for testing when test manually selected
     test_dataset: List[NetworkDataset[int]] = []
+    # do not check existance over a list
+    test_formulas = set()
     if testing_selection is not None:
         logger.info("Pre-splitting for testing with selected formulas")
+        test_formulas.update(testing_selection)
 
     logger.info(f"Loading {len(selected_labels)} formulas")
     for formula_hash, label in selected_labels.items():
@@ -84,14 +95,17 @@ def load_gnn_files(root: str,
             _legacy_load_without_batch=_legacy_load_without_batch)
 
         if testing_selection is not None:
-            if formula_hash in testing_selection:
+            if formula_hash in test_formulas:
                 test_dataset.append(dataset)
             else:
                 train_dataset.append(dataset)
 
+        # we append all formulas here
         datasets.append(dataset)
 
     if testing_selection is None:
+        # when the test_set is not manually selected we return a
+        # big dataset containing all formulas
         return (LabeledDataset.from_iterable(datasets),
                 classes, selected_formulas, selected_labels,
                 NetworkDatasetCollectionWrapper(datasets))
