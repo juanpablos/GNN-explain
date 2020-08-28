@@ -56,15 +56,30 @@ class AtomicFilter(Filterer):
 
 
 class RestrictionFilter(Filterer):
-    def __init__(self, lower: int = None, upper: int = None):
+    def __init__(self,
+                 lower: Union[None, Literal[-1], int] = -1,
+                 upper: Union[None, Literal[-1], int] = -1):
         super().__init__()
-        # * None is a placeholder
-        self.lower = lower
+        # * None: Open interval
+        # * -1: any value
+        # * other: the set value
+        if lower is None and upper is None:
+            raise ValueError(
+                "Can't have both open intervals. "
+                "If you want any value use `-1`")
+        if lower is not None and upper is not None:
+            if lower < -1 or upper < -1:
+                raise ValueError("`lower` and `upper` must be greater than -1")
+
+        # here we know that either lower or upper is not None
+        # if lower is the one that is None, then it is an open lower interval
+        # in which case it is the same as 0
+        self.lower = lower if lower is not None else 0
         self.upper = upper
 
     def _visit_Exist(self, node: Exist):
-        lower = self.lower == node.lower if self.lower is not None else True
-        upper = self.upper == node.upper if self.upper is not None else True
+        lower = self.lower == node.lower if self.lower != -1 else True
+        upper = self.upper == node.upper if self.upper != -1 else True
         if lower and upper:
             self.result = True
 
