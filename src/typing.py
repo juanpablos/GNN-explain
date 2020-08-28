@@ -21,7 +21,7 @@ from torch.utils.data.dataloader import DataLoader as torch_loader
 from torch_geometric.data import DataLoader as torch_geometric_loader
 
 from src.data.formula_index import FormulaMapping
-from src.data.formulas.filter import FilterApply, NoFilter, SelectFilter
+from src.data.formulas.filter import Filter
 from src.data.formulas.labeler import LabelerApply
 
 T = TypeVar("T")
@@ -34,10 +34,10 @@ TNum = TypeVar("TNum", int, float)
 class NetworkDataConfig(TypedDict):
     root: str
     model_hash: str
-    selector: Union[FilterApply, SelectFilter, NoFilter]
+    selector: Filter
     labeler: LabelerApply
     formula_mapping: FormulaMapping
-    testing_selection: Optional[List[str]]
+    test_selector: Filter
 
 
 class StopFormat(TypedDict):

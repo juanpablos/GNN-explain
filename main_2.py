@@ -137,7 +137,7 @@ def run_experiment(
     if plot_file_name is not None:
         test_label_info = test_data.label_info
         cm_labels = [
-            f"{label_name} ({test_label_info[label]})"
+            f"{label_name} ({test_label_info.get(label, 0)})"
             for label, label_name in class_mapping.items()]
         plot_confusion_matrix(
             _y,
@@ -184,40 +184,48 @@ def main(
     model_hash = "f4034364ea-batch"
 
     # * filters
-    # selector = FilterApply(condition="and")
+    selector = FilterApply(condition="and")
     # selector.add(AtomicFilter(atomic="all"))
-    # selector.add(RestrictionFilter(lower=1, upper=2))
+    selector.add(RestrictionFilter(lower=1, upper=2))
     # selector = SelectFilter(hashes=[
     #     "dc670b1bec",
     #     "4805042859",
     #     "688d12b701",
     #     "652c706f1b"
     # ])
-    selector = NoFilter()
-    testing_selection: List[str] = [
+    # selector = NoFilter()
+    # * /filters
 
-    ]
+    # * test_filters
+    test_selector = FilterApply(condition="and")
+    # test_selector.add(AtomicFilter(atomic="all"))
+    test_selector.add(RestrictionFilter(lower=1, upper=2))
+    # test_selector = SelectFilter(hashes=[
+    #     "dc670b1bec",
+    #     "4805042859",
+    #     "688d12b701",
+    #     "652c706f1b"
+    # ])
+    # * /test_filters
 
     # * labelers
     label_logic = BinaryAtomicLabeler(atomic="BLACK")
     labeler = LabelerApply(labeler=label_logic)
+    # * /labelers
     data_config: NetworkDataConfig = {
         "root": "data/gnns",
         "model_hash": model_hash,
         "selector": selector,
         "labeler": labeler,
         "formula_mapping": FormulaMapping("./data/formulas.json"),
-        "testing_selection": None  # testing_selection
+        "test_selector": test_selector
     }
 
     iterations = 20
     test_batch = 512
 
     if name is None:
-        name = f"{selector}-{labeler}"
-
-    if testing_selection is not None:
-        name = f"{name}-ManualTest({len(testing_selection)})"
+        name = f"{selector}-{labeler}-{test_selector}"
 
     hid = "+".join(
         [f"{l}L{val}" for l, val in enumerate(hidden_layers, start=1)])

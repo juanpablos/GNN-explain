@@ -1,4 +1,5 @@
-from typing import Iterable, List, Literal, Mapping, Union
+from abc import ABC, abstractmethod
+from typing import Dict, Iterable, List, Literal, Union
 
 from src.data.formulas.visitor import Visitor
 from src.graphs.foc import Element, Exist, Property
@@ -74,7 +75,14 @@ class RestrictionFilter(Filterer):
         return f"RestrictionFilter({self.lower},{self.upper})"
 
 
-class FilterApply:
+class Filter(ABC):
+    @abstractmethod
+    def __call__(self, formulas: Dict[str, Element]) -> Dict[str, Element]: ...
+    @abstractmethod
+    def __str__(self) -> str: ...
+
+
+class FilterApply(Filter):
     def __init__(self,
                  filters: List[Filterer] = None,
                  condition: Union[Literal["and"],
@@ -92,7 +100,7 @@ class FilterApply:
     def _apply(self, formula: Element):
         return self.condition(filterer(formula) for filterer in self.filters)
 
-    def __call__(self, formulas: Mapping[str, Element]):
+    def __call__(self, formulas: Dict[str, Element]):
         if not self.filters:
             raise ValueError(
                 "There must be at least 1 filter set to be applied")
@@ -111,12 +119,12 @@ class FilterApply:
             return f"{self.condition}({filter_str})"
 
 
-class SelectFilter:
+class SelectFilter(Filter):
     def __init__(self, hashes: List[str], name: str = None):
         self.hashes = hashes
         self.name = name
 
-    def __call__(self, formulas: Mapping[str, Element]):
+    def __call__(self, formulas: Dict[str, Element]):
         if not all(_hash in formulas for _hash in self.hashes):
             _not = [_hash for _hash in self.hashes if _hash not in formulas]
             raise ValueError(f"Not all selected hashes are available: {_not}")
@@ -129,9 +137,17 @@ class SelectFilter:
             return self.name
 
 
-class NoFilter:
-    def __call__(self, formulas: Mapping[str, Element]):
+class NoFilter(Filter):
+    def __call__(self, formulas: Dict[str, Element]):
         return formulas
 
     def __str__(self):
         return "NoFilter()"
+
+
+class NullFilter(Filter):
+    def __call__(self, formulas: Dict[str, Element]):
+        return {}
+
+    def __str__(self):
+        return "NullFilter()"
