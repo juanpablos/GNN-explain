@@ -70,17 +70,21 @@ class BinaryAtomicLabeler(BinaryCategoricalLabeler):
             # if the atomic is seen, then mark as 1
             self.result = 1
 
+    def reset(self):
+        super().reset()
+        self.current_hop = 0
+
     def __str__(self):
         return f"BinaryAtomic({self.selected},{self.target_hop},{self.negate})"
 
 
 class BinaryHopLabeler(BinaryCategoricalLabeler):
     def __init__(self, hop: int, negate: bool = False):
-        super().__init__(negate=negate)
         if hop < 0:
             raise ValueError("Hop must be greater or equal to 0.")
+        super().__init__(negate=negate)
         self.current_hop = 0
-        self.max_hop = self.current_hop
+        self.max_hop = 0
         self.target_hop = hop
 
         txt = f"is {hop} hop"
@@ -98,6 +102,11 @@ class BinaryHopLabeler(BinaryCategoricalLabeler):
     def process(self, formula: Element):
         if self.max_hop == self.target_hop:
             self.result = 1
+
+    def reset(self):
+        super().reset()
+        self.current_hop = 0
+        self.max_hop = 0
 
     def __str__(self):
         return f"BinaryHop({self.target_hop},{self.negate})"
@@ -186,6 +195,8 @@ class MultiLabelAtomicLabeler(MultiLabelCategoricalLabeler):
     def __str__(self):
         return "MultiLabelAtomic()"
 
+# !! implement labeler that labels the number of hops in a formula
+
 
 class MultilabelRestrictionLabeler(MultiLabelCategoricalLabeler):
     def __init__(self):
@@ -195,6 +206,7 @@ class MultilabelRestrictionLabeler(MultiLabelCategoricalLabeler):
         self.pairs: Dict[Tuple[Optional[int], Optional[int]], int] = {}
         # ?? should we support/assign label to atomic formulas?
         # something like Restriction(None) or something
+        # !! this should actually be for an specific hop, not any
 
     def _visit_Exist(self, node: Exist):
         self.current_hop += 1
@@ -211,6 +223,10 @@ class MultilabelRestrictionLabeler(MultiLabelCategoricalLabeler):
         super()._visit_Exist(node)
 
         self.current_hop -= 1
+
+    def reset(self):
+        super().reset()
+        self.current_hop = 0
 
     def __str__(self):
         return "MultiLabelRestriction()"

@@ -37,8 +37,16 @@ class AtomicOnlyFilter(Filterer):
     def _visit_Exist(self, node: Exist):
         self.no_hop = False
 
+    def _visit_Property(self, node: Property):
+        if self.no_hop and node.name in self.selected:
+            self.result = True
+
     def process(self, formula: Element):
-        self.result = self.no_hop
+        self.result = self.no_hop and self.result
+
+    def reset(self):
+        super().reset()
+        self.no_hop = True
 
     def __str__(self):
         return f"AtomicOnlyFilter({self.selected})"
@@ -71,6 +79,10 @@ class AtomicFilter(Filterer):
         if node.name in self.selected and \
                 (self.target_hop == -1 or self.current_hop == self.target_hop):
             self.result = True
+
+    def reset(self):
+        super().reset()
+        self.current_hop = 0
 
     def __str__(self):
         return f"AtomicFilter({self.selected},{self.target_hop})"
