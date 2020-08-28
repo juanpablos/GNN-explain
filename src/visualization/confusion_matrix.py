@@ -42,7 +42,7 @@ def plot_confusion_matrix(
     figure_name = file_name if file_name is not None else "confusion_matrix"
     figure_title = title if title is not None else ""
 
-    plt.title(figure_title)
+    plt.title(figure_title, wrap=True)
 
     os.makedirs(f"{save_path}/cm/", exist_ok=True)
     plt.savefig(f"{save_path}/cm/{figure_name}.png")

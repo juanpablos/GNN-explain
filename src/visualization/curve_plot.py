@@ -19,7 +19,7 @@ def plot_training(
     fig, ax1 = plt.subplots(figsize=(20, 10))
     ax2 = ax1.twinx()  # type: ignore
 
-    plt.title(title if title is not None else "")
+    plt.title(title if title is not None else "", wrap=True)
 
     logger.debug("Plotting metrics")
     x_axis = None
