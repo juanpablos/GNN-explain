@@ -164,7 +164,7 @@ class FilterApply(Filter):
             return f"{self.filters[0]}"
         else:
             filter_str = ",".join(str(filt) for filt in self.filters)
-            return f"{self.condition}({filter_str})"
+            return f"{self.condition.__name__.upper()}({filter_str})"
 
 
 class SelectFilter(Filter):
