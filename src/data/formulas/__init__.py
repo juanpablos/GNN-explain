@@ -2,6 +2,7 @@ from .filter import (
     AtomicFilter,
     FilterApply,
     NoFilter,
+    NullFilter,
     RestrictionFilter,
     SelectFilter
 )

@@ -206,6 +206,7 @@ def main(
     #     "688d12b701",
     #     "652c706f1b"
     # ])
+    # test_selector = NullFilter()
     # * /test_filters
 
     # * labelers
