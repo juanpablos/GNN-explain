@@ -109,8 +109,10 @@ class BinaryRestrictionLabeler(BinaryCategoricalLabeler):
             lower: Optional[int],
             upper: Optional[int],
             negate: bool = False):
+        if lower is None and upper is None:
+            raise ValueError("Can't have both open intervals.")
         super().__init__(negate=negate)
-        self.lower = lower
+        self.lower = lower if lower is not None else 0
         self.upper = upper
 
         txt = f"restriction({lower},{upper})"

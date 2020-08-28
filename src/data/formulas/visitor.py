@@ -59,3 +59,6 @@ class Visitor(ABC, Generic[T_co]):
 
     def process(self, formula: Element):
         pass
+
+    @abstractmethod
+    def __str__(self): ...

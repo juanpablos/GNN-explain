@@ -23,6 +23,27 @@ class Filterer(Visitor[bool]):
         self.result = False
 
 
+class AtomicOnlyFilter(Filterer):
+    def __init__(self, atomic: Union[Literal["all"], Iterable[str]]):
+        super().__init__()
+        if atomic == "all":
+            self.selected = _available
+        else:
+            _check_atomic(atomic)
+            self.selected = atomic
+
+        self.no_hop = True
+
+    def _visit_Exist(self, node: Exist):
+        self.no_hop = False
+
+    def process(self, formula: Element):
+        self.result = self.no_hop
+
+    def __str__(self):
+        return f"AtomicOnlyFilter({self.selected})"
+
+
 class AtomicFilter(Filterer):
     def __init__(self,
                  atomic: Union[Literal["all"],

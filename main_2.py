@@ -184,9 +184,10 @@ def main(
     model_hash = "f4034364ea-batch"
 
     # * filters
-    selector = FilterApply(condition="and")
+    selector = FilterApply(condition="or")
     # selector.add(AtomicFilter(atomic="all"))
     selector.add(RestrictionFilter(lower=1, upper=2))
+    selector.add(RestrictionFilter(lower=None, upper=-1))
     # selector = SelectFilter(hashes=[
     #     "dc670b1bec",
     #     "4805042859",
@@ -197,9 +198,9 @@ def main(
     # * /filters
 
     # * test_filters
-    test_selector = FilterApply(condition="and")
-    # test_selector.add(AtomicFilter(atomic="all"))
-    test_selector.add(RestrictionFilter(lower=1, upper=2))
+    test_selector = FilterApply(condition="or")
+    test_selector.add(AtomicOnlyFilter(atomic="all"))
+    test_selector.add(RestrictionFilter(lower=4, upper=None))
     # test_selector = SelectFilter(hashes=[
     #     "dc670b1bec",
     #     "4805042859",
@@ -210,7 +211,7 @@ def main(
     # * /test_filters
 
     # * labelers
-    label_logic = BinaryAtomicLabeler(atomic="BLACK")
+    label_logic = BinaryAtomicLabeler(atomic="BLUE")
     labeler = LabelerApply(labeler=label_logic)
     # * /labelers
     data_config: NetworkDataConfig = {
