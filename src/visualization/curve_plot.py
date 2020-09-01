@@ -14,7 +14,7 @@ def plot_training(
         metric_history: MetricHistory,
         save_path: str,
         use_selected: bool = False,
-        file_name: str = None,
+        filename: str = None,
         title: str = None):
     fig, ax1 = plt.subplots(figsize=(20, 10))
     ax2 = ax1.twinx()  # type: ignore
@@ -74,5 +74,5 @@ def plot_training(
 
     plt.tight_layout()
     os.makedirs(f"{save_path}/train/", exist_ok=True)
-    plt.savefig(f"{save_path}/train/{file_name}.png")
+    plt.savefig(f"{save_path}/train/{filename}.png")
     plt.close()

@@ -37,7 +37,7 @@ def get_formula():
 def run_experiment(
         n_models: int,
         save_path: str,
-        file_name: str,
+        filename: str,
         model_config: GNNModelConfig,
         data_config: Dict[str, Any],
         n_graphs: int,
@@ -108,22 +108,22 @@ def run_experiment(
 
     except KeyboardInterrupt:
         logger.info("Manually Interrumpted")
-        _error_file = f"{save_path}/{file_name.format(len(models))}.error"
+        _error_file = f"{save_path}/{filename.format(len(models))}.error"
         with open(_error_file, "w") as o:
             o.write(f"Interrupted work in file {save_path}\n")
             o.write(f"Only {len(models)} models were written\n")
     except Exception as e:
         logger.error(f"Exception encountered: {type(e).__name__}")
         logger.error(f"Message: {e}")
-        _error_file = f"{save_path}/{file_name.format(len(models))}.error"
+        _error_file = f"{save_path}/{filename.format(len(models))}.error"
         with open(_error_file, "w") as o:
-            o.write(f"Problem in file {save_path}/{file_name.format('X')}\n")
+            o.write(f"Problem in file {save_path}/{filename.format('X')}\n")
             o.write(f"Exception encountered: {e.__class__.__name__} {e}\n")
             o.write(f"Only {len(models)} models were written\n")
     finally:
         logger.info(f"Saving computed models...")
 
-        exists, prev_file = save_file_exists(save_path, file_name)
+        exists, prev_file = save_file_exists(save_path, filename)
         if exists:
             # ! this does not take care of race conditions
             logger.info("File already exists")
@@ -139,7 +139,7 @@ def run_experiment(
                 stats = merge_update(stats, prev_stats)
 
         logger.info(f"Saving {len(models)} models...")
-        models_file = f"{save_path}/{file_name.format(len(models))}"
+        models_file = f"{save_path}/{filename.format(len(models))}"
         torch.save(models, models_file)
         with open(f"{models_file}.stat", "w") as f:
             json.dump(stats, f, sort_keys=True, indent=2)
@@ -200,7 +200,7 @@ def main(use_formula: FOC = None):
     # ! manual operation
     os.makedirs(save_path, exist_ok=True)
     # * model_name - number of models - model hash - formula hash
-    file_name = f"{model_name}-" + "n{}" + \
+    filename = f"{model_name}-" + "n{}" + \
         f"-{model_config_hash}-{formula_hash}.pt"
 
     iterations = 20
@@ -248,7 +248,7 @@ def main(use_formula: FOC = None):
     run_experiment(
         n_models=n_models,
         save_path=save_path,
-        file_name=file_name,
+        filename=filename,
         model_config=model_config,
         data_config=data_config,
         n_graphs=n_graphs,

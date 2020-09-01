@@ -42,9 +42,9 @@ def run_experiment(
         run_train_test: bool = False,
         results_path: str = "./results",
         model_name: str = None,
-        plot_file_name: str = None,
+        plot_filename: str = None,
         plot_title: str = None,
-        info_file_name: str = "info",
+        info_filename: str = "info",
         multi_label: bool = True,
         _legacy_load_without_batch: bool = False
 ):
@@ -114,7 +114,7 @@ def run_experiment(
     # "" or " (N)"
     ext = write_result_info(
         path=results_path,
-        file_name=info_file_name,
+        filename=info_filename,
         hash_formula=hash_formula,
         hash_label=hash_label,
         classes=class_mapping,
@@ -133,7 +133,7 @@ def run_experiment(
     target_names = list(class_mapping.values())
     print(classification_report(_y, _y_pred, target_names=target_names))
 
-    if plot_file_name is not None:
+    if plot_filename is not None:
         test_label_info = test_data.label_info
         cm_labels = [
             f"{label_name} ({test_label_info.get(label, 0)})"
@@ -142,7 +142,7 @@ def run_experiment(
             _y,
             _y_pred,
             save_path=results_path,
-            file_name=plot_file_name + ext,
+            filename=plot_filename + ext,
             title=plot_title,
             labels=cm_labels,
             normalize_cm=True)
@@ -151,7 +151,7 @@ def run_experiment(
         plot_training(
             metric_history=metrics,
             save_path=results_path,
-            file_name=plot_file_name + ext,
+            filename=plot_filename + ext,
             title=plot_title,
             use_selected=False)
 
@@ -256,9 +256,9 @@ def main(
         run_train_test=True,
         results_path=results_path,
         model_name=model_name,
-        plot_file_name=plot_file,
+        plot_filename=plot_file,
         plot_title=msg,  # ? maybe a better message
-        info_file_name=msg,
+        info_filename=msg,
         # * this should only be available when binary in experiment 3
         multi_label=isinstance(label_logic, MultiLabelCategoricalLabeler),
         _legacy_load_without_batch=True  # ! remove eventually

@@ -129,8 +129,8 @@ class NetworkDataset(LabeledDatasetBase[torch.Tensor, S_co], Dataset):
         self.__load(file, label, limit, _legacy_load_without_batch)
         self.formula = formula
 
-    def __load(self, file_name, label: S_co, limit, no_batch):
-        networks = torch.load(file_name)
+    def __load(self, filename, label: S_co, limit, no_batch):
+        networks = torch.load(filename)
 
         dataset = []
 

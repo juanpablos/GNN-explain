@@ -25,7 +25,7 @@ def merge_update(dict1, dict2):
     return dict1
 
 
-def save_file_exists(root: str, file_name: str):
+def save_file_exists(root: str, filename: str):
     """Check if the tuple (model type, model config, formula) already exists (ignores the number of models saved)"""
     def _create_tuple(s):
         left = s.split(".pt")[0]
@@ -33,7 +33,7 @@ def save_file_exists(root: str, file_name: str):
         # skip the nX
         return splitted[0], splitted[2], splitted[3]
 
-    searching = _create_tuple(file_name)
+    searching = _create_tuple(filename)
 
     logger.debug(f"Searching for existing file: {searching}")
     for file in os.listdir(root):
@@ -85,23 +85,23 @@ def write_metadata(
         ])
 
 
-def get_next_file_name(path: str, file_name: str, ext: str):
-    if os.path.exists(f"{path}/{file_name}.{ext}"):
+def get_next_filename(path: str, filename: str, ext: str):
+    if os.path.exists(f"{path}/{filename}.{ext}"):
         counter = 1
-        while os.path.exists(f"{path}/{file_name} ({counter}).{ext}"):
+        while os.path.exists(f"{path}/{filename} ({counter}).{ext}"):
             counter += 1
 
         count = f" ({counter})"
-        file_name = file_name + count
+        filename = filename + count
 
-        return file_name, count
+        return filename, count
     else:
-        return file_name, ""
+        return filename, ""
 
 
 def write_result_info(
         path: str,
-        file_name: str,
+        filename: str,
         hash_formula: Dict[str, Element],
         hash_label: Dict[str, Any],
         classes: Dict[Any, str],
@@ -123,11 +123,11 @@ def write_result_info(
     max_formula_len = max(len(str(formula))
                           for formula in hash_formula.values())
 
-    file_name, counter = get_next_file_name(path=f"{path}/info",
-                                            file_name=file_name,
-                                            ext="txt")
+    filename, counter = get_next_filename(path=f"{path}/info",
+                                          filename=filename,
+                                          ext="txt")
 
-    with open(f"{path}/info/{file_name}.txt", "w", encoding="utf-8") as o:
+    with open(f"{path}/info/{filename}.txt", "w", encoding="utf-8") as o:
         # format:
         # label_id, label_name, n_formulas with label
         # - formula_hash, formula_repr [, n_mistakes/total formulas in test]

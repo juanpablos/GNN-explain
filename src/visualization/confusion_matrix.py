@@ -11,7 +11,7 @@ def plot_confusion_matrix(
         y,
         y_pred,
         save_path: str,
-        file_name: str = None,
+        filename: str = None,
         title: str = None,
         *,
         labels=None,
@@ -39,7 +39,7 @@ def plot_confusion_matrix(
         disp.im_.set_clim(0, 1)
     plt.tight_layout()
 
-    figure_name = file_name if file_name is not None else "confusion_matrix"
+    figure_name = filename if filename is not None else "confusion_matrix"
     figure_title = title if title is not None else ""
 
     plt.title(figure_title, wrap=True)
