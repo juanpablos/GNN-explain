@@ -58,6 +58,7 @@ def load_gnn_files(
     logger.debug(f"Running formula selector {selector}")
     # mapping from the selected formula_hash -> formula object
     selected_formulas = selector(dir_mapping)
+    logger.debug(f"Running test formula selector {test_selector}")
     testing_selected_formulas = test_selector(dir_mapping)
     if testing_selected_formulas:
         logger.debug("Adding exclusive testing formulas")

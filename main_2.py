@@ -54,7 +54,6 @@ def run_experiment(
     # hash_formula: formula_hash -> formula_object
     # hash_label: formula_hash -> label_id
     # data_reconstruction: point_index -> formula_object
-    # formula_label_mapping: formula_object -> label_id
     (datasets, class_mapping,
      hash_formula, hash_label,
      data_reconstruction) = load_gnn_files(
@@ -184,34 +183,34 @@ def main(
     model_hash = "f4034364ea-batch"
 
     # * filters
-    selector = FilterApply(condition="or")
+    # selector = FilterApply(condition="or")
     # selector.add(AtomicFilter(atomic="all"))
-    selector.add(RestrictionFilter(lower=1, upper=2))
-    selector.add(RestrictionFilter(lower=None, upper=-1))
+    # selector.add(RestrictionFilter(lower=1, upper=2))
+    # selector.add(RestrictionFilter(lower=None, upper=-1))
     # selector = SelectFilter(hashes=[
     #     "dc670b1bec",
     #     "4805042859",
     #     "688d12b701",
     #     "652c706f1b"
     # ])
-    # selector = NoFilter()
+    selector = NoFilter()
     # * /filters
 
     # * test_filters
-    test_selector = FilterApply(condition="or")
-    test_selector.add(AtomicOnlyFilter(atomic="all"))
-    test_selector.add(RestrictionFilter(lower=4, upper=None))
+    # test_selector = FilterApply(condition="or")
+    # test_selector.add(AtomicOnlyFilter(atomic="all"))
+    # test_selector.add(RestrictionFilter(lower=4, upper=None))
     # test_selector = SelectFilter(hashes=[
     #     "dc670b1bec",
     #     "4805042859",
     #     "688d12b701",
     #     "652c706f1b"
     # ])
-    # test_selector = NullFilter()
+    test_selector = NullFilter()
     # * /test_filters
 
     # * labelers
-    label_logic = BinaryAtomicLabeler(atomic="BLUE")
+    label_logic = BinaryAtomicLabeler(atomic="RED", hop=1)
     labeler = LabelerApply(labeler=label_logic)
     # * /labelers
     data_config: NetworkDataConfig = {
@@ -224,7 +223,7 @@ def main(
     }
 
     iterations = 20
-    test_batch = 512
+    test_batch = 1024
 
     if name is None:
         name = f"{selector}-{labeler}-{test_selector}"
@@ -233,7 +232,7 @@ def main(
         [f"{l}L{val}" for l, val in enumerate(hidden_layers, start=1)])
     msg = f"{name}-{hid}-{train_batch}b-{lr}lr"
 
-    results_path = f"./results/testing/{model_hash}"
+    results_path = f"./results/exp3/{model_hash}"
     plot_file = None
     if make_plots:
         plot_file = msg
@@ -295,7 +294,7 @@ if __name__ == "__main__":
     #         main(seed=42, train_batch=__batch, lr=__lr, hidden_layers=__layers)
     main(
         seed=0,
-        train_batch=128,
+        train_batch=512,
         lr=0.005,
         hidden_layers=__layers,
         save_model=True,
