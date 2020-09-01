@@ -9,7 +9,7 @@ from sklearn.metrics import classification_report
 
 from src.data.formula_index import FormulaMapping
 from src.data.formulas import *
-from src.data.formulas.labeler import BinaryCategoricalLabeler
+from src.data.formulas.labeler import MultiLabelCategoricalLabeler
 from src.data.loader import load_gnn_files
 from src.data.utils import (
     get_input_dim,
@@ -45,7 +45,7 @@ def run_experiment(
         plot_file_name: str = None,
         plot_title: str = None,
         info_file_name: str = "info",
-        get_mistakes: bool = True,
+        multi_label: bool = True,
         _legacy_load_without_batch: bool = False
 ):
 
@@ -108,7 +108,7 @@ def run_experiment(
     # formula_count is a counter for each formula in the rest set
     # formula_count: formula -> int
     _y, _y_pred, mistakes, formula_count = evaluate_model(
-        model=model, test_data=test_data, reconstruction=data_reconstruction, trainer=train_state, gpu=gpu_num, additional_info=get_mistakes)
+        model=model, test_data=test_data, reconstruction=data_reconstruction, trainer=train_state, gpu=gpu_num, multi_label=multi_label)
 
     # returns a number to put after the file name in case it already exists
     # "" or " (N)"
@@ -118,7 +118,7 @@ def run_experiment(
         hash_formula=hash_formula,
         hash_label=hash_label,
         classes=class_mapping,
-        write_mistakes=get_mistakes,
+        multi_label=multi_label,
         mistakes=mistakes,
         formula_count=formula_count)
 
@@ -260,7 +260,7 @@ def main(
         plot_title=msg,  # ? maybe a better message
         info_file_name=msg,
         # * this should only be available when binary in experiment 3
-        get_mistakes=isinstance(label_logic, BinaryCategoricalLabeler),
+        multi_label=isinstance(label_logic, MultiLabelCategoricalLabeler),
         _legacy_load_without_batch=True  # ! remove eventually
     )
     end = timer()
