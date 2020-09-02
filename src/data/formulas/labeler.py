@@ -160,21 +160,23 @@ class SequentialCategoricalLabeler(CategoricalLabeler[int, int]):
         return "Sequential()"
 
 
-class MultiLabelCategoricalLabeler(CategoricalLabeler[List[int], int]):
+class MultiLabelCategoricalLabeler(CategoricalLabeler[Tuple[int, ...], int]):
     def __init__(self):
         super().__init__()
         self.current_counter = 0
-        self.result: List[int] = []
+        self.result: Tuple[int, ...] = ()
+        self.current_result: List[int] = []
 
     def reset(self):
-        self.result = []
+        self.current_result = []
+        self.result = ()
 
     def process(self, formula: Element):
-        if not self.result:
+        if not self.current_result:
             raise ValueError(
                 f"Current formula don't have any label: {formula}")
         # ** we do not care about the order of the output
-        self.result = list(set(self.result))
+        self.result = tuple(set(self.current_result))
 
 
 class MultiLabelAtomicLabeler(MultiLabelCategoricalLabeler):
@@ -185,12 +187,12 @@ class MultiLabelAtomicLabeler(MultiLabelCategoricalLabeler):
         self.inverse_classes: Dict[str, int] = {}
 
     def _visit_Property(self, node: Property):
-        if node.name not in self.classes:
+        if node.name not in self.inverse_classes:
             self.classes[self.current_counter] = node.name
             self.inverse_classes[node.name] = self.current_counter
             self.current_counter += 1
 
-        self.result.append(self.inverse_classes[node.name])
+        self.current_result.append(self.inverse_classes[node.name])
 
     def __str__(self):
         return "MultiLabelAtomic()"
@@ -218,7 +220,7 @@ class MultilabelRestrictionLabeler(MultiLabelCategoricalLabeler):
             self.classes[self.current_counter] = _cls
             self.current_counter += 1
 
-        self.result.append(self.pairs[(node.lower, node.upper)])
+        self.current_result.append(self.pairs[(node.lower, node.upper)])
 
         super()._visit_Exist(node)
 
