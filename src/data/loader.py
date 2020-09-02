@@ -41,7 +41,9 @@ def load_gnn_files(
         raise FileExistsError(
             f"No directory for the current model hash: {root}/{model_hash}")
 
+    is_multilabel = False
     if isinstance(labeler, MultiLabelCategoricalLabeler):
+        is_multilabel = True
         # TODO: implement multi label
         raise NotImplementedError(
             "Multilabel classification is yet to be implemented")
@@ -65,7 +67,7 @@ def load_gnn_files(
         selected_formulas.update(testing_selected_formulas)
 
     logger.debug(f"Running formula labeler {labeler}")
-    # mapping from the selected formula_hash -> label_id
+    # mapping from the selected formula_hash -> label_id | label_ids
     # classes is a dictionary label_id -> label_name
     selected_labels, classes = labeler(selected_formulas)
 
@@ -76,6 +78,8 @@ def load_gnn_files(
     train_dataset: List[NetworkDataset[int]] = []
     # contains formulas used for testing when test manually selected
     test_dataset: List[NetworkDataset[int]] = []
+
+    n_labels = len(classes)
 
     logger.info(f"Loading {len(selected_labels)} formulas")
     for formula_hash, label in selected_labels.items():
@@ -102,13 +106,26 @@ def load_gnn_files(
 
     if testing_selected_formulas:
         assert len(test_dataset) > 0, "test_dataset is empty"
-        return ((LabeledDataset.from_iterable(train_dataset),
-                 LabeledDataset.from_iterable(test_dataset)),
-                classes, selected_formulas, selected_labels,
+        return ((LabeledDataset.from_iterable(train_dataset,
+                                              multilabel=is_multilabel,
+                                              n_labels=n_labels),
+                 LabeledDataset.from_iterable(test_dataset,
+                                              multilabel=is_multilabel,
+                                              n_labels=n_labels)
+                 ),
+                classes,
+                selected_formulas,
+                selected_labels,
                 NetworkDatasetCollectionWrapper(test_dataset))
     else:
         # when the test_set is not manually selected we return a
         # big dataset containing all formulas
-        return (LabeledDataset.from_iterable(datasets),
-                classes, selected_formulas, selected_labels,
-                NetworkDatasetCollectionWrapper(datasets))
+        return (
+            LabeledDataset.from_iterable(
+                datasets,
+                multilabel=is_multilabel,
+                n_labels=n_labels),
+            classes,
+            selected_formulas,
+            selected_labels,
+            NetworkDatasetCollectionWrapper(datasets))
