@@ -1,7 +1,16 @@
 import bisect
 from abc import ABC
 from collections import Counter
-from typing import Dict, Generic, Iterator, List, Mapping, Sequence, Tuple
+from typing import (
+    Dict,
+    Generic,
+    Iterable,
+    Iterator,
+    List,
+    Mapping,
+    Sequence,
+    Tuple
+)
 
 import torch
 from torch.utils.data import Dataset
@@ -183,8 +192,11 @@ class LabeledDataset(LabeledDatasetBase[T_co, S_co], Dataset):
         return data_instance
 
     @classmethod
-    def from_iterable(
-            cls, datasets: Sequence[IndexableIterable[Tuple[T_co, S_co]]]):
+    def from_iterable(cls,
+                      datasets: Sequence[IndexableIterable[Tuple[T_co,
+                                                                 S_co]]],
+                      multilabel: bool,
+                      n_labels: int = 0):
 
         dataset: List[T_co] = []
         labels: List[S_co] = []
@@ -193,9 +205,21 @@ class LabeledDataset(LabeledDatasetBase[T_co, S_co], Dataset):
                 d = cls.from_tuple_dataset(d)
 
             dataset.extend(d.dataset)
-            labels.extend(d.labels)
+
+            data_labels = d.labels
+            if multilabel:
+                data_labels = cls.multilabel_to_tensor_generator(
+                    d.labels, n_labels)
+
+            labels.extend(data_labels)
 
         return cls(dataset=dataset, labels=labels)
+
+    @staticmethod
+    def multilabel_to_tensor_generator(
+            multilabels: Iterable[Iterable[int]], n_labels: int):
+        for label in multilabels:
+            yield torch.zeros(n_labels).index_fill_(0, torch.tensor(label), 1.)
 
 
 class Subset(Dataset, Generic[T_co]):
