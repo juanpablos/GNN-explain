@@ -18,6 +18,7 @@ logger = logging.getLogger(__name__)
 class Metric:
     def __init__(self, average: str = "macro"):
         if average not in ["binary", "micro", "macro"]:
+            # TODO: support individual metric per label for multilabel
             raise ValueError(
                 "Argument `average` must be one of `binary`, `micro`, `macro`")
         self.y_true = []
@@ -62,7 +63,8 @@ class Training(Trainer):
                  metrics_average: str = "macro",
                  logging_variables: Union[Literal["all"],
                                           List[str],
-                                          None] = "all"):
+                                          None] = "all",
+                 multilabel: bool = False):
 
         if logging_variables is None:
             logging_variables = []
@@ -75,28 +77,36 @@ class Training(Trainer):
         self.metric_logger = MetricLogger(logging_variables)
 
         self.n_classes = n_classes
+        self.multilabel = multilabel
         self.metrics = Metric(average=metrics_average)
 
     def get_metric_logger(self):
         return self.metric_logger
 
     def transform_y(self, y):
-        if self.n_classes == 2:
+        if self.n_classes == 2 and not self.multilabel:
             return F.one_hot(y, 2).float()
         else:
             return y
 
     def activation(self, output):
-        if self.n_classes == 2:
+        if self.n_classes == 2 or self.multilabel:
             return torch.sigmoid(output)
         else:
             return torch.log_softmax(output, dim=1)
 
+    def inference(self, output):
+        if self.multilabel:
+            return (output >= 0.5).float()
+        else:
+            _, y_pred = output.max(dim=1)
+            return y_pred
+
     def get_loss(self):
-        if self.n_classes > 2:
+        if self.n_classes > 2 and not self.multilabel:
             logger.debug("Using CrossEntropyLoss")
             return nn.CrossEntropyLoss(reduction="mean")
-        elif self.n_classes == 2:
+        elif self.n_classes == 2 or self.multilabel:
             logger.debug("Using BCEWithLogitsLoss")
             return nn.BCEWithLogitsLoss(reduction="mean")
         else:
@@ -188,7 +198,7 @@ class Training(Trainer):
             accum_loss.append(loss.detach().cpu().numpy())
 
             output = self.activation(output)
-            _, y_pred = output.max(dim=1)
+            y_pred = self.inference(output)
 
             self.metrics(y, y_pred)
 
