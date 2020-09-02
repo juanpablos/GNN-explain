@@ -18,7 +18,7 @@ def evaluate_model(model: torch.nn.Module,
                                     LabeledDataset[T, S]],
                    reconstruction: NetworkDatasetCollectionWrapper[S],
                    trainer: Training,
-                   multi_label: bool,
+                   multilabel: bool,
                    gpu: int = 0):
 
     if torch.cuda.is_available():
@@ -50,7 +50,7 @@ def evaluate_model(model: torch.nn.Module,
     mistakes: DefaultDict[Element, int] = DefaultDict(int)
     formula_count: DefaultDict[Element, int] = DefaultDict(int)
 
-    if not multi_label:
+    if not multilabel:
         if isinstance(test_data, LabeledDataset):
             test_indices = list(range(len(test_data)))
         else:

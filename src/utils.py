@@ -105,7 +105,7 @@ def write_result_info(
         hash_formula: Dict[str, Element],
         hash_label: Dict[str, Any],
         classes: Dict[Any, str],
-        multi_label: bool,
+        multilabel: bool,
         mistakes: Dict[Element, int],
         formula_count: Dict[Element, int]):
 
@@ -135,7 +135,7 @@ def write_result_info(
             hashes = groups[label_id]
             o.write(f"{label_id}\t{label_name}\t{len(hashes)}\n")
 
-            if not multi_label:
+            if not multilabel:
                 template = "\t{hash}\t{formula:<{pad}}{err}\n"
                 key = lambda h: mistakes.get(hash_formula[h], 0)
                 for _hash in sorted(hashes, key=key, reverse=True):

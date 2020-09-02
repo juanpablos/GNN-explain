@@ -45,7 +45,7 @@ def run_experiment(
         plot_filename: str = None,
         plot_title: str = None,
         info_filename: str = "info",
-        multi_label: bool = True,
+        multilabel: bool = True,
         _legacy_load_without_batch: bool = False
 ):
 
@@ -108,7 +108,7 @@ def run_experiment(
     # formula_count is a counter for each formula in the rest set
     # formula_count: formula -> int
     _y, _y_pred, mistakes, formula_count = evaluate_model(
-        model=model, test_data=test_data, reconstruction=data_reconstruction, trainer=train_state, gpu=gpu_num, multi_label=multi_label)
+        model=model, test_data=test_data, reconstruction=data_reconstruction, trainer=train_state, gpu=gpu_num, multilabel=multilabel)
 
     # returns a number to put after the file name in case it already exists
     # "" or " (N)"
@@ -118,7 +118,7 @@ def run_experiment(
         hash_formula=hash_formula,
         hash_label=hash_label,
         classes=class_mapping,
-        multi_label=multi_label,
+        multilabel=multilabel,
         mistakes=mistakes,
         formula_count=formula_count)
 
@@ -260,7 +260,7 @@ def main(
         plot_title=msg,  # ? maybe a better message
         info_filename=msg,
         # * this should only be available when binary in experiment 3
-        multi_label=isinstance(label_logic, MultiLabelCategoricalLabeler),
+        multilabel=isinstance(label_logic, MultiLabelCategoricalLabeler),
         _legacy_load_without_batch=True  # ! remove eventually
     )
     end = timer()
