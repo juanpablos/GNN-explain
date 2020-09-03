@@ -97,7 +97,7 @@ class Training(Trainer):
 
     def inference(self, output):
         if self.multilabel:
-            return (output >= 0.5).float()
+            return (output >= 0.5).int()
         else:
             _, y_pred = output.max(dim=1)
             return y_pred
