@@ -21,7 +21,10 @@ from src.run_logic import run, seed_everything
 from src.training.mlp_training import Training
 from src.typing import MinModelConfig, NetworkDataConfig
 from src.utils import write_result_info
-from src.visualization.confusion_matrix import plot_confusion_matrix
+from src.visualization.confusion_matrix import (
+    plot_confusion_matrix,
+    plot_multilabel_confusion_matrix
+)
 from src.visualization.curve_plot import plot_training
 
 logger = logging.getLogger("src")
@@ -144,8 +147,19 @@ def run_experiment(
     print(classification_report(_y, _y_pred, target_names=target_names))
 
     if plot_filename is not None:
-        if not multilabel:
-            # TODO: implement for multilabel
+        if multilabel:
+            test_label_info = test_data.label_info
+            label_numbers = [test_label_info[i] for i in class_mapping]
+            plot_multilabel_confusion_matrix(
+                _y,
+                _y_pred,
+                save_path=results_path,
+                labels=list(class_mapping.values()),
+                label_totals=label_numbers,
+                filename=plot_filename + ext,
+                title=plot_title
+            )
+        else:
             test_label_info = test_data.label_info
             cm_labels = [
                 f"{label_name} ({test_label_info.get(label, 0)})"
