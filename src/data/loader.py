@@ -42,11 +42,9 @@ def load_gnn_files(
             f"No directory for the current model hash: {root}/{model_hash}")
 
     is_multilabel = False
-    if isinstance(labeler, MultiLabelCategoricalLabeler):
+    if isinstance(labeler.labeler, MultiLabelCategoricalLabeler):
+        logger.debug("Using a multilabel labeler")
         is_multilabel = True
-        # TODO: implement multi label
-        raise NotImplementedError(
-            "Multilabel classification is yet to be implemented")
 
     model_path = os.path.join(root, model_hash)
     # select all formulas available in directory
@@ -67,17 +65,19 @@ def load_gnn_files(
         selected_formulas.update(testing_selected_formulas)
 
     logger.debug(f"Running formula labeler {labeler}")
-    # mapping from the selected formula_hash -> label_id | label_ids
+    # mapping from the selected
+    #   single label: formula_hash -> label_id
+    #   multilabel: formula_hash -> List[label_id]
     # classes is a dictionary label_id -> label_name
     selected_labels, classes = labeler(selected_formulas)
 
     # contains all formulas in use in the experiment
-    datasets: List[NetworkDataset[int]] = []
+    datasets: List[NetworkDataset[T]] = []
 
     # contains formulas used for training when test manually selected
-    train_dataset: List[NetworkDataset[int]] = []
+    train_dataset: List[NetworkDataset[T]] = []
     # contains formulas used for testing when test manually selected
-    test_dataset: List[NetworkDataset[int]] = []
+    test_dataset: List[NetworkDataset[T]] = []
 
     n_labels = len(classes)
 
@@ -93,6 +93,8 @@ def load_gnn_files(
             file=file_path,
             label=label,
             formula=formula_object,
+            multilabel=is_multilabel,
+            n_labels=n_labels,
             _legacy_load_without_batch=_legacy_load_without_batch)
 
         if testing_selected_formulas:
@@ -107,11 +109,9 @@ def load_gnn_files(
     if testing_selected_formulas:
         assert len(test_dataset) > 0, "test_dataset is empty"
         return ((LabeledDataset.from_iterable(train_dataset,
-                                              multilabel=is_multilabel,
-                                              n_labels=n_labels),
+                                              multilabel=is_multilabel),
                  LabeledDataset.from_iterable(test_dataset,
-                                              multilabel=is_multilabel,
-                                              n_labels=n_labels)
+                                              multilabel=is_multilabel)
                  ),
                 classes,
                 selected_formulas,
@@ -123,8 +123,7 @@ def load_gnn_files(
         return (
             LabeledDataset.from_iterable(
                 datasets,
-                multilabel=is_multilabel,
-                n_labels=n_labels),
+                multilabel=is_multilabel),
             classes,
             selected_formulas,
             selected_labels,

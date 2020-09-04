@@ -2,8 +2,9 @@ import csv
 import json
 import logging
 import os
+from collections import defaultdict
 from collections.abc import Mapping
-from typing import Any, DefaultDict, Dict, List
+from typing import Any, Dict, List
 
 from src.graphs.foc import FOC, Element
 from src.typing import GNNModelConfig
@@ -106,8 +107,13 @@ def write_result_info(
         hash_label: Dict[str, Any],
         classes: Dict[Any, str],
         multilabel: bool,
-        mistakes: Dict[Element, int],
+        mistakes: Dict[Element, Dict[int, int]],
         formula_count: Dict[Element, int]):
+
+    logger.debug("Writing result info")
+
+    def formula_label_getter(query_hash: str, query_label: int):
+        return mistakes.get(hash_formula[query_hash], {}).get(query_label, 0)
 
     os.makedirs(f"{path}/info/", exist_ok=True)
 
@@ -115,10 +121,17 @@ def write_result_info(
     # label_id label_name n_formulas
     # \t hash formula
 
+    # hash_label:
+    #   single label: formula_hash -> label_id
+    #   multilabel: formula_hash -> List[label_id]
     # label_id -> list[hashes]
-    groups: DefaultDict[Any, List[str]] = DefaultDict(list)
+    groups: Dict[Any, List[str]] = defaultdict(list)
     for _hash, label in hash_label.items():
-        groups[label].append(_hash)
+        if multilabel:
+            for label_el in label:
+                groups[label_el].append(_hash)
+        else:
+            groups[label].append(_hash)
 
     max_formula_len = max(len(str(formula))
                           for formula in hash_formula.values())
@@ -130,26 +143,23 @@ def write_result_info(
     with open(f"{path}/info/{filename}.txt", "w", encoding="utf-8") as o:
         # format:
         # label_id, label_name, n_formulas with label
-        # - formula_hash, formula_repr [, n_mistakes/total formulas in test]
+        # - formula_hash, formula_repr, n_mistakes/total formulas in test
         for label_id, label_name in classes.items():
             hashes = groups[label_id]
             o.write(f"{label_id}\t{label_name}\t{len(hashes)}\n")
 
-            if not multilabel:
-                template = "\t{hash}\t{formula:<{pad}}{err}\n"
-                key = lambda h: mistakes.get(hash_formula[h], 0)
-                for _hash in sorted(hashes, key=key, reverse=True):
-                    n_mistakes = mistakes.get(hash_formula[_hash], 0)
-                    count = formula_count[hash_formula[_hash]]
+            template = "\t{hash}\t{formula:<{pad}}{err}\n"
+            key = lambda h: formula_label_getter(h, label_id)
 
-                    line = template.format(
-                        hash=_hash,
-                        formula=str(hash_formula[_hash]),
-                        err=f"{n_mistakes}/{count}",
-                        pad=max_formula_len + 4)
-                    o.write(line)
-            else:
-                for _hash in hashes:
-                    o.write(f"\t{_hash}\t{hash_formula[_hash]}\n")
+            for _hash in sorted(hashes, key=key, reverse=True):
+                n_mistakes = formula_label_getter(_hash, label_id)
+                count = formula_count[hash_formula[_hash]]
+
+                line = template.format(
+                    hash=_hash,
+                    formula=str(hash_formula[_hash]),
+                    err=f"{n_mistakes}/{count}",
+                    pad=max_formula_len + 4)
+                o.write(line)
 
     return counter

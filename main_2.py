@@ -52,7 +52,9 @@ def run_experiment(
     logger.info("Loading Files")
     # class_mapping: label_id -> label_name
     # hash_formula: formula_hash -> formula_object
-    # hash_label: formula_hash -> label_id
+    # hash_label:
+    #   single label: formula_hash -> label_id
+    #   multilabel: formula_hash -> List[label_id]
     # data_reconstruction: point_index -> formula_object
     (datasets, class_mapping,
      hash_formula, hash_label,
@@ -70,7 +72,8 @@ def run_experiment(
                                                    test_size=test_size,
                                                    random_state=seed,
                                                    shuffle=True,
-                                                   stratify=stratify)
+                                                   stratify=stratify,
+                                                   multilabel=multilabel)
 
     n_classes = len(class_mapping)
     logger.debug(f"{n_classes} classes detected")
@@ -86,7 +89,10 @@ def run_experiment(
     model_config["input_dim"] = input_shape[0]
     model_config["output_dim"] = n_classes
 
-    train_state = Training(n_classes=n_classes, logging_variables="all")
+    train_state = Training(
+        n_classes=n_classes,
+        logging_variables="all",
+        multilabel=multilabel)
 
     logger.debug("Running")
     logger.debug(f"Input size is {input_shape[0]}")
@@ -103,12 +109,13 @@ def run_experiment(
         lr=lr,
         run_train_test=run_train_test)
 
-    # mistakes is a counter for each formula mistake in test:
-    # mistakes: formula -> int
-    # formula_count is a counter for each formula in the rest set
-    # formula_count: formula -> int
+    # mistakes is a counter for each formula for each label mistake in test:
+    # mistakes: formula -> (int -> int)
+    # formula_count is a counter for each formula for each label in the test set
+    # formula_count: formula -> (int -> int)
     _y, _y_pred, mistakes, formula_count = evaluate_model(
-        model=model, test_data=test_data, reconstruction=data_reconstruction, trainer=train_state, gpu=gpu_num, multilabel=multilabel)
+        model=model, test_data=test_data, reconstruction=data_reconstruction,
+        trainer=train_state, gpu=gpu_num, multilabel=multilabel)
 
     # returns a number to put after the file name in case it already exists
     # "" or " (N)"
@@ -123,6 +130,7 @@ def run_experiment(
         formula_count=formula_count)
 
     if model_name is not None:
+        logger.debug("Writing model")
         model.cpu()
         os.makedirs(f"{results_path}/models/", exist_ok=True)
         torch.save(
@@ -131,21 +139,25 @@ def run_experiment(
 
     # class_mapping is an ordered dict
     target_names = list(class_mapping.values())
+    # * no problem with multilabel as is
+    logger.debug("Printing classification report")
     print(classification_report(_y, _y_pred, target_names=target_names))
 
     if plot_filename is not None:
-        test_label_info = test_data.label_info
-        cm_labels = [
-            f"{label_name} ({test_label_info.get(label, 0)})"
-            for label, label_name in class_mapping.items()]
-        plot_confusion_matrix(
-            _y,
-            _y_pred,
-            save_path=results_path,
-            filename=plot_filename + ext,
-            title=plot_title,
-            labels=cm_labels,
-            normalize_cm=True)
+        if not multilabel:
+            # TODO: implement for multilabel
+            test_label_info = test_data.label_info
+            cm_labels = [
+                f"{label_name} ({test_label_info.get(label, 0)})"
+                for label, label_name in class_mapping.items()]
+            plot_confusion_matrix(
+                _y,
+                _y_pred,
+                save_path=results_path,
+                filename=plot_filename + ext,
+                title=plot_title,
+                labels=cm_labels,
+                normalize_cm=True)
 
         metrics = train_state.get_metric_logger()
         plot_training(
@@ -187,13 +199,12 @@ def main(
     # selector.add(AtomicFilter(atomic="all"))
     # selector.add(RestrictionFilter(lower=1, upper=2))
     # selector.add(RestrictionFilter(lower=None, upper=-1))
-    # selector = SelectFilter(hashes=[
-    #     "dc670b1bec",
-    #     "4805042859",
-    #     "688d12b701",
-    #     "652c706f1b"
-    # ])
-    selector = NoFilter()
+    selector = SelectFilter(hashes=[
+        "0c957889eb",
+        "1c998884a4",
+        "4056021fb9"
+    ])
+    # selector = NoFilter()
     # * /filters
 
     # * test_filters
@@ -210,7 +221,7 @@ def main(
     # * /test_filters
 
     # * labelers
-    label_logic = BinaryAtomicLabeler(atomic="RED", hop=1)
+    label_logic = MultiLabelAtomicLabeler()
     labeler = LabelerApply(labeler=label_logic)
     # * /labelers
     data_config: NetworkDataConfig = {
@@ -232,7 +243,7 @@ def main(
         [f"{l}L{val}" for l, val in enumerate(hidden_layers, start=1)])
     msg = f"{name}-{hid}-{train_batch}b-{lr}lr"
 
-    results_path = f"./results/exp3/{model_hash}"
+    results_path = f"./results/testing/{model_hash}"
     plot_file = None
     if make_plots:
         plot_file = msg

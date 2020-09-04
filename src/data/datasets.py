@@ -1,16 +1,7 @@
 import bisect
 from abc import ABC
 from collections import Counter
-from typing import (
-    Dict,
-    Generic,
-    Iterable,
-    Iterator,
-    List,
-    Mapping,
-    Sequence,
-    Tuple
-)
+from typing import Dict, Generic, Iterator, List, Mapping, Sequence, Tuple
 
 import torch
 from torch.utils.data import Dataset
@@ -68,12 +59,13 @@ class RandomGraphDataset(SimpleDataset[T_co]):
 
 
 class LabeledDatasetBase(ABC, Generic[T_co, S_co]):
-    def __init__(self):
+    def __init__(self, multilabel: bool = False):
         # only declaration
         self._dataset: IndexableIterable[T_co]
         self._labels: IndexableIterable[S_co]
-        self._label_info: Dict[S_co, int]
+        self._label_info: Dict[S_co, int] = Counter()
         self._label_info_loaded: bool = False
+        self._multilabel = multilabel
 
     def __getitem__(self, index: int) -> Tuple[T_co, S_co]:
         return self.dataset[index], self.labels[index]
@@ -98,9 +90,17 @@ class LabeledDatasetBase(ABC, Generic[T_co, S_co]):
         self._load()
         return dict(self._label_info)
 
+    @property
+    def multilabel(self):
+        return self._multilabel
+
     def _load(self):
         if not self._label_info_loaded:
-            self._label_info = Counter(self.labels)
+            if self._multilabel:
+                self._label_info.update(torch.stack(list(self.labels))
+                                        .nonzero()[:, 1].tolist())
+            else:
+                self._label_info.update(self.labels)
             self._label_info_loaded = True
 
     @staticmethod
@@ -132,9 +132,16 @@ class NetworkDataset(LabeledDatasetBase[torch.Tensor, S_co], Dataset):
             label: S_co,
             formula: Element,
             limit: int = None,
+            multilabel: bool = False,
+            n_labels: int = 0,
             _legacy_load_without_batch: bool = False):
-        super().__init__()
+        if multilabel and n_labels < 2:
+            raise ValueError("Cannot have multilabel and less than 2 labels")
+        super().__init__(multilabel=multilabel)
         # the weights in a vector
+
+        # !! ensure that using the same tensor does not cause problems
+        label = torch.zeros(n_labels).index_fill_(0, torch.tensor(label), 1.)
         self.__load(file, label, limit, _legacy_load_without_batch)
         self.formula = formula
 
@@ -172,8 +179,9 @@ class LabeledDataset(LabeledDatasetBase[T_co, S_co], Dataset):
 
     def __init__(self,
                  dataset: IndexableIterable[T_co],
-                 labels: IndexableIterable[S_co]):
-        super().__init__()
+                 labels: IndexableIterable[S_co],
+                 multilabel: bool = False):
+        super().__init__(multilabel=multilabel)
 
         self._dataset = dataset
         self._labels = labels
@@ -195,31 +203,21 @@ class LabeledDataset(LabeledDatasetBase[T_co, S_co], Dataset):
     def from_iterable(cls,
                       datasets: Sequence[IndexableIterable[Tuple[T_co,
                                                                  S_co]]],
-                      multilabel: bool,
-                      n_labels: int = 0):
+                      multilabel: bool):
 
         dataset: List[T_co] = []
         labels: List[S_co] = []
         for d in datasets:
             if not isinstance(d, LabeledDatasetLike):
+                if multilabel:
+                    raise ValueError(
+                        "Tuple multilabel dataset is not supported")
                 d = cls.from_tuple_dataset(d)
 
             dataset.extend(d.dataset)
+            labels.extend(d.labels)
 
-            data_labels = d.labels
-            if multilabel:
-                data_labels = cls.multilabel_to_tensor_generator(
-                    d.labels, n_labels)
-
-            labels.extend(data_labels)
-
-        return cls(dataset=dataset, labels=labels)
-
-    @staticmethod
-    def multilabel_to_tensor_generator(
-            multilabels: Iterable[Iterable[int]], n_labels: int):
-        for label in multilabels:
-            yield torch.zeros(n_labels).index_fill_(0, torch.tensor(label), 1.)
+        return cls(dataset=dataset, labels=labels, multilabel=multilabel)
 
 
 class Subset(Dataset, Generic[T_co]):
@@ -289,13 +287,20 @@ class LabeledSubset(Dataset, Generic[T_co, S_co]):
     def indices(self):
         return self._indices
 
+    @property
+    def multilabel(self):
+        return self._dataset.multilabel
+
     def apply_subset(self):
         dataset: List[T_co] = []
         labels: List[S_co] = []
         for x, y in self:
             dataset.append(x)
             labels.append(y)
-        return LabeledDataset(dataset=dataset, labels=labels)
+        return LabeledDataset(
+            dataset=dataset,
+            labels=labels,
+            multilabel=self._dataset.multilabel)
 
 
 class NetworkDatasetCollectionWrapper(Dataset, Generic[S_co]):

@@ -1,6 +1,5 @@
 import logging
 import warnings
-from collections import defaultdict
 from typing import Union
 
 import torch
@@ -24,7 +23,7 @@ def train_test_dataset(
     if stratify:
         if multilabel:
             warnings.warn(
-                "Cannot use the stratified data splitting with multilabels. "
+                "Cannot use stratified data splitting with multilabels. "
                 "Ignoring...", UserWarning, stacklevel=2)
         else:
             if not isinstance(dataset, LabeledDatasetLike):
@@ -58,16 +57,8 @@ def get_input_dim(data):
     return x.shape
 
 
-def get_label_distribution(dataset: LabeledDatasetLike[T, S],
-                           multilabel: bool = False):
+def get_label_distribution(dataset: LabeledDatasetLike[T, S]):
     label_info = dataset.label_info
     n_elements = len(dataset)
-    if multilabel:
-        classes = defaultdict(int)
-        for labels, n_items in label_info.items():
-            for label in labels:
-                classes[label] += n_items
-    else:
-        classes = label_info
 
-    return {k: float(v) / n_elements for k, v in classes.items()}
+    return {k: float(v) / n_elements for k, v in label_info.items()}
