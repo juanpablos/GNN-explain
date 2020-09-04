@@ -141,7 +141,9 @@ class NetworkDataset(LabeledDatasetBase[torch.Tensor, S_co], Dataset):
         # the weights in a vector
 
         # !! ensure that using the same tensor does not cause problems
-        label = torch.zeros(n_labels).index_fill_(0, torch.tensor(label), 1.)
+        if multilabel:
+            label = torch.zeros(n_labels).index_fill_(
+                0, torch.tensor(label), 1.)
         self.__load(file, label, limit, _legacy_load_without_batch)
         self.formula = formula
 
