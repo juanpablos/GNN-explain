@@ -10,7 +10,7 @@ from typing import Any, Dict
 
 import torch
 
-from src.data.datasets import RandomGraphDataset
+from src.data.datasets import GraphDataset
 from src.data.sampler import SubsetSampler
 from src.generate_graphs import graph_stream
 from src.graphs import *
@@ -55,7 +55,7 @@ def run_experiment(
     stream = graph_stream(**data_config)
 
     logger.info(f"Pre-generating database of {total_graphs} graphs")
-    data_pool = RandomGraphDataset(stream, limit=total_graphs)
+    data_pool = GraphDataset(stream, limit=total_graphs)
     logger.info("Finished pre-generating")
 
     seed = data_config.get("seed", None)

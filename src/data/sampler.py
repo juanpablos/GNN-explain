@@ -3,8 +3,8 @@ from typing import Any, Generic
 
 import numpy as np
 
-from src.data.datasets import Subset
-from src.typing import DatasetLike, T
+from src.data.datasets import NoLabelDataset, NoLabelSubset
+from src.typing import T
 
 
 class SubsetSampler(Generic[T]):
@@ -31,7 +31,7 @@ class SubsetSampler(Generic[T]):
 
     def __init__(
             self,
-            dataset: DatasetLike[T],
+            dataset: NoLabelDataset[T],
             n_elements: int,
             test_size: int,
             seed: Any,
@@ -59,7 +59,7 @@ class SubsetSampler(Generic[T]):
                     f"the total sampled elements, {test_size} > {n_elements}")
 
             # generate the unique test partition
-            self.test_partition = Subset(
+            self.test_partition = NoLabelSubset(
                 self.dataset, self.indices[:test_size])
             # remove the selected indices from the available indices
             self.indices = self.indices[test_size:]
@@ -77,11 +77,11 @@ class SubsetSampler(Generic[T]):
             test_idx = ind[:self.test]
             train_idx = ind[self.test:]
 
-            train_set = Subset(self.dataset, train_idx)
-            test_set = Subset(self.dataset, test_idx)
+            train_set = NoLabelSubset(self.dataset, train_idx)
+            test_set = NoLabelSubset(self.dataset, test_idx)
 
         else:
             test_set = self.test_partition
-            train_set = Subset(self.dataset, ind)
+            train_set = NoLabelSubset(self.dataset, ind)
 
         return train_set, test_set

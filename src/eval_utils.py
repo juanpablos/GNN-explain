@@ -52,10 +52,10 @@ def evaluate_model(model: torch.nn.Module,
         y_true.extend(y.tolist())
         y_pred.extend(_y_pred.tolist())
 
-    if isinstance(test_data, LabeledDataset):
-        test_indices = list(range(len(test_data)))
-    else:
+    if isinstance(test_data, LabeledSubset):
         test_indices = test_data.indices
+    else:
+        test_indices = list(range(len(test_data)))
 
     mistakes: DefaultDict[Element, Dict[int, int]] = \
         DefaultDict(lambda: DefaultDict(int))

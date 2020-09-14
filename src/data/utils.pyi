@@ -2,12 +2,17 @@ from typing import Dict, Tuple, overload
 
 import torch
 
-from src.data.datasets import LabeledSubset, Subset
-from src.typing import DatasetLike, LabeledDatasetLike, S, T
+from src.data.datasets import (
+    LabeledDataset,
+    LabeledSubset,
+    NoLabelDataset,
+    NoLabelSubset
+)
+from src.typing import S, T
 
 
 @overload
-def train_test_dataset(dataset: LabeledDatasetLike[T, S],
+def train_test_dataset(dataset: LabeledDataset[T, S],
                        test_size: float = ...,
                        random_state: int = ...,
                        shuffle: bool = ...,
@@ -17,17 +22,17 @@ def train_test_dataset(dataset: LabeledDatasetLike[T, S],
 
 
 @overload
-def train_test_dataset(dataset: DatasetLike[T],
+def train_test_dataset(dataset: NoLabelDataset[T],
                        test_size: float = ...,
                        random_state: int = ...,
                        shuffle: bool = ...,
                        stratify: bool = ...,
-                       multilabel: bool = ...) -> Tuple[Subset[T],
-                                                        Subset[T]]: ...
+                       multilabel: bool = ...) -> Tuple[NoLabelSubset[T],
+                                                        NoLabelSubset[T]]: ...
 
 
 def get_input_dim(data) -> torch.Size: ...
 
 
 def get_label_distribution(
-    dataset: LabeledDatasetLike[T, S]) -> Dict[S, float]: ...
+    dataset: LabeledDataset[T, S]) -> Dict[S, float]: ...

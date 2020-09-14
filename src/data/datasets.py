@@ -1,24 +1,18 @@
 import bisect
-from abc import ABC
-from collections import Counter
-from typing import Dict, Generic, Iterator, List, Mapping, Sequence, Tuple
+from typing import Generic, Iterator, List, Sequence, Tuple
 
 import torch
 from torch.utils.data import Dataset
 
 from src.graphs.foc import Element
-from src.typing import (
-    DatasetLike,
-    Indexable,
-    IndexableIterable,
-    LabeledDatasetLike,
-    S_co,
-    T_co
-)
+from src.typing import Indexable, IndexableIterable, S_co, T_co
+import logging
+
+logger = logging.getLogger(__name__)
 
 
-class DummyIterable(Generic[T_co]):
-    def __init__(self, value: T_co, length: int):
+class DummyIterable(Generic[S_co]):
+    def __init__(self, value: S_co, length: int):
         self.value: T_co = value
         self.length: int = length
 
@@ -33,7 +27,7 @@ class DummyIterable(Generic[T_co]):
             yield self.value
 
 
-class SimpleDataset(Dataset, Generic[T_co]):
+class NoLabelDataset(Dataset, Generic[T_co]):
     def __init__(self, dataset: IndexableIterable[T_co]):
         self._dataset: IndexableIterable[T_co] = dataset
 
@@ -51,183 +45,19 @@ class SimpleDataset(Dataset, Generic[T_co]):
         return self._dataset
 
 
-class RandomGraphDataset(SimpleDataset[T_co]):
+class GraphDataset(NoLabelDataset[T_co]):
     """A Pytorch dataset that takes a (infinite) generator and stores 'limit' elements of it."""
 
     def __init__(self, generator: Iterator[T_co], limit: int):
         super().__init__(dataset=[next(generator) for _ in range(limit)])
 
 
-class LabeledDatasetBase(ABC, Generic[T_co, S_co]):
-    def __init__(self, multilabel: bool = False):
-        # only declaration
-        self._dataset: IndexableIterable[T_co]
-        self._labels: IndexableIterable[S_co]
-        self._label_info: Dict[S_co, int] = Counter()
-        self._label_info_loaded: bool = False
-        self._multilabel = multilabel
-
-    def __getitem__(self, index: int) -> Tuple[T_co, S_co]:
-        return self.dataset[index], self.labels[index]
-
-    def __len__(self) -> int:
-        return len(self.dataset)
-
-    def __iter__(self) -> Iterator[Tuple[T_co, S_co]]:
-        for x, y in zip(self.dataset, self.labels):
-            yield x, y
-
-    @property
-    def dataset(self) -> IndexableIterable[T_co]:
-        return self._dataset
-
-    @property
-    def labels(self) -> IndexableIterable[S_co]:
-        return self._labels
-
-    @property
-    def label_info(self) -> Mapping[S_co, int]:
-        self._load()
-        return dict(self._label_info)
-
-    @property
-    def multilabel(self):
-        return self._multilabel
-
-    def _load(self):
-        if not self._label_info_loaded:
-            if self._multilabel:
-                self._label_info.update(torch.stack(list(self.labels))
-                                        .nonzero()[:, 1].tolist())
-            else:
-                self._label_info.update(self.labels)
-            self._label_info_loaded = True
-
-    @staticmethod
-    def _check_if_element_cond(data):
-        data_element = data[0]
-        if not isinstance(data_element, Indexable):
-            raise TypeError(
-                "The elements in the sequence are not "
-                f"indexable: {type(data_element)}")
-        if len(data_element) < 2:
-            raise TypeError(
-                "The elements in the sequence have less than 2 items. "
-                f"Not enough elements to unpack: {len(data_element)}")
-
-
-def clean_state(model_dict):
-    """Removes the weights associated with batchnorm"""
-    return {k: v for k, v in model_dict.items() if "batch" not in k}
-
-
-class NetworkDataset(LabeledDatasetBase[torch.Tensor, S_co], Dataset):
-    """
-    A Pytorch dataset that loads a pickle file storing a list of the outputs of torch.nn.Module.state_dict(), that is basically a Dict[str, Tensor]. This dataset loads that file, for each network it flattens the tensors into a single vector and stores a tuple (flattened vector, label). Stores exactly the first 'limit' elements of the list.
-    """
-
+class NoLabelSubset(NoLabelDataset[T_co]):
     def __init__(
             self,
-            file: str,
-            label: S_co,
-            formula: Element,
-            limit: int = None,
-            multilabel: bool = False,
-            n_labels: int = 0,
-            _legacy_load_without_batch: bool = False):
-        if multilabel and n_labels < 2:
-            raise ValueError("Cannot have multilabel and less than 2 labels")
-        super().__init__(multilabel=multilabel)
-        # the weights in a vector
-
-        # !! ensure that using the same tensor does not cause problems
-        if multilabel:
-            label = torch.zeros(n_labels).index_fill_(
-                0, torch.tensor(label), 1.)
-        self.__load(file, label, limit, _legacy_load_without_batch)
-        self.formula = formula
-
-    def __load(self, filename, label: S_co, limit, no_batch):
-        networks = torch.load(filename)
-
-        dataset = []
-
-        if limit is not None:
-            if not isinstance(limit, int):
-                raise ValueError("Limit must be an integer")
-            if len(networks) < limit:
-                raise ValueError(
-                    "Limit is larger than the size of the dataset")
-
-        for i, weights in enumerate(networks, start=1):
-
-            # legacy
-            if no_batch:
-                weights = clean_state(weights)
-            # /legacy
-
-            concat_weights = torch.cat([w.flatten() for w in weights.values()])
-            dataset.append(concat_weights)
-
-            if i == limit:
-                break
-
-        self._dataset = dataset
-        self._labels = DummyIterable(label, length=len(dataset))
-
-
-class LabeledDataset(LabeledDatasetBase[T_co, S_co], Dataset):
-    """A simple dataset that supports labeled data."""
-
-    def __init__(self,
-                 dataset: IndexableIterable[T_co],
-                 labels: IndexableIterable[S_co],
-                 multilabel: bool = False):
-        super().__init__(multilabel=multilabel)
-
-        self._dataset = dataset
-        self._labels = labels
-
-    @classmethod
-    def from_tuple_dataset(cls, dataset: IndexableIterable[Tuple[T_co, S_co]]):
-        cls._check_if_element_cond(dataset)
-        data_elements: List[T_co] = []
-        labels: List[S_co] = []
-        for x, y in dataset:
-            data_elements.append(x)
-            labels.append(y)
-
-        data_instance = cls(data_elements, labels)
-
-        return data_instance
-
-    @classmethod
-    def from_iterable(cls,
-                      datasets: Sequence[IndexableIterable[Tuple[T_co,
-                                                                 S_co]]],
-                      multilabel: bool):
-
-        dataset: List[T_co] = []
-        labels: List[S_co] = []
-        for d in datasets:
-            if not isinstance(d, LabeledDatasetLike):
-                if multilabel:
-                    raise ValueError(
-                        "Tuple multilabel dataset is not supported")
-                d = cls.from_tuple_dataset(d)
-
-            dataset.extend(d.dataset)
-            labels.extend(d.labels)
-
-        return cls(dataset=dataset, labels=labels, multilabel=multilabel)
-
-
-class Subset(Dataset, Generic[T_co]):
-    def __init__(
-            self,
-            dataset: DatasetLike[T_co],
+            dataset: NoLabelDataset[T_co],
             indices: Sequence[int]):
-        self._dataset = dataset
+        super().__init__(dataset=dataset)
         self._indices = indices
 
     def __getitem__(self, idx: int):
@@ -250,14 +80,144 @@ class Subset(Dataset, Generic[T_co]):
         return self._indices
 
     def apply_subset(self):
-        return SimpleDataset(dataset=list(self))
+        return NoLabelDataset(dataset=list(self))
 
 
-class LabeledSubset(Dataset, Generic[T_co, S_co]):
+class LabeledDataset(Dataset, Generic[T_co, S_co]):
+    def __init__(
+            self,
+            dataset: IndexableIterable[T_co],
+            labels: IndexableIterable[S_co],
+            multilabel: bool):
+
+        self._dataset: IndexableIterable[T_co] = dataset
+        self._labels: IndexableIterable[S_co] = labels
+        self._multilabel = multilabel
+
+    def __getitem__(self, index: int) -> Tuple[T_co, S_co]:
+        return self.dataset[index], self.labels[index]
+
+    def __len__(self) -> int:
+        return len(self.dataset)
+
+    def __iter__(self) -> Iterator[Tuple[T_co, S_co]]:
+        for x, y in zip(self.dataset, self.labels):
+            yield x, y
+
+    @property
+    def dataset(self) -> IndexableIterable[T_co]:
+        return self._dataset
+
+    @property
+    def labels(self) -> IndexableIterable[S_co]:
+        return self._labels
+
+    @property
+    def multilabel(self):
+        return self._multilabel
+
+    @staticmethod
+    def _check_if_element_cond(data):
+        data_element = data[0]
+        if not isinstance(data_element, Indexable):
+            raise TypeError(
+                "The elements in the sequence are not "
+                f"indexable: {type(data_element)}")
+        if len(data_element) < 2:
+            raise TypeError(
+                "The elements in the sequence have less than 2 items. "
+                f"Not enough elements to unpack: {len(data_element)}")
+
+    @classmethod
+    def from_tuple_sequence(
+            cls,
+            dataset: IndexableIterable[Tuple[T_co, S_co]],
+            multilabel: bool):
+        cls._check_if_element_cond(dataset)
+
+        data_elements: List[T_co] = []
+        labels: List[S_co] = []
+        for x, y in dataset:
+            data_elements.append(x)
+            labels.append(y)
+
+        return cls(data_elements, labels, multilabel=multilabel)
+
+    @classmethod
+    def from_iterable(
+            cls,
+            datasets: Sequence[IndexableIterable[Tuple[T_co, S_co]]], multilabel: bool):
+
+        dataset: List[T_co] = []
+        labels: List[S_co] = []
+        for d in datasets:
+            if not isinstance(d, LabeledDataset):
+                logger.debug("Getting dataset from tuples")
+                d = cls.from_tuple_sequence(d, multilabel=multilabel)
+            dataset.extend(d.dataset)
+            labels.extend(d.labels)
+
+        return cls(dataset=dataset, labels=labels, multilabel=multilabel)
+
+
+class NetworkDataset(LabeledDataset[torch.Tensor, S_co]):
+    """
+    A Pytorch dataset that loads a pickle file storing a list of the outputs of torch.nn.Module.state_dict(), that is basically a Dict[str, Tensor]. This dataset loads that file, for each network it flattens the tensors into a single vector and stores a tuple (flattened vector, label). Stores exactly the first 'limit' elements of the list.
+    """
+
+    def __init__(
+            self,
+            file: str,
+            label: S_co,
+            formula: Element,
+            limit: int = None,
+            multilabel: bool = False,
+            _legacy_load_without_batch: bool = False):
+
+        dataset, labels = self.__load(
+            file, label, limit, _legacy_load_without_batch)
+
+        super().__init__(dataset=dataset, labels=labels, multilabel=multilabel)
+        self.formula = formula
+
+    def __load(self, filename, label: S_co, limit, no_batch):
+        networks = torch.load(filename)
+
+        dataset = []
+
+        if limit is not None:
+            if not isinstance(limit, int):
+                raise ValueError("Limit must be an integer")
+            if len(networks) < limit:
+                raise ValueError(
+                    "Limit is larger than the size of the dataset")
+
+        for i, weights in enumerate(networks, start=1):
+
+            # legacy
+            if no_batch:
+                weights = self.clean_state(weights)
+            # /legacy
+
+            concat_weights = torch.cat([w.flatten() for w in weights.values()])
+            dataset.append(concat_weights)
+
+            if i == limit:
+                break
+
+        return dataset, DummyIterable(label, length=len(dataset))
+
+    @staticmethod
+    def clean_state(model_dict):
+        """Removes the weights associated with batchnorm"""
+        return {k: v for k, v in model_dict.items() if "batch" not in k}
+
+
+class LabeledSubset(LabeledDataset[T_co, S_co]):
     def __init__(self,
-                 dataset: LabeledDatasetLike[T_co, S_co],
+                 dataset: LabeledDataset[T_co, S_co],
                  indices: Sequence[int]):
-        self._dataset = dataset
+        self._dataset: LabeledDataset[T_co, S_co] = dataset
         self._indices = indices
 
     def __getitem__(self, idx: int):
@@ -281,17 +241,8 @@ class LabeledSubset(Dataset, Generic[T_co, S_co]):
         return self.apply_subset().labels
 
     @property
-    def label_info(self):
-        # ?? change this to only compute this once?
-        return self.apply_subset().label_info
-
-    @property
     def indices(self):
         return self._indices
-
-    @property
-    def multilabel(self):
-        return self._dataset.multilabel
 
     def apply_subset(self):
         dataset: List[T_co] = []

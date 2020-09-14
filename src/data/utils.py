@@ -1,3 +1,4 @@
+from collections import defaultdict
 import logging
 import warnings
 from typing import Union
@@ -5,18 +6,24 @@ from typing import Union
 import torch
 from sklearn.model_selection import train_test_split as sk_split
 
-from src.data.datasets import LabeledSubset, Subset
-from src.typing import DatasetLike, Indexable, LabeledDatasetLike, S, T
+from src.data.datasets import (
+    LabeledDataset,
+    LabeledSubset,
+    NoLabelDataset,
+    NoLabelSubset
+)
+from src.typing import Indexable, S, T
 
 logger = logging.getLogger(__name__)
 
 
 def train_test_dataset(
-        dataset: Union[LabeledDatasetLike[T, S], DatasetLike[T]],
+        dataset: Union[LabeledDataset[T, S], NoLabelDataset[T]],
         test_size: float = 0.25,
         random_state: int = None,
         shuffle: bool = True,
         stratify: bool = True,
+        # !! remove multilabel warning
         multilabel: bool = False):
 
     classes = None
@@ -26,7 +33,7 @@ def train_test_dataset(
                 "Cannot use stratified data splitting with multilabels. "
                 "Ignoring...", UserWarning, stacklevel=2)
         else:
-            if not isinstance(dataset, LabeledDatasetLike):
+            if not isinstance(dataset, LabeledDataset):
                 raise ValueError("`dataset` is not a labeled dataset")
 
             classes = dataset.labels
@@ -37,11 +44,13 @@ def train_test_dataset(
                                    shuffle=shuffle,
                                    stratify=classes)
 
-    if isinstance(dataset, LabeledDatasetLike):
+    if isinstance(dataset, LabeledDataset):
         return LabeledSubset(dataset, train_idx),\
             LabeledSubset(dataset, test_idx)
     else:
-        return Subset(dataset, train_idx), Subset(dataset, test_idx)
+        return NoLabelSubset(
+            dataset, train_idx), NoLabelSubset(
+            dataset, test_idx)
 
 
 def get_input_dim(data):
@@ -57,8 +66,13 @@ def get_input_dim(data):
     return x.shape
 
 
-def get_label_distribution(dataset: LabeledDatasetLike[T, S]):
-    label_info = dataset.label_info
+def get_label_distribution(dataset: LabeledDataset[T, S]):
+    label_info = defaultdict(int)
+
+    if dataset.multilabel:
+        ...
+    else:
+        ...
     n_elements = len(dataset)
 
     return {k: float(v) / n_elements for k, v in label_info.items()}

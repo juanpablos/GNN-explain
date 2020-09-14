@@ -93,8 +93,6 @@ def load_gnn_files(
             file=file_path,
             label=label,
             formula=formula_object,
-            multilabel=is_multilabel,
-            n_labels=n_labels,
             _legacy_load_without_batch=_legacy_load_without_batch)
 
         if testing_selected_formulas:
@@ -108,10 +106,8 @@ def load_gnn_files(
 
     if testing_selected_formulas:
         assert len(test_dataset) > 0, "test_dataset is empty"
-        return ((LabeledDataset.from_iterable(train_dataset,
-                                              multilabel=is_multilabel),
-                 LabeledDataset.from_iterable(test_dataset,
-                                              multilabel=is_multilabel)
+        return ((LabeledDataset.from_iterable(train_dataset),
+                 LabeledDataset.from_iterable(test_dataset)
                  ),
                 classes,
                 selected_formulas,
@@ -121,9 +117,7 @@ def load_gnn_files(
         # when the test_set is not manually selected we return a
         # big dataset containing all formulas
         return (
-            LabeledDataset.from_iterable(
-                datasets,
-                multilabel=is_multilabel),
+            LabeledDataset.from_iterable(datasets),
             classes,
             selected_formulas,
             selected_labels,

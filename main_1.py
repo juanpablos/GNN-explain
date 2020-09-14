@@ -9,7 +9,7 @@ from typing import Any, Dict
 
 import torch
 
-from src.data.datasets import RandomGraphDataset
+from src.data.datasets import GraphDataset
 from src.generate_graphs import graph_stream
 from src.graphs import *
 from src.run_logic import run, seed_everything
@@ -60,7 +60,7 @@ def run_experiment(
     time_graph = 0.
 
     s = timer()
-    test_data = RandomGraphDataset(stream, test_length)
+    test_data = GraphDataset(stream, test_length)
     time_graph += timer() - s
     try:
         for m in range(1, n_models + 1):
@@ -68,7 +68,7 @@ def run_experiment(
             logger.info(f"Training model {m}/{n_models}")
 
             s = timer()
-            train_data = RandomGraphDataset(stream, train_length)
+            train_data = GraphDataset(stream, train_length)
             time_graph += timer() - s
 
             training_state = Training("all")

@@ -4,7 +4,6 @@ from typing import (
     Iterator,
     List,
     Literal,
-    Mapping,
     Optional,
     Protocol,
     Tuple,
@@ -128,23 +127,3 @@ class Indexable(Protocol[T_co]):
 
 class IndexableIterable(Indexable[T_co], Protocol[T_co]):
     def __iter__(self) -> Iterator[T_co]: ...
-
-
-class DatasetLike(IndexableIterable[T_co], Protocol[T_co]):
-    @property
-    def dataset(self) -> IndexableIterable[T_co]: ...
-
-
-@runtime_checkable
-class LabeledDatasetLike(Protocol[T_co, S_co]):
-    def __getitem__(self, index: int) -> Tuple[T_co, S_co]: ...
-    def __len__(self) -> int: ...
-    def __iter__(self) -> Iterator[Tuple[T_co, S_co]]: ...
-    @property
-    def dataset(self) -> IndexableIterable[T_co]: ...
-    @property
-    def labels(self) -> IndexableIterable[S_co]: ...
-    @property
-    def label_info(self) -> Mapping[S_co, int]: ...
-    @property
-    def multilabel(self) -> bool: ...
