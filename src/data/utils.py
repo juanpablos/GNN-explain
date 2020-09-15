@@ -84,4 +84,4 @@ def label_idx2tensor(label: List[Any], n_labels: int):
 
 
 def label_tensor2idx(label: torch.Tensor) -> List[Any]:
-    return label.nonzero().squeeze().tolist()
+    return label.nonzero().view(-1).tolist()
