@@ -151,9 +151,11 @@ def run_experiment(
         logger.debug("Writing model")
         model.cpu()
         os.makedirs(f"{results_path}/models/", exist_ok=True)
-        torch.save(
-            model.state_dict(),
-            f"{results_path}/models/{model_name}{ext}.pt")
+        obj = {
+            "model": model.state_dict(),
+            "class_mapping": class_mapping
+        }
+        torch.save(obj, f"{results_path}/models/{model_name}{ext}.pt")
 
     # class_mapping is an ordered dict
     target_names = list(class_mapping.values())
@@ -226,25 +228,31 @@ def main(
     # selector.add(AtomicFilter(atomic="all"))
     # selector.add(RestrictionFilter(lower=1, upper=2))
     # selector.add(RestrictionFilter(lower=None, upper=-1))
-    selector = SelectFilter(hashes=[
-        "0c957889eb",
-        "1c998884a4",
-        "4056021fb9"
-    ])
-    # selector = NoFilter()
+    # selector = SelectFilter(hashes=[
+    #     "0c957889eb",
+    #     "1c998884a4",
+    #     "4056021fb9"
+    # ])
+    selector = NoFilter()
     # * /filters
 
     # * test_filters
     # test_selector = FilterApply(condition="or")
     # test_selector.add(AtomicOnlyFilter(atomic="all"))
     # test_selector.add(RestrictionFilter(lower=4, upper=None))
-    # test_selector = SelectFilter(hashes=[
-    #     "dc670b1bec",
-    #     "4805042859",
-    #     "688d12b701",
-    #     "652c706f1b"
-    # ])
-    test_selector = NullFilter()
+    test_selector = SelectFilter(hashes=[
+        "6aa72b4580",
+        "896fc15eba",
+        "c4016e9644",
+        "0f20edd380",
+        "ba75c8dc2b",
+        "b628ede2fc",
+        "0f6989f7de",
+        "a8c45da01a",
+        "a2e5ecf2db",
+        "3347fca03b"
+    ])
+    # test_selector = NullFilter()
     # * /test_filters
 
     # * labelers
