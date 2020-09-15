@@ -203,7 +203,6 @@ class MLPTrainer(Trainer):
                         mode: Union[Literal["train"], Literal["test"]],
                         **kwargs):
 
-        # !! correct collate function for multilabel
         if mode not in ["train", "test"]:
             raise ValueError("Supported modes are only `train` and `test`")
 

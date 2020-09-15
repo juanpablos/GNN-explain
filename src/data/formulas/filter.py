@@ -116,7 +116,6 @@ class RestrictionFilter(Filterer):
         if lower and upper:
             self.result = True
 
-        # ?? may be stop here
         super()._visit_Exist(node)
 
     def __str__(self):

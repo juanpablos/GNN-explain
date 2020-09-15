@@ -22,7 +22,6 @@ def train_test_dataset(
         random_state: int = None,
         shuffle: bool = True,
         stratify: bool = True,
-        # !! remove multilabel warning
         multilabel: bool = False):
 
     classes = None

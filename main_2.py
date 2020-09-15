@@ -240,19 +240,19 @@ def main(
     # test_selector = FilterApply(condition="or")
     # test_selector.add(AtomicOnlyFilter(atomic="all"))
     # test_selector.add(RestrictionFilter(lower=4, upper=None))
-    test_selector = SelectFilter(hashes=[
-        "6aa72b4580",
-        "896fc15eba",
-        "c4016e9644",
-        "0f20edd380",
-        "ba75c8dc2b",
-        "b628ede2fc",
-        "0f6989f7de",
-        "a8c45da01a",
-        "a2e5ecf2db",
-        "3347fca03b"
-    ])
-    # test_selector = NullFilter()
+    # test_selector = SelectFilter(hashes=[
+    #     "6aa72b4580",
+    #     "896fc15eba",
+    #     "c4016e9644",
+    #     "0f20edd380",
+    #     "ba75c8dc2b",
+    #     "b628ede2fc",
+    #     "0f6989f7de",
+    #     "a8c45da01a",
+    #     "a2e5ecf2db",
+    #     "3347fca03b"
+    # ])
+    test_selector = NullFilter()
     # * /test_filters
 
     # * labelers

@@ -72,7 +72,6 @@ class NoLabelSubset(NoLabelDataset[T_co]):
 
     @property
     def dataset(self):
-        # ?? change this to only compute this once?
         return self.apply_subset().dataset
 
     @property
@@ -244,12 +243,10 @@ class LabeledSubset(LabeledDataset[T_co, S_co]):
 
     @property
     def dataset(self):
-        # ?? change this to only compute this once?
         return self.apply_subset().dataset
 
     @property
     def labels(self):
-        # ?? change this to only compute this once?
         return self.apply_subset().labels
 
     @property
