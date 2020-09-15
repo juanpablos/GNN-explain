@@ -101,18 +101,28 @@ def run_experiment(
                          multilabel=multilabel)
     builder = TrainerBuilder(trainer=trainer)
 
+    trainer.init_dataloader(
+        train_data,
+        mode="train",
+        batch_size=batch_size,
+        pin_memory=False,
+        shuffle=True,
+        num_workers=data_workers)
+    trainer.init_dataloader(
+        test_data,
+        mode="test",
+        batch_size=test_batch_size,
+        pin_memory=False,
+        shuffle=True,
+        num_workers=data_workers)
+
     logger.debug("Running")
     logger.debug(f"Input size is {input_shape[0]}")
     model = run(
         train_builder=builder,
         model_config=model_config,
-        train_data=train_data,
-        test_data=test_data,
         iterations=iterations,
         gpu_num=gpu_num,
-        data_workers=data_workers,
-        batch_size=batch_size,
-        test_batch_size=test_batch_size,
         lr=lr,
         run_train_test=run_train_test)
 

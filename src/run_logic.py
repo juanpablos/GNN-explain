@@ -4,6 +4,7 @@ import random
 
 import numpy as np
 import torch
+from torch.utils.data.dataloader import DataLoader
 from torch.utils.data.dataset import Dataset
 
 from src.training import TrainerBuilder
@@ -29,14 +30,8 @@ def seed_everything(seed):
 def run(
     train_builder: TrainerBuilder,
     model_config: MinModelConfig,
-    train_data: Dataset,
-    test_data: Dataset,
     iterations: int,
     gpu_num: int,
-    data_workers: int,
-    test_data_workers: int = 1,
-    batch_size: int = 64,
-    test_batch_size: int = 512,
     lr: float = 0.01,
     stop_when: StopFormat = None,
     run_train_test: bool = False
@@ -49,29 +44,10 @@ def run(
 
     train_builder.init_device(device=device)
 
-    if os.name == "nt":
-        data_workers = 0
-        test_data_workers = 0
-
-    train_loader = train_builder.init_dataloader(
-        train_data,
-        mode="train",
-        batch_size=batch_size,
-        pin_memory=False,
-        shuffle=True,
-        num_workers=data_workers)
-    test_loader = train_builder.init_dataloader(
-        test_data,
-        mode="test",
-        batch_size=test_batch_size,
-        pin_memory=False,
-        shuffle=True,
-        num_workers=test_data_workers)
-
     model = train_builder.init_model(**model_config)
 
-    criterion = train_builder.init_loss()
-    optimizer = train_builder.init_optim(lr=lr)
+    train_builder.init_loss()
+    train_builder.init_optim(lr=lr)
 
     trainer = train_builder.validate_trainer()
     stop = StopTraining(stop_when)
