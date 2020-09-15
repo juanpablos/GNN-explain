@@ -106,9 +106,10 @@ def load_gnn_files(
 
     if testing_selected_formulas:
         assert len(test_dataset) > 0, "test_dataset is empty"
-        return ((LabeledDataset.from_iterable(train_dataset),
-                 LabeledDataset.from_iterable(test_dataset)
-                 ),
+        return ((LabeledDataset.from_iterable(train_dataset,
+                                              multilabel=is_multilabel),
+                 LabeledDataset.from_iterable(test_dataset,
+                                              multilabel=is_multilabel)),
                 classes,
                 selected_formulas,
                 selected_labels,
@@ -117,7 +118,7 @@ def load_gnn_files(
         # when the test_set is not manually selected we return a
         # big dataset containing all formulas
         return (
-            LabeledDataset.from_iterable(datasets),
+            LabeledDataset.from_iterable(datasets, multilabel=is_multilabel),
             classes,
             selected_formulas,
             selected_labels,

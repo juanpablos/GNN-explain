@@ -93,6 +93,8 @@ class LabeledDataset(Dataset, Generic[T_co, S_co]):
         self._dataset: IndexableIterable[T_co] = dataset
         self._labels: IndexableIterable[S_co] = labels
         self._multilabel = multilabel
+        self._unique_labels = set()
+        self._process_labels()
 
     def __getitem__(self, index: int) -> Tuple[T_co, S_co]:
         return self.dataset[index], self.labels[index]
@@ -115,6 +117,17 @@ class LabeledDataset(Dataset, Generic[T_co, S_co]):
     @property
     def multilabel(self):
         return self._multilabel
+
+    @property
+    def unique_labels(self):
+        return self._unique_labels
+
+    def _process_labels(self):
+        if self.multilabel:
+            for label in self.labels:
+                self._unique_labels.update(label)
+        else:
+            self._unique_labels.update(self.labels)
 
     @staticmethod
     def _check_if_element_cond(data):
@@ -243,6 +256,14 @@ class LabeledSubset(LabeledDataset[T_co, S_co]):
     @property
     def indices(self):
         return self._indices
+
+    @property
+    def multilabel(self):
+        return self._dataset.multilabel
+
+    @property
+    def unique_labels(self):
+        return self.apply_subset().unique_labels
 
     def apply_subset(self):
         dataset: List[T_co] = []

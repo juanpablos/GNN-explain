@@ -81,10 +81,12 @@ def run_experiment(
     n_classes = len(class_mapping)
     logger.debug(f"{n_classes} classes detected")
 
+    _, train_distribution = get_label_distribution(train_data)
+    test_label_count, test_distribution = get_label_distribution(test_data)
     logger.debug(
-        f"Train dataset distribution {get_label_distribution(train_data)}")
+        f"Train dataset distribution {train_distribution}")
     logger.debug(
-        f"Test dataset distribution {get_label_distribution(test_data)}")
+        f"Test dataset distribution {test_distribution}")
 
     input_shape = get_input_dim(train_data)
     assert len(input_shape) == 1, "The input dimension is different from 1"
@@ -148,8 +150,7 @@ def run_experiment(
 
     if plot_filename is not None:
         if multilabel:
-            test_label_info = test_data.label_info
-            label_numbers = [test_label_info[i] for i in class_mapping]
+            label_numbers = [test_label_count[i] for i in class_mapping]
             plot_multilabel_confusion_matrix(
                 _y,
                 _y_pred,
@@ -160,9 +161,8 @@ def run_experiment(
                 title=plot_title
             )
         else:
-            test_label_info = test_data.label_info
             cm_labels = [
-                f"{label_name} ({test_label_info.get(label, 0)})"
+                f"{label_name} ({test_label_count.get(label, 0)})"
                 for label, label_name in class_mapping.items()]
             plot_confusion_matrix(
                 _y,
