@@ -13,6 +13,7 @@ from src.data.formulas.labeler import (
     LabelerApply,
     MultiLabelCategoricalLabeler
 )
+from src.data.utils import label_idx2tensor
 from src.typing import S, T
 
 logger = logging.getLogger(__name__)
@@ -87,6 +88,9 @@ def load_gnn_files(
         formula_object = selected_formulas[formula_hash]
 
         logger.info(f"\tLoading {formula_hash}: {formula_object}: {label}")
+
+        if is_multilabel:
+            label = label_idx2tensor(label=label, n_labels=n_labels)
 
         file_path = os.path.join(model_path, file)
         dataset = NetworkDataset(

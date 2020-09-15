@@ -124,8 +124,7 @@ class LabeledDataset(Dataset, Generic[T_co, S_co]):
 
     def _process_labels(self):
         if self.multilabel:
-            for label in self.labels:
-                self._unique_labels.update(label)
+            self._unique_labels.update(range(len(self.labels[0])))
         else:
             self._unique_labels.update(self.labels)
 

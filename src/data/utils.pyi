@@ -1,4 +1,4 @@
-from typing import Dict, Tuple, overload
+from typing import Any, Dict, List, Tuple, overload
 
 import torch
 
@@ -36,3 +36,9 @@ def get_input_dim(data) -> torch.Size: ...
 
 def get_label_distribution(
     dataset: LabeledDataset[T, S]) -> Tuple[Dict[S, int], Dict[S, float]]: ...
+
+
+def label_idx2tensor(label: List[Any], n_labels: int) -> torch.Tensor: ...
+
+
+def label_tensor2idx(label: torch.Tensor) -> List[Any]: ...

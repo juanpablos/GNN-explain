@@ -1,6 +1,6 @@
 import logging
 import warnings
-from typing import Counter, Dict, Union
+from typing import Any, Counter, Dict, List, Union
 
 import torch
 from sklearn.model_selection import train_test_split as sk_split
@@ -70,10 +70,18 @@ def get_label_distribution(dataset: LabeledDataset[T, S]):
 
     if dataset.multilabel:
         for label in dataset.labels:
-            label_info.update(label)
+            label_info.update(label_tensor2idx(label))
     else:
         label_info.update(dataset.labels)
     n_elements = len(dataset)
 
     return label_info, {k: float(v) /
                         n_elements for k, v in label_info.items()}
+
+
+def label_idx2tensor(label: List[Any], n_labels: int):
+    return torch.zeros(n_labels).index_fill_(0, torch.tensor(label), 1.)
+
+
+def label_tensor2idx(label: torch.Tensor) -> List[Any]:
+    return label.nonzero().squeeze().tolist()
