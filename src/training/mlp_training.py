@@ -6,7 +6,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
-from sklearn.metrics import accuracy_score, precision_recall_fscore_support
+from sklearn.metrics import accuracy_score, precision_recall_fscore_support, hamming_loss, jaccard_score
 from torch.utils.data import DataLoader
 
 from src.gnn import MLP
@@ -17,14 +17,14 @@ logger = logging.getLogger(__name__)
 
 
 class Metric:
-    def __init__(self, average: str = "macro"):
+    def __init__(self, average: str = "macro", multilabel: bool = False):
         if average not in ["binary", "micro", "macro"]:
-            # TODO: support individual metric per label for multilabel
             raise ValueError(
                 "Argument `average` must be one of `binary`, `micro`, `macro`")
         self.y_true = []
         self.y_pred = []
         self.average = average
+        self.multilabel = multilabel
 
     def __call__(self, y_true: torch.Tensor, y_pred: torch.Tensor):
         self.y_true.extend(y_true.tolist())
@@ -39,6 +39,15 @@ class Metric:
     def accuracy(self):
         return {"acc": accuracy_score(self.y_true, self.y_pred)}
 
+    def multilabel_metrics(self):
+        return {
+            "jaccard": jaccard_score(
+                self.y_true,
+                self.y_pred,
+                average=self.average),
+            "hamming_loss": hamming_loss(self.y_true, self.y_pred)
+        }
+
     def clear(self):
         self.y_true.clear()
         self.y_pred.clear()
@@ -46,7 +55,6 @@ class Metric:
 
 class MLPTrainer(Trainer):
     available_metrics = [
-        "all",
         "train_loss",
         "test_loss",
         "train_precision",
@@ -58,16 +66,26 @@ class MLPTrainer(Trainer):
         "test_f1",
         "test_acc"
     ]
+    multilabel_metrics = [
+        "train_jaccard"
+        "test_jaccard"
+        "train_hamming_loss"
+        "test_hamming_loss"
+    ]
 
     def __init__(self,
                  logging_variables: Union[Literal["all"], List[str]] = "all",
                  n_classes: int = 2,
                  metrics_average: str = "macro",
                  multilabel: bool = False):
+
+        if multilabel:
+            self.available_metrics.extend(self.multilabel_metrics)
+
         super().__init__(logging_variables=logging_variables)
         self.n_classes = n_classes
         self.multilabel = multilabel
-        self.metrics = Metric(average=metrics_average)
+        self.metrics = Metric(average=metrics_average, multilabel=multilabel)
 
     def transform_y(self, y):
         if self.n_classes == 2 and not self.multilabel:

@@ -39,7 +39,6 @@ def _accuracy_aux(node_labels, predicted_labels, batch, device):
 
 class GNNTrainer(Trainer):
     available_metrics = [
-        "all",
         "train_loss",
         "test_loss",
         "train_macro",
