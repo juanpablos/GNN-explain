@@ -1,6 +1,6 @@
 import logging
 import warnings
-from typing import Counter, Union
+from typing import Counter, Dict, Union
 
 import torch
 from sklearn.model_selection import train_test_split as sk_split
@@ -66,7 +66,7 @@ def get_input_dim(data):
 
 
 def get_label_distribution(dataset: LabeledDataset[T, S]):
-    label_info = Counter()
+    label_info: Dict[S, int] = Counter()
 
     if dataset.multilabel:
         for label in dataset.labels:

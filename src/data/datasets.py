@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 
 class DummyIterable(Generic[S_co]):
     def __init__(self, value: S_co, length: int):
-        self.value: T_co = value
+        self.value: S_co = value
         self.length: int = length
 
     def __len__(self):

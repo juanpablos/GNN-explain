@@ -2,7 +2,7 @@ import warnings
 from collections import defaultdict
 from typing import Dict, Iterator, List, Literal, Optional, Union
 
-from src.typing import StopFormat, TNum
+from src.typing import StopFormat
 
 
 class StopTraining:
@@ -55,7 +55,7 @@ class MetricLogger:
                                   None] = "all"):
         if variables is None:
             variables = []
-        self.variables: Dict[str, List[TNum]] = defaultdict(list)
+        self.variables: Dict[str, List[float]] = defaultdict(list)
 
         self.log_all = variables == "all"
         if isinstance(variables, list):
@@ -76,7 +76,7 @@ class MetricLogger:
         else:
             yield from self.variables.keys()
 
-    def update(self, **kwargs: TNum):
+    def update(self, **kwargs: float):
         for name, value in kwargs.items():
             self.variables[name].append(value)
 
