@@ -45,8 +45,16 @@ class Metric:
                 self.y_true,
                 self.y_pred,
                 average=self.average),
-            "hamming_loss": hamming_loss(self.y_true, self.y_pred)
+            "hamming": hamming_loss(self.y_true, self.y_pred)
         }
+
+    def get_all(self):
+        res = {**self.precision_recall_fscore(), **self.accuracy()}
+
+        if self.multilabel:
+            res.update(self.multilabel_metrics())
+
+        return res
 
     def clear(self):
         self.y_true.clear()
@@ -69,8 +77,8 @@ class MLPTrainer(Trainer):
     multilabel_metrics = [
         "train_jaccard",
         "test_jaccard",
-        "train_hamming_loss",
-        "test_hamming_loss"
+        "train_hamming",
+        "test_hamming"
     ]
 
     def __init__(self,
@@ -216,26 +224,20 @@ class MLPTrainer(Trainer):
             self.metrics(y, y_pred)
 
         average_loss = np.mean(accum_loss)
-        metrics = self.metrics.precision_recall_fscore()
-        acc = self.metrics.accuracy()["acc"]
+        metrics = self.metrics.get_all()
 
         if use_train_data:
             metrics = {
                 f"train_{name}": value for name,
                 value in metrics.items()}
 
-            self.metric_logger.update(
-                train_acc=acc,
-                **metrics)
+            self.metric_logger.update(**metrics)
         else:
             metrics = {
                 f"test_{name}": value for name,
                 value in metrics.items()}
 
-            self.metric_logger.update(
-                test_loss=average_loss,
-                test_acc=acc,
-                **metrics)
+            self.metric_logger.update(test_loss=average_loss, **metrics)
 
         return average_loss
 
