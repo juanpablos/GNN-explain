@@ -67,9 +67,9 @@ class MLPTrainer(Trainer):
         "test_acc"
     ]
     multilabel_metrics = [
-        "train_jaccard"
-        "test_jaccard"
-        "train_hamming_loss"
+        "train_jaccard",
+        "test_jaccard",
+        "train_hamming_loss",
         "test_hamming_loss"
     ]
 

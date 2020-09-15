@@ -104,14 +104,17 @@ class TrainerBuilder:
             **kwargs)
 
     def validate_trainer(self):
-        variables = ["loss"
-                     "model"
-                     "optim"
-                     "device"
+        variables = ["loss",
+                     "model",
+                     "optim",
+                     "device",
                      "metric_logger",
                      "train_loader",
                      "test_loader"]
-        if not hasattr(self, "__trainer") or \
-                not all(hasattr(self.__trainer, var) for var in variables):
-            raise ValueError("Trainer is not completely initialized")
+
+        for var in variables:
+            if not hasattr(self.__trainer, var):
+                raise ValueError(
+                    f"Trainer is not completely initialized: {var} missing")
+
         return self.__trainer
