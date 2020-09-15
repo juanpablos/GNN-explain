@@ -1,0 +1,114 @@
+from abc import ABC, abstractmethod
+from typing import List, Literal, Tuple, Union
+
+import torch
+import torch.nn as nn
+from torch.utils.data import DataLoader
+
+from src.training.utils import MetricLogger
+
+
+class Trainer(ABC):
+    loss: nn.Module
+    model: nn.Module
+    optim: torch.optim.Optimizer
+    device: torch.device
+    train_loader: DataLoader
+    test_loader: DataLoader
+
+    available_metrics: List[str]
+    metric_logger: MetricLogger
+
+    def __init__(self, device: torch.device):
+        self.device = device
+
+    def init_metrics(self,
+                     logging_variables: Union[Literal["all"],
+                                              List[str]] = ...):
+        if logging_variables != "all" and not all(
+                var in self.available_metrics for var in logging_variables):
+            raise ValueError(
+                "Encountered not supported metric. "
+                f"Supported are: {self.available_metrics}")
+        self.metric_logger = MetricLogger(logging_variables)
+
+    @abstractmethod
+    def init_model(self, **kwargs) -> nn.Module: ...
+    @abstractmethod
+    def init_loss(self) -> nn.Module: ...
+
+    @abstractmethod
+    def init_optim(
+        self,
+        model: nn.Module,
+        lr: float) -> torch.optim.Optimizer: ...
+
+    @abstractmethod
+    def init_dataloader(
+        self,
+        data,
+        mode: Union[Literal["train"], Literal["test"]],
+        *,
+        batch_size: int,
+        shuffle: bool,
+        num_workers: int,
+        **kwargs) -> DataLoader: ...
+
+    @abstractmethod
+    def train(self, **kwargs) -> float: ...
+
+    @abstractmethod
+    def evaluate(self,
+                 use_train_data: bool,
+                 **kwargs) -> Tuple[float, ...]: ...
+
+    @abstractmethod
+    def log(self) -> str: ...
+
+
+class TrainerBuilder:
+    def __init__(self, trainer: Trainer):
+        self.__trainer = trainer
+
+    def init_metrics(self, logging_variables):
+        return self.__trainer.init_metrics(logging_variables=logging_variables)
+
+    def init_model(self, **kwargs) -> nn.Module:
+        return self.__trainer.init_model(**kwargs)
+
+    def init_loss(self) -> nn.Module:
+        return self.__trainer.init_loss()
+
+    def init_optim(
+            self,
+            model: nn.Module,
+            lr: float) -> torch.optim.Optimizer:
+        return self.__trainer.init_optim(model=model, lr=lr)
+
+    def init_dataloader(
+            self,
+            data,
+            mode: Union[Literal["train"], Literal["test"]],
+            batch_size: int,
+            shuffle: bool,
+            num_workers: int,
+            **kwargs) -> DataLoader:
+        return self.__trainer.init_dataloader(
+            data=data,
+            mode=mode,
+            batch_size=batch_size,
+            shuffle=shuffle,
+            num_workers=num_workers,
+            **kwargs)
+
+    def validate_trainer(self):
+        variables = ["loss"
+                     "model"
+                     "optim"
+                     "device"
+                     "metric_logger",
+                     "train_loader",
+                     "test_loader"]
+        if not all(hasattr(self.__trainer, var) for var in variables):
+            raise ValueError("Trainer is not completely initialized")
+        return self.__trainer

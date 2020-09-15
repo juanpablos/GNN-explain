@@ -7,10 +7,11 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 from sklearn.metrics import accuracy_score, precision_recall_fscore_support
+from torch.utils.data import DataLoader
 
 from src.gnn import MLP
-from src.training.utils import MetricLogger
-from src.typing import Trainer
+
+from . import Trainer
 
 logger = logging.getLogger(__name__)
 
@@ -59,29 +60,15 @@ class Training(Trainer):
     ]
 
     def __init__(self,
+                 device: torch.device,
                  n_classes: int = 2,
                  metrics_average: str = "macro",
-                 logging_variables: Union[Literal["all"],
-                                          List[str],
-                                          None] = "all",
                  multilabel: bool = False):
 
-        if logging_variables is None:
-            logging_variables = []
-
-        if logging_variables != "all" and not all(
-                var in self.available_metrics for var in logging_variables):
-            raise ValueError(
-                "Encountered not supported metric. "
-                f"Supported are: {self.available_metrics}")
-        self.metric_logger = MetricLogger(logging_variables)
-
+        super().__init__(device=device)
         self.n_classes = n_classes
         self.multilabel = multilabel
         self.metrics = Metric(average=metrics_average)
-
-    def get_metric_logger(self):
-        return self.metric_logger
 
     def transform_y(self, y):
         if self.n_classes == 2 and not self.multilabel:
@@ -102,67 +89,75 @@ class Training(Trainer):
             _, y_pred = output.max(dim=1)
             return y_pred
 
-    def get_loss(self):
+    def init_model(self,
+                   *,
+                   num_layers: int,
+                   input_dim: int,
+                   hidden_dim: int,
+                   output_dim: int,
+                   use_batch_norm: bool = True,
+                   hidden_layers: List[int] = None,
+                   **kwargs):
+        self.model = MLP(num_layers=num_layers,
+                         input_dim=input_dim,
+                         hidden_dim=hidden_dim,
+                         output_dim=output_dim,
+                         use_batch_norm=use_batch_norm,
+                         hidden_layers=hidden_layers,
+                         **kwargs)
+        return self.model
+
+    def init_loss(self):
         if self.n_classes > 2 and not self.multilabel:
             logger.debug("Using CrossEntropyLoss")
-            return nn.CrossEntropyLoss(reduction="mean")
+            self.loss = nn.CrossEntropyLoss(reduction="mean")
         elif self.n_classes == 2 or self.multilabel:
             logger.debug("Using BCEWithLogitsLoss")
-            return nn.BCEWithLogitsLoss(reduction="mean")
+            self.loss = nn.BCEWithLogitsLoss(reduction="mean")
         else:
             raise ValueError("Number of classes cannot be less than 2")
 
-    def get_model(self,
-                  *,
-                  num_layers: int,
-                  input_dim: int,
-                  hidden_dim: int,
-                  output_dim: int,
-                  use_batch_norm: bool = True,
-                  hidden_layers: List[int] = None,
-                  **kwargs):
-        return MLP(num_layers=num_layers,
-                   input_dim=input_dim,
-                   hidden_dim=hidden_dim,
-                   output_dim=output_dim,
-                   use_batch_norm=use_batch_norm,
-                   hidden_layers=hidden_layers,
-                   **kwargs)
+        return self.loss
 
-    def get_optim(self, model, lr):
-        # return optim.Rprop(model.parameters(), lr=lr)
-        # return optim.RMSprop(model.parameters(), lr=lr)
-        # return optim.SGD(model.parameters(), lr=lr)
-        # return optim.AdamW(model.parameters(), lr=lr)
-        return optim.Adam(model.parameters(), lr=lr)
+    def init_optim(self, model, lr):
+        self.optim = optim.Adam(model.parameters(), lr=lr)
+        return self.optim
 
-    def get_scheduler(self, **kwargs):
-        pass
+    def init_dataloader(self,
+                        data,
+                        mode: Union[Literal["train"], Literal["test"]],
+                        **kwargs):
 
-    def train(self,
-              model,
-              training_data,
-              criterion,
-              device,
-              optimizer,
-              **kwargs):
+        # !! correct collate function for multilabel
+        if mode not in ["train", "test"]:
+            raise ValueError("Supported modes are only `train` and `test`")
+
+        loader = DataLoader(data, **kwargs)
+        if mode == "train":
+            self.train_loader = loader
+        elif mode == "test":
+            self.test_loader = loader
+
+        return loader
+
+    def train(self, **kwargs):
 
         #!########
-        model.train()
+        self.model.train()
         #!########
 
         accum_loss = []
 
-        for x, y in training_data:
-            x = x.to(device)
-            y = y.to(device)
+        for x, y in self.train_loader:
+            x = x.to(self.device)
+            y = y.to(self.device)
 
-            output = model(x)
-            loss = criterion(output, self.transform_y(y))
+            output = self.model(x)
+            loss = self.loss(output, self.transform_y(y))
 
-            optimizer.zero_grad()
+            self.optim.zero_grad()
             loss.backward()
-            optimizer.step()
+            self.optim.step()
 
             accum_loss.append(loss.detach().cpu().numpy())
 
@@ -173,28 +168,26 @@ class Training(Trainer):
         return average_loss
 
     def evaluate(self,
-                 model,
-                 test_data,
-                 criterion,
-                 device,
-                 using_train_data,
+                 use_train_data,
                  **kwargs):
 
         #!########
-        model.eval()
+        self.model.eval()
         self.metrics.clear()
         #!########
 
+        loader = self.train_loader if use_train_data else self.test_loader
+
         accum_loss = []
 
-        for x, y in test_data:
-            x = x.to(device)
-            y = y.to(device)
+        for x, y in loader:
+            x = x.to(self.device)
+            y = y.to(self.device)
 
             with torch.no_grad():
-                output = model(x)
+                output = self.model(x)
 
-            loss = criterion(output, self.transform_y(y))
+            loss = self.loss(output, self.transform_y(y))
             accum_loss.append(loss.detach().cpu().numpy())
 
             output = self.activation(output)
@@ -206,7 +199,7 @@ class Training(Trainer):
         metrics = self.metrics.precision_recall_fscore()
         acc = self.metrics.accuracy()["acc"]
 
-        if using_train_data:
+        if use_train_data:
             metrics = {
                 f"train_{name}": value for name,
                 value in metrics.items()}

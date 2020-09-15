@@ -1,14 +1,15 @@
-from typing import List, Literal, Tuple, Union
+from typing import Literal, Tuple, Union
 
 import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
+from torch_geometric.data import DataLoader
 from torch_scatter import scatter_mean
 
 from src.gnn import ACGNN
-from src.training.utils import MetricLogger
-from src.typing import Trainer
+
+from . import Trainer
 
 
 def _loss_aux(output, loss, data, binary):
@@ -36,7 +37,7 @@ def _accuracy_aux(node_labels, predicted_labels, batch, device):
     return micro, macro
 
 
-class Training(Trainer):
+class GNNTrainer(Trainer):
     available_metrics = [
         "all",
         "train_loss",
@@ -47,37 +48,27 @@ class Training(Trainer):
         "test_micro"
     ]
 
-    def __init__(self,
-                 logging_variables: Union[Literal["all"],
-                                          List[str]] = "all"):
-        if logging_variables != "all" and not all(
-                var in self.available_metrics for var in logging_variables):
-            raise ValueError(
-                "Encountered not supported metric. "
-                f"Supported are: {self.available_metrics}")
-        self.metric_logger = MetricLogger(logging_variables)
+    def __init__(self, device: torch.device):
+        super().__init__(device=device)
 
-    def get_metric_logger(self):
-        return self.metric_logger
-
-    def get_model(self,
-                  *,
-                  name: str,
-                  input_dim: int,
-                  hidden_dim: int,
-                  output_dim: int,
-                  aggregate_type: str,
-                  combine_type: str,
-                  num_layers: int,
-                  combine_layers: int,
-                  mlp_layers: int,
-                  task: str,
-                  use_batch_norm: bool = True,
-                  truncated_fn: Tuple[int, int] = None,
-                  **kwargs):
+    def init_model(self,
+                   *,
+                   name: str,
+                   input_dim: int,
+                   hidden_dim: int,
+                   output_dim: int,
+                   aggregate_type: str,
+                   combine_type: str,
+                   num_layers: int,
+                   combine_layers: int,
+                   mlp_layers: int,
+                   task: str,
+                   use_batch_norm: bool = True,
+                   truncated_fn: Tuple[int, int] = None,
+                   **kwargs):
 
         if name == "acgnn":
-            return ACGNN(
+            self.model = ACGNN(
                 input_dim=input_dim,
                 hidden_dim=hidden_dim,
                 output_dim=output_dim,
@@ -94,51 +85,57 @@ class Training(Trainer):
         else:
             raise NotImplementedError("Only acgnn supported")
 
-    def get_loss(self):
-        return nn.BCEWithLogitsLoss(reduction="mean")
+        return self.model
 
-    def get_optim(self, model, lr):
-        return optim.Adam(model.parameters(), lr=lr)
+    def init_loss(self):
+        self.loss = nn.BCEWithLogitsLoss(reduction="mean")
+        return self.loss
 
-    def get_scheduler(self, optimizer, step=50):
-        # return optim.lr_scheduler.StepLR(optimizer, step_size=step,
-        # gamma=0.5)
-        pass
+    def init_optim(self, model, lr):
+        self.optim = optim.Adam(model.parameters(), lr=lr)
+        return self.optim
 
-    def train(self,
-              model,
-              training_data,
-              criterion,
-              device,
-              optimizer,
-              *,
-              binary_prediction: bool,
-              **kwargs):
+    def init_dataloader(self,
+                        data,
+                        mode: Union[Literal["train"], Literal["test"]],
+                        **kwargs):
+
+        if mode not in ["train", "test"]:
+            raise ValueError("Supported modes are only `train` and `test`")
+
+        loader = DataLoader(data, **kwargs)
+        if mode == "train":
+            self.train_loader = loader
+        elif mode == "test":
+            self.test_loader = loader
+
+        return loader
+
+    def train(self, *, binary_prediction: bool, **kwargs):
 
         #!########
-        model.train()
+        self.model.train()
         #!########
 
         accum_loss = []
 
-        for data in training_data:
-            data = data.to(device)
+        for data in self.train_loader:
+            data = data.to(self.device)
 
-            output = model(x=data.x,
-                           edge_index=data.edge_index,
-                           batch=data.batch)
+            output = self.model(x=data.x,
+                                edge_index=data.edge_index,
+                                batch=data.batch)
 
             loss = _loss_aux(
                 output=output,
-                loss=criterion,
+                loss=self.loss,
                 data=data,
                 binary=binary_prediction
             )
 
-            optimizer.zero_grad()
+            self.optim.zero_grad()
             loss.backward()
-            optimizer.step()
-            # scheduler.step()
+            self.optim.step()
 
             accum_loss.append(loss.detach().cpu().numpy())
 
@@ -149,17 +146,13 @@ class Training(Trainer):
         return average_loss
 
     def evaluate(self,
-                 model,
-                 test_data,
-                 criterion,
-                 device,
-                 using_train_data,
+                 use_train_data: bool,
                  *,
                  binary_prediction: bool,
                  **kwargs):
 
         #!########
-        model.eval()
+        self.model.eval()
         #!########
 
         micro_avg = 0.
@@ -168,11 +161,13 @@ class Training(Trainer):
         n_graphs = 0
         accum_loss = []
 
-        for data in test_data:
-            data = data.to(device)
+        loader = self.train_loader if use_train_data else self.test_loader
+
+        for data in loader:
+            data = data.to(self.device)
 
             with torch.no_grad():
-                output = model(
+                output = self.model(
                     x=data.x,
                     edge_index=data.edge_index,
                     batch=data.batch
@@ -180,7 +175,7 @@ class Training(Trainer):
 
             loss = _loss_aux(
                 output=output,
-                loss=criterion,
+                loss=self.loss,
                 data=data,
                 binary=binary_prediction
             )
@@ -194,7 +189,7 @@ class Training(Trainer):
                 node_labels=data.y,
                 predicted_labels=predicted_labels,
                 batch=data.batch,
-                device=device
+                device=self.device
             )
 
             micro_avg += micro.cpu().numpy()
@@ -207,7 +202,7 @@ class Training(Trainer):
         micro_avg = micro_avg / n_nodes
         macro_avg = macro_avg / n_graphs
 
-        if using_train_data:
+        if use_train_data:
             self.metric_logger.update(
                 train_micro=micro_avg,
                 train_macro=macro_avg)

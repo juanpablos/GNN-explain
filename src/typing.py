@@ -1,4 +1,3 @@
-from abc import abstractmethod
 from typing import (
     Dict,
     Iterator,
@@ -13,11 +12,6 @@ from typing import (
     runtime_checkable
 )
 
-import torch
-import torch.nn as nn
-import torch.optim as optim
-from torch.utils.data.dataloader import DataLoader as torch_loader
-from torch_geometric.data import DataLoader as torch_geometric_loader
 
 from src.data.formula_index import FormulaMapping
 from src.data.formulas.filter import Filter
@@ -74,49 +68,6 @@ class MetricHistory(Protocol):
     def log(self) -> str: ...
     def update(self, **kwargs: TNum) -> None: ...
     def get_history(self, key: str) -> List[TNum]: ...
-
-
-class Trainer(Protocol):
-    @abstractmethod
-    def get_model(self, **kwargs) -> nn.Module: ...
-    @abstractmethod
-    def get_loss(self) -> nn.Module: ...
-
-    @abstractmethod
-    def get_optim(
-        self,
-        model: nn.Module,
-        lr: float) -> optim.Optimizer: ...
-
-    # @abstractmethod
-    # def get_scheduler(
-    #     self,
-    #     optimizer: optim.Optimizer,
-    #     step: int = ...) -> Optional[optim.lr_scheduler.StepLR]: ...
-
-    @abstractmethod
-    def train(self,
-              model: nn.Module,
-              training_data: Union[torch_loader, torch_geometric_loader],
-              criterion: nn.Module,
-              device: torch.device,
-              optimizer: optim.Optimizer,
-              **kwargs) -> float: ...
-
-    @abstractmethod
-    def evaluate(self,
-                 model: nn.Module,
-                 test_data: Union[torch_loader, torch_geometric_loader],
-                 criterion: nn.Module,
-                 device: torch.device,
-                 using_train_data: bool,
-                 **kwargs) -> Tuple[float, ...]: ...
-
-    @abstractmethod
-    def log(self) -> str: ...
-
-    @abstractmethod
-    def get_metric_logger(self) -> MetricHistory: ...
 
 
 @runtime_checkable
