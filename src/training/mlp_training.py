@@ -60,6 +60,53 @@ class Metric:
         self.y_true.clear()
         self.y_pred.clear()
 
+    def report(self):
+        metrics = {}
+
+        precision_avg, recall_avg, f1score_avg, _ = \
+            precision_recall_fscore_support(
+                self.y_true, self.y_pred, average=self.average, beta=1.0)
+        precision_single, recall_single, f1score_single, _ = \
+            precision_recall_fscore_support(
+                self.y_true, self.y_pred, average=None, beta=1.0)
+
+        precision = {
+            "average": precision_avg,
+            "single": precision_single
+        }
+        recall = {
+            "average": recall_avg,
+            "single": recall_single
+        }
+        f1 = {
+            "average": f1score_avg,
+            "single": f1score_single
+        }
+
+        acc = {"total": accuracy_score(self.y_true, self.y_pred)}
+
+        metrics["precision"] = precision
+        metrics["recall"] = recall
+        metrics["f1"] = f1
+        metrics["acc"] = acc
+
+        if self.multilabel:
+            jaccard_avg = jaccard_score(
+                self.y_true, self.y_pred, average=self.average)
+            jaccard_single = jaccard_score(
+                self.y_true, self.y_pred, average=None)
+
+            jaccard = {
+                "average": jaccard_avg,
+                "single": jaccard_single
+            }
+            hamming = {"total": hamming_loss(self.y_true, self.y_pred)}
+
+            metrics["jaccard"] = jaccard
+            metrics["hamming"] = hamming
+
+        return metrics
+
 
 class MLPTrainer(Trainer):
     available_metrics = [

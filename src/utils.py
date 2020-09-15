@@ -108,7 +108,8 @@ def write_result_info(
         classes: Dict[Any, str],
         multilabel: bool,
         mistakes: Dict[Element, Dict[int, int]],
-        formula_count: Dict[Element, int]):
+        formula_count: Dict[Element, int],
+        metrics: Dict):
 
     logger.debug("Writing result info")
 
@@ -118,8 +119,12 @@ def write_result_info(
     os.makedirs(f"{path}/info/", exist_ok=True)
 
     # format:
+    # various metrics:
+    #   macro average
+    #   metric per label
+    # <blank line>
     # label_id label_name n_formulas
-    # \t hash formula
+    # \t hash formula `false negatives`
 
     # hash_label:
     #   single label: formula_hash -> label_id
@@ -141,6 +146,15 @@ def write_result_info(
                                           ext="txt")
 
     with open(f"{path}/info/{filename}.txt", "w", encoding="utf-8") as o:
+        for metric, values in metrics.items():
+            if "average" in values:
+                o.write(f"{metric}: {values['average']}\n")
+                for label_id, single in enumerate(values["single"]):
+                    o.write(f"\t{classes[label_id]}: {single}\n")
+            else:
+                o.write(f"{metric}: {values['total']}\n")
+            o.write("\n")
+
         # format:
         # label_id, label_name, n_formulas with label
         # - formula_hash, formula_repr, n_mistakes/total formulas in test

@@ -144,7 +144,8 @@ def run_experiment(
         classes=class_mapping,
         multilabel=multilabel,
         mistakes=mistakes,
-        formula_count=formula_count)
+        formula_count=formula_count,
+        metrics=trainer.metrics.report())
 
     if model_name is not None:
         logger.debug("Writing model")
