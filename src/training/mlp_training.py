@@ -44,7 +44,7 @@ class Metric:
         self.y_pred.clear()
 
 
-class Training(Trainer):
+class MLPTrainer(Trainer):
     available_metrics = [
         "all",
         "train_loss",
@@ -60,12 +60,11 @@ class Training(Trainer):
     ]
 
     def __init__(self,
-                 device: torch.device,
+                 logging_variables: Union[Literal["all"], List[str]] = "all",
                  n_classes: int = 2,
                  metrics_average: str = "macro",
                  multilabel: bool = False):
-
-        super().__init__(device=device)
+        super().__init__(logging_variables=logging_variables)
         self.n_classes = n_classes
         self.multilabel = multilabel
         self.metrics = Metric(average=metrics_average)
@@ -105,6 +104,9 @@ class Training(Trainer):
                          use_batch_norm=use_batch_norm,
                          hidden_layers=hidden_layers,
                          **kwargs)
+
+        # just in case
+        self.model = self.model.to(self.device)
         return self.model
 
     def init_loss(self):
@@ -119,8 +121,8 @@ class Training(Trainer):
 
         return self.loss
 
-    def init_optim(self, model, lr):
-        self.optim = optim.Adam(model.parameters(), lr=lr)
+    def init_optim(self, lr):
+        self.optim = optim.Adam(self.model.parameters(), lr=lr)
         return self.optim
 
     def init_dataloader(self,

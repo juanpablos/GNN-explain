@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import List, Literal, Tuple, Union
+from typing import List, Literal, Tuple, TypeVar, Union
 
 import torch
 import torch.nn as nn
@@ -19,12 +19,10 @@ class Trainer(ABC):
     available_metrics: List[str]
     metric_logger: MetricLogger
 
-    def __init__(self, device: torch.device):
-        self.device = device
+    def __init__(self,
+                 logging_variables: Union[Literal["all"],
+                                          List[str]] = "all"):
 
-    def init_metrics(self,
-                     logging_variables: Union[Literal["all"],
-                                              List[str]] = ...):
         if logging_variables != "all" and not all(
                 var in self.available_metrics for var in logging_variables):
             raise ValueError(
@@ -32,16 +30,16 @@ class Trainer(ABC):
                 f"Supported are: {self.available_metrics}")
         self.metric_logger = MetricLogger(logging_variables)
 
+    def init_device(self, device: torch.device):
+        self.device = device
+
     @abstractmethod
     def init_model(self, **kwargs) -> nn.Module: ...
     @abstractmethod
     def init_loss(self) -> nn.Module: ...
 
     @abstractmethod
-    def init_optim(
-        self,
-        model: nn.Module,
-        lr: float) -> torch.optim.Optimizer: ...
+    def init_optim(self, lr: float) -> torch.optim.Optimizer: ...
 
     @abstractmethod
     def init_dataloader(
@@ -66,24 +64,28 @@ class Trainer(ABC):
     def log(self) -> str: ...
 
 
-class TrainerBuilder:
-    def __init__(self, trainer: Trainer):
-        self.__trainer = trainer
+TrainType = TypeVar("TrainType", bound=Trainer)
 
-    def init_metrics(self, logging_variables):
-        return self.__trainer.init_metrics(logging_variables=logging_variables)
+
+class TrainerBuilder:
+    def __init__(self, trainer: TrainType):
+        self.__trainer: TrainType = trainer
+
+    def init_device(self, device):
+        return self.__trainer.init_device(device=device)
 
     def init_model(self, **kwargs) -> nn.Module:
+        if not hasattr(self.__trainer, "device"):
+            raise ValueError("Must call `init_device` before `init_model`")
         return self.__trainer.init_model(**kwargs)
 
     def init_loss(self) -> nn.Module:
         return self.__trainer.init_loss()
 
-    def init_optim(
-            self,
-            model: nn.Module,
-            lr: float) -> torch.optim.Optimizer:
-        return self.__trainer.init_optim(model=model, lr=lr)
+    def init_optim(self, lr: float) -> torch.optim.Optimizer:
+        if not hasattr(self.__trainer, "model"):
+            raise ValueError("Should call `init_model` before `init_optim`")
+        return self.__trainer.init_optim(lr=lr)
 
     def init_dataloader(
             self,
@@ -109,6 +111,7 @@ class TrainerBuilder:
                      "metric_logger",
                      "train_loader",
                      "test_loader"]
-        if not all(hasattr(self.__trainer, var) for var in variables):
+        if not hasattr(self, "__trainer") or \
+                not all(hasattr(self.__trainer, var) for var in variables):
             raise ValueError("Trainer is not completely initialized")
         return self.__trainer

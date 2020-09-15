@@ -1,4 +1,4 @@
-from typing import Literal, Tuple, Union
+from typing import List, Literal, Tuple, Union
 
 import numpy as np
 import torch
@@ -48,8 +48,10 @@ class GNNTrainer(Trainer):
         "test_micro"
     ]
 
-    def __init__(self, device: torch.device):
-        super().__init__(device=device)
+    def __init__(self,
+                 logging_variables: Union[Literal["all"],
+                                          List[str]] = "all"):
+        super().__init__(logging_variables=logging_variables)
 
     def init_model(self,
                    *,
@@ -85,14 +87,16 @@ class GNNTrainer(Trainer):
         else:
             raise NotImplementedError("Only acgnn supported")
 
+        # just in case
+        self.model = self.model.to(self.device)
         return self.model
 
     def init_loss(self):
         self.loss = nn.BCEWithLogitsLoss(reduction="mean")
         return self.loss
 
-    def init_optim(self, model, lr):
-        self.optim = optim.Adam(model.parameters(), lr=lr)
+    def init_optim(self, lr):
+        self.optim = optim.Adam(self.model.parameters(), lr=lr)
         return self.optim
 
     def init_dataloader(self,

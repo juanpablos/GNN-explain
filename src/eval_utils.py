@@ -10,7 +10,7 @@ from src.data.datasets import (
     NetworkDatasetCollectionWrapper
 )
 from src.graphs.foc import Element
-from src.training.mlp_training import Training
+from src.training.mlp_training import MLPTrainer
 from src.typing import S, T
 
 logger = logging.getLogger(__name__)
@@ -20,7 +20,7 @@ def evaluate_model(model: torch.nn.Module,
                    test_data: Union[LabeledSubset[T, S],
                                     LabeledDataset[T, S]],
                    reconstruction: NetworkDatasetCollectionWrapper[S],
-                   trainer: Training,
+                   trainer: MLPTrainer,
                    multilabel: bool,
                    gpu: int = 0):
 

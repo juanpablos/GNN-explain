@@ -5,10 +5,10 @@ import random
 import numpy as np
 import torch
 from torch.utils.data.dataset import Dataset
-from torch_geometric.data import DataLoader
 
+from src.training import TrainerBuilder
 from src.training.utils import StopTraining
-from src.typing import MinModelConfig, StopFormat, Trainer
+from src.typing import MinModelConfig, StopFormat
 
 logger = logging.getLogger(__name__)
 
@@ -27,7 +27,7 @@ def seed_everything(seed):
 
 
 def run(
-    run_config: Trainer,
+    train_builder: TrainerBuilder,
     model_config: MinModelConfig,
     train_data: Dataset,
     test_data: Dataset,
@@ -47,67 +47,55 @@ def run(
     else:
         device = torch.device("cpu")
 
+    train_builder.init_device(device=device)
+
     if os.name == "nt":
         data_workers = 0
         test_data_workers = 0
 
-    train_loader = DataLoader(
+    train_loader = train_builder.init_dataloader(
         train_data,
+        mode="train",
         batch_size=batch_size,
         pin_memory=False,
         shuffle=True,
         num_workers=data_workers)
-    test_loader = DataLoader(
+    test_loader = train_builder.init_dataloader(
         test_data,
+        mode="test",
         batch_size=test_batch_size,
         pin_memory=False,
         shuffle=True,
         num_workers=test_data_workers)
 
-    model = run_config.get_model(**model_config)
-    model = model.to(device)
+    model = train_builder.init_model(**model_config)
 
-    criterion = run_config.get_loss()
-    optimizer = run_config.get_optim(model=model, lr=lr)
-    # scheduler = run_config.get_scheduler(optimizer=optimizer)
+    criterion = train_builder.init_loss()
+    optimizer = train_builder.init_optim(lr=lr)
 
+    trainer = train_builder.validate_trainer()
     stop = StopTraining(stop_when)
 
     it = 1
     for it in range(1, iterations + 1):
 
-        train_loss = run_config.train(
-            model=model,
-            training_data=train_loader,
-            criterion=criterion,
-            device=device,
-            optimizer=optimizer,
-            binary_prediction=True,
-        )
+        train_loss = trainer.train(binary_prediction=True)
 
         if run_train_test:
-            train_test_metrics = run_config.evaluate(
-                model=model,
-                test_data=train_loader,
-                criterion=criterion,
-                device=device,
-                using_train_data=True,
+            train_test_metrics = trainer.evaluate(
+                use_train_data=True,
                 binary_prediction=True,
             )
 
-        test_metrics = run_config.evaluate(
-            model=model,
-            test_data=test_loader,
-            criterion=criterion,
-            device=device,
-            using_train_data=False,
+        test_metrics = trainer.evaluate(
+            use_train_data=False,
             binary_prediction=True,
         )
 
-        if stop(**run_config.get_metric_logger()):
+        if stop(**trainer.metric_logger):
             break
-        logger.debug(f"{it: 03d} {run_config.log()}")
+        logger.debug(f"{it: 03d} {trainer.log()}")
 
-    logger.info(f"{it: 03d} {run_config.log()}")
+    logger.info(f"{it: 03d} {trainer.log()}")
 
     return model

@@ -13,7 +13,8 @@ from src.data.datasets import GraphDataset
 from src.generate_graphs import graph_stream
 from src.graphs import *
 from src.run_logic import run, seed_everything
-from src.training.gnn_training import Training
+from src.training import TrainerBuilder
+from src.training.gnn_training import GNNTrainer
 from src.typing import GNNModelConfig, StopFormat
 from src.utils import cleanup, merge_update, save_file_exists, write_metadata
 
@@ -71,10 +72,11 @@ def run_experiment(
             train_data = GraphDataset(stream, train_length)
             time_graph += timer() - s
 
-            training_state = Training("all")
+            trainer = GNNTrainer(logging_variables="all")
+            builder = TrainerBuilder(trainer=trainer)
 
             model = run(
-                run_config=training_state,
+                train_builder=builder,
                 model_config=model_config,
                 train_data=train_data,
                 test_data=test_data,
@@ -90,7 +92,7 @@ def run_experiment(
             weights = model.state_dict()
             models.append(weights)
 
-            metrics = training_state.get_metric_logger()
+            metrics = trainer.metric_logger
 
             stats["macro"][str(round(metrics["test_macro"], 3))] += 1
             stats["micro"][str(round(metrics["test_micro"], 3))] += 1

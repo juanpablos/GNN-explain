@@ -18,7 +18,8 @@ from src.data.utils import (
 )
 from src.eval_utils import evaluate_model
 from src.run_logic import run, seed_everything
-from src.training.mlp_training import Training
+from src.training import TrainerBuilder
+from src.training.mlp_training import MLPTrainer
 from src.typing import MinModelConfig, NetworkDataConfig
 from src.utils import write_result_info
 from src.visualization.confusion_matrix import (
@@ -94,15 +95,16 @@ def run_experiment(
     model_config["input_dim"] = input_shape[0]
     model_config["output_dim"] = n_classes
 
-    train_state = Training(
-        n_classes=n_classes,
-        logging_variables="all",
-        multilabel=multilabel)
+    trainer = MLPTrainer(logging_variables="all",
+                         n_classes=n_classes,
+                         metrics_average="macro",
+                         multilabel=multilabel)
+    builder = TrainerBuilder(trainer=trainer)
 
     logger.debug("Running")
     logger.debug(f"Input size is {input_shape[0]}")
     model = run(
-        run_config=train_state,
+        train_builder=builder,
         model_config=model_config,
         train_data=train_data,
         test_data=test_data,
@@ -120,7 +122,7 @@ def run_experiment(
     # formula_count: formula -> (int -> int)
     _y, _y_pred, mistakes, formula_count = evaluate_model(
         model=model, test_data=test_data, reconstruction=data_reconstruction,
-        trainer=train_state, gpu=gpu_num, multilabel=multilabel)
+        trainer=trainer, gpu=gpu_num, multilabel=multilabel)
 
     # returns a number to put after the file name in case it already exists
     # "" or " (N)"
@@ -173,7 +175,7 @@ def run_experiment(
                 labels=cm_labels,
                 normalize_cm=True)
 
-        metrics = train_state.get_metric_logger()
+        metrics = trainer.metric_logger
         plot_training(
             metric_history=metrics,
             save_path=results_path,
