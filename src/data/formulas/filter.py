@@ -106,11 +106,12 @@ class RestrictionFilter(Filterer):
 
         # here we know that either lower or upper is not None
         # if lower is the one that is None, then it is an open lower interval
-        # in which case it is the same as 0
-        self.lower = lower if lower is not None else 0
+        # in which case it is the same as 0 (but we do not replace the value)
+        self.lower = lower
         self.upper = upper
 
     def _visit_Exist(self, node: Exist):
+        # * the Exist node must match the set value or open interval (with None)
         lower = self.lower == node.lower if self.lower != -1 else True
         upper = self.upper == node.upper if self.upper != -1 else True
         if lower and upper:

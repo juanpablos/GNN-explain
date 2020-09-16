@@ -155,49 +155,38 @@ class Exist(IndependentElement):
             upper: int = None,
             *,
             variable: str = None):
+        if lower is None and upper is None:
+            # ! lower is only forced 1 if upper is also None
+            lower = 1
+        elif lower is not None and upper is not None:
+            if lower < 0 or upper < 0:
+                raise ValueError(
+                    "`lower` and `upper` must be greater than 0 when both set")
+
         self.variable = variable if variable is not None else "."
         self.expression = expression
-        self._lower = lower
+        # ! Exist(None, 3) is the same as Exist(0, 3) but we don't force that
+        self.lower = lower
         self.upper = upper
         self.symbol = "∃"
 
-    @property
-    def lower(self):
-        # ! lower is only forced 1 if upper is also None
-        # ! it can be that we have Exist(None, 3), in which case
-        # ! 0 elements are also valid
-        if self._lower is None and self.upper is None:
-            return 1
-        elif self._lower is None and self.upper is not None:
-            return 0
-        else:
-            return self._lower
-
     def __repr__(self):
-        # * Exist(None, None) is the same as Exist(1, None) and
-        # !! Exist(None, 4) should be the same as Exist(0, 4)
-        lower = self._lower
-        if lower is None and self.upper is None:
-            lower = 1
+        # ?? Exist(None, 4) should be the same as Exist(0, 4): should we force it?
         return (f"{self.__class__.__name__}"
-                f"({self.expression!r},{lower},{self.upper})")
+                f"({self.expression!r},{self.lower},{self.upper})")
 
     def __str__(self):
         s = self.symbol
 
-        lower = self._lower
-        if lower is None and self.upper is None:
-            lower = 1
-
-        if lower is not None and self.upper is not None:
-            return f"{s}({lower}<={self.variable}<={self.upper}){self.expression}"
-        elif lower is not None:
-            return f"{s}({lower}<={self.variable}){self.expression}"
+        if self.lower is not None and self.upper is not None:
+            return f"{s}({self.lower}<={self.variable}<={self.upper}){self.expression}"
+        elif self.lower is not None:
+            return f"{s}({self.lower}<={self.variable}){self.expression}"
         else:
             return f"{s}({self.variable}<={self.upper}){self.expression}"
 
     def __call__(self, **kwargs):
-        lower = self.lower
+        lower = self.lower if self.lower is not None else 0
         upper = self.upper if self.upper is not None else float("inf")
 
         res = self.expression(**kwargs)
