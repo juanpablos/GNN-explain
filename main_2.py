@@ -256,7 +256,7 @@ def main(
     # * /test_filters
 
     # * labelers
-    label_logic = MultiLabelAtomicLabeler()
+    label_logic = MultilabelRestrictionLabeler(mode="both")
     labeler = LabelerApply(labeler=label_logic)
     # * /labelers
     data_config: NetworkDataConfig = {

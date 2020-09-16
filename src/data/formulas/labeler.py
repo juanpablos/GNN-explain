@@ -2,11 +2,13 @@ from typing import (
     Dict,
     Generic,
     List,
+    Literal,
     Mapping,
     Optional,
     OrderedDict,
     Tuple,
-    TypeVar
+    TypeVar,
+    Union
 )
 
 from src.data.formulas.visitor import Visitor
@@ -120,8 +122,12 @@ class BinaryRestrictionLabeler(BinaryCategoricalLabeler):
             negate: bool = False):
         if lower is None and upper is None:
             raise ValueError("Can't have both open intervals.")
+        if lower is not None and upper is not None:
+            if lower < 0 or upper < 0:
+                raise ValueError(
+                    "`lower` and `upper` must be greater than 0 when both set")
         super().__init__(negate=negate)
-        self.lower = lower if lower is not None else 0
+        self.lower = lower
         self.upper = upper
 
         txt = f"restriction({lower},{upper})"
@@ -158,6 +164,9 @@ class SequentialCategoricalLabeler(CategoricalLabeler[int, int]):
 
     def __str__(self):
         return "Sequential()"
+
+
+# *----- multilabel
 
 
 class MultiLabelCategoricalLabeler(CategoricalLabeler[Tuple[int, ...], int]):
@@ -197,38 +206,72 @@ class MultiLabelAtomicLabeler(MultiLabelCategoricalLabeler):
     def __str__(self):
         return "MultiLabelAtomic()"
 
-# !! implement labeler that labels the number of hops in a formula
-
 
 class MultilabelRestrictionLabeler(MultiLabelCategoricalLabeler):
-    def __init__(self):
+    """
+    Labels are for compound Exist operations:
+    Exist(..., 2, 3) -> Exist(..., 2, None) + Exist(..., None, 3)
+    Exist(..., 2, None) -> Exist(..., 2, None)
+
+    RED -> Exist(None)
+    """
+
+    def __init__(self,
+                 mode: Union[Literal["lower"],
+                             Literal["upper"],
+                             Literal["both"]] = "both"):
         super().__init__()
         self.current_hop = 0
+        self.max_hop = 0
         # no need for this to be ordered
         self.pairs: Dict[Tuple[Optional[int], Optional[int]], int] = {}
-        # ?? should we support/assign label to atomic formulas?
-        # something like Restriction(None) or something
-        # !! this should actually be for an specific hop, not any
+
+        if mode == "both":
+            self.mode = ["lower", "upper"]
+        else:
+            self.mode = [mode]
 
     def _visit_Exist(self, node: Exist):
         self.current_hop += 1
+        self.max_hop = max(self.max_hop, self.current_hop)
 
-        if (node.lower, node.upper) not in self.pairs:
-            self.pairs[(node.lower, node.upper)] = self.current_counter
-            _cls = (f"Restriction({node.lower},{node.upper},"
-                    f"hop={self.current_hop})")
-            self.classes[self.current_counter] = _cls
-            self.current_counter += 1
+        if self.current_hop > 1:
+            # TODO: multilabel hop restriction labele
+            raise NotImplementedError(
+                "Missing implementation for multihop restriction labeler")
 
-        self.current_result.append(self.pairs[(node.lower, node.upper)])
+        if "lower" in self.mode and node.lower is not None:
+            if (node.lower, None) not in self.pairs:
+                self.pairs[(node.lower, None)] = self.current_counter
+                self.classes[self.current_counter] = f"Exist({node.lower},None)"
+                self.current_counter += 1
+            self.current_result.append(self.pairs[(node.lower, None)])
+
+        if "upper" in self.mode and node.upper is not None:
+            if (None, node.upper) not in self.pairs:
+                self.pairs[(None, node.upper)] = self.current_counter
+                self.classes[self.current_counter] = f"Exist(None,{node.upper})"
+                self.current_counter += 1
+            self.current_result.append(self.pairs[(None, node.upper)])
 
         super()._visit_Exist(node)
 
         self.current_hop -= 1
 
+    def process(self, formula: Element):
+        if self.max_hop == 0:
+            if (None, None) not in self.pairs:
+                self.pairs[(None, None)] = self.current_counter
+                self.classes[self.current_counter] = "Exist(None)"
+                self.current_counter += 1
+
+            self.current_result.append(self.pairs[(None, None)])
+        super().process(formula)
+
     def reset(self):
         super().reset()
         self.current_hop = 0
+        self.max_hop = 0
 
     def __str__(self):
         return "MultiLabelRestriction()"
