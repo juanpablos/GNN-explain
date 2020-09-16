@@ -265,7 +265,8 @@ def main(
         "selector": selector,
         "labeler": labeler,
         "formula_mapping": FormulaMapping("./data/formulas.json"),
-        "test_selector": test_selector
+        "test_selector": test_selector,
+        "load_aggregated": "aggregated.pt"
     }
 
     iterations = 20
@@ -315,7 +316,7 @@ def main(
 
 if __name__ == "__main__":
     logger.setLevel(logging.DEBUG)
-    # logger.propagate = False
+    logger.propagate = False
 
     ch = logging.StreamHandler()
     ch.setLevel(logging.DEBUG)

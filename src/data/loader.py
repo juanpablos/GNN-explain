@@ -3,6 +3,7 @@ import os
 from typing import Dict, List
 
 from src.data.datasets import (
+    AggregatedNetworkDataset,
     LabeledDataset,
     NetworkDataset,
     NetworkDatasetCollectionWrapper
@@ -14,7 +15,7 @@ from src.data.formulas.labeler import (
     MultiLabelCategoricalLabeler
 )
 from src.data.utils import label_idx2tensor
-from src.typing import S, T
+from src.typing import S, Selectable, T
 
 logger = logging.getLogger(__name__)
 
@@ -36,6 +37,7 @@ def load_gnn_files(
         labeler: LabelerApply[T, S],
         formula_mapping: FormulaMapping,
         test_selector: Filter,
+        load_aggregated: str = None,
         _legacy_load_without_batch: bool = False):
 
     if model_hash not in os.listdir(root):
@@ -48,19 +50,31 @@ def load_gnn_files(
         is_multilabel = True
 
     model_path = os.path.join(root, model_hash)
-    # select all formulas available in directory
-    # formula_hash -> file_path
-    dir_formulas = __prepare_files(model_path)
+
+    preloaded_formulas: Selectable = {}
+    if load_aggregated is None:
+        # select all formulas available in directory
+        # formula_hash -> file_path
+        available_formulas = __prepare_files(model_path)
+
+    else:
+        logging.info("Loading batch formulas")
+        _agg = AggregatedNetworkDataset(
+            file_path=os.path.join(model_path, load_aggregated))
+
+        available_formulas = _agg.available_formulas()
+        preloaded_formulas = _agg
 
     logger.debug("Creating formula objects")
     # mapping from formula_hash -> formula object
-    dir_mapping = {_hash: formula_mapping[_hash] for _hash in dir_formulas}
+    hash_formula = {_hash: formula_mapping[_hash]
+                    for _hash in available_formulas}
 
     logger.debug(f"Running formula selector {selector}")
     # mapping from the selected formula_hash -> formula object
-    selected_formulas = selector(dir_mapping)
+    selected_formulas = selector(hash_formula)
     logger.debug(f"Running test formula selector {test_selector}")
-    testing_selected_formulas = test_selector(dir_mapping)
+    testing_selected_formulas = test_selector(hash_formula)
     if testing_selected_formulas:
         logger.debug("Adding exclusive testing formulas")
         selected_formulas.update(testing_selected_formulas)
@@ -84,7 +98,6 @@ def load_gnn_files(
 
     logger.info(f"Loading {len(selected_labels)} formulas")
     for formula_hash, label in selected_labels.items():
-        file = dir_formulas[formula_hash]
         formula_object = selected_formulas[formula_hash]
 
         logger.info(f"\tLoading {formula_hash}: {formula_object}: {label}")
@@ -92,12 +105,20 @@ def load_gnn_files(
         if is_multilabel:
             label = label_idx2tensor(label=label, n_labels=n_labels)
 
-        file_path = os.path.join(model_path, file)
-        dataset = NetworkDataset(
-            file=file_path,
-            label=label,
-            formula=formula_object,
-            _legacy_load_without_batch=_legacy_load_without_batch)
+        if load_aggregated is None:
+            file = available_formulas[formula_hash]
+            file_path = os.path.join(model_path, file)
+            dataset = NetworkDataset(
+                file=file_path,
+                label=label,
+                formula=formula_object,
+                _legacy_load_without_batch=_legacy_load_without_batch)
+        else:
+            dataset = NetworkDataset(
+                preloaded=preloaded_formulas[formula_hash],
+                label=label,
+                formula=formula_object,
+                _legacy_load_without_batch=_legacy_load_without_batch)
 
         if testing_selected_formulas:
             if formula_hash in testing_selected_formulas:

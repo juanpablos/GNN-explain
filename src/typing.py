@@ -12,6 +12,7 @@ from typing import (
     runtime_checkable
 )
 
+import torch
 
 from src.data.formula_index import FormulaMapping
 from src.data.formulas.filter import Filter
@@ -30,6 +31,7 @@ class NetworkDataConfig(TypedDict):
     labeler: LabelerApply
     formula_mapping: FormulaMapping
     test_selector: Filter
+    load_aggregated: Optional[str]
 
 
 class StopFormat(TypedDict):
@@ -77,3 +79,7 @@ class Indexable(Protocol[T_co]):
 
 class IndexableIterable(Indexable[T_co], Protocol[T_co]):
     def __iter__(self) -> Iterator[T_co]: ...
+
+
+class Selectable(Protocol):
+    def __getitem__(self, item: str) -> torch.Tensor: ...

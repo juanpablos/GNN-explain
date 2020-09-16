@@ -1,12 +1,12 @@
 import bisect
-from typing import Generic, Iterator, List, Sequence, Tuple
+import logging
+from typing import Dict, Generic, Iterator, List, Sequence, Tuple
 
 import torch
 from torch.utils.data import Dataset
 
 from src.graphs.foc import Element
 from src.typing import Indexable, IndexableIterable, S_co, T_co
-import logging
 
 logger = logging.getLogger(__name__)
 
@@ -178,20 +178,29 @@ class NetworkDataset(LabeledDataset[torch.Tensor, S_co]):
 
     def __init__(
             self,
-            file: str,
             label: S_co,
             formula: Element,
+            file: str = "",
             limit: int = None,
             multilabel: bool = False,
+            preloaded: IndexableIterable[torch.Tensor] = None,
             _legacy_load_without_batch: bool = False):
 
-        dataset, labels = self.__load(
-            file, label, limit, _legacy_load_without_batch)
+        if file == "" and preloaded is None:
+            raise ValueError("Cannot have `file` and `preloaded` unset")
+
+        if preloaded is None:
+            dataset, labels = self.__load(
+                file, limit, _legacy_load_without_batch)
+        else:
+            dataset = preloaded
+
+        labels = DummyIterable(label, length=len(dataset))
 
         super().__init__(dataset=dataset, labels=labels, multilabel=multilabel)
         self.formula = formula
 
-    def __load(self, filename, label: S_co, limit, no_batch):
+    def __load(self, filename, limit, no_batch):
         networks = torch.load(filename)
 
         dataset = []
@@ -216,7 +225,7 @@ class NetworkDataset(LabeledDataset[torch.Tensor, S_co]):
             if i == limit:
                 break
 
-        return dataset, DummyIterable(label, length=len(dataset))
+        return dataset
 
     @staticmethod
     def clean_state(model_dict):
@@ -303,3 +312,24 @@ class NetworkDatasetCollectionWrapper(Dataset, Generic[S_co]):
             seq.append(curr + l)
             curr += l
         return seq
+
+
+class AggregatedNetworkDataset:
+    def __init__(self, file_path: str):
+        """
+        format:
+        {
+            formula_hash: {
+                file: file_path,
+                data: tensor_data
+            }
+        }
+        """
+        logger.debug("Loading formulas")
+        self.formulas = torch.load(file_path)
+
+    def __getitem__(self, formula: str) -> torch.Tensor:
+        return self.formulas[formula]["data"]
+
+    def available_formulas(self) -> Dict[str, str]:
+        return {k: v["file"] for k, v in self.formulas.items()}
