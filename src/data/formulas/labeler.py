@@ -12,7 +12,7 @@ from typing import (
 )
 
 from src.data.formulas.visitor import Visitor
-from src.graphs.foc import Element, Exist, Property
+from src.graphs.foc import AND, NEG, OR, Element, Exist, Property, Role
 
 T = TypeVar("T")
 S = TypeVar("S")
@@ -276,6 +276,112 @@ class MultilabelRestrictionLabeler(MultiLabelCategoricalLabeler):
     def __str__(self):
         return "MultiLabelRestriction()"
 
+
+# *----- text sequential
+
+class TextSequenceLabeler(Visitor[List[int]]):
+    def __init__(self):
+
+        self.vocab_id: Dict[str, int] = dict(
+            zip(
+                ["<pad>", "<start>", "<eos>"],
+                range(3)
+            )
+        )
+        self.vocab_counter = len(self.vocab_id)
+
+        self.result: List[int] = []
+
+    def reset(self):
+        self.result = []
+
+    def preload_vocabulary(
+            self, vocabulary: Dict[str, int], add_special_tokens: bool = True):
+
+        if add_special_tokens:
+            max_id = 0
+            for k, v in vocabulary.items():
+                v = v + self.vocab_counter
+                self.vocab_id[k] = v
+
+                max_id = max(max_id, v)
+        else:
+            self.vocab_id = vocabulary
+            max_id = max(vocabulary.values())
+
+        self.vocab_counter = max_id + 1
+
+    def _register(self, token):
+        if token not in self.vocab_id:
+            self.vocab_id[token] = self.vocab_counter
+            self.vocab_counter += 1
+
+        return self.vocab_id[token]
+
+    def _visit_AND(self, node: AND):
+        token_id = self._register("AND")
+        self.result.extend([token_id] * (len(node.operands) - 1))
+        super()._visit_AND(node)
+
+    def _visit_OR(self, node: OR):
+        token_id = self._register("OR")
+        self.result.extend([token_id] * (len(node.operands) - 1))
+        super()._visit_OR(node)
+
+    def _visit_NEG(self, node: NEG):
+        token_id = self._register("NEG")
+        self.result.append(token_id)
+        super()._visit_NEG(node)
+
+    def _visit_Property(self, node: Property):
+        prop = node.name
+        token_id = self._register(prop)
+        self.result.append(token_id)
+        super()._visit_Property(node)
+
+    def _visit_Role(self, node: Role):
+        role = node.name
+        token_id = self._register(role)
+        self.result.append(token_id)
+        super()._visit_Role(node)
+
+    def _visit_Exist(self, node: Exist):
+
+        current_result = self.result
+        self.result = []
+        super()._visit_Exist(node)
+
+        exist_result = self.result
+        self.result = current_result
+
+        lower = []
+        if node.lower is not None:
+            lower_id = self._register(f"Exist({node.lower}, None)")
+            lower.append(lower_id)
+            lower.extend(exist_result)
+
+        upper = []
+        if node.upper is not None:
+            upper_id = self._register(f"Exist(None, {node.upper})")
+            upper.append(upper_id)
+            upper.extend(exist_result)
+
+        if lower and upper:
+            and_token = self._register("AND")
+            self.result.append(and_token)
+
+        self.result.extend(lower)
+        self.result.extend(upper)
+
+    def process(self, formula: Element):
+        if not self.result:
+            raise ValueError(
+                f"Current formula don't have any result: {formula}")
+
+    def __str__(self):
+        return "TextSequenceAtomic()"
+
+
 # *------- apply --------
 
 
@@ -290,3 +396,13 @@ class LabelerApply(Generic[T, S]):
 
     def __str__(self):
         return str(self.labeler)
+
+
+class SequenceLabelerApply:
+    def __init__(self, labeler: TextSequenceLabeler):
+        self.labeler = labeler
+
+    def __call__(self, formulas: Mapping[str, Element]):
+        labels = {_hash: self.labeler(formula)
+                  for _hash, formula in formulas.items()}
+        return labels, self.labeler.vocab_id

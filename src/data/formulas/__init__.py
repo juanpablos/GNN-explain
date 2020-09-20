@@ -14,5 +14,7 @@ from .labeler import (
     LabelerApply,
     MultiLabelAtomicLabeler,
     MultilabelRestrictionLabeler,
-    SequentialCategoricalLabeler
+    SequenceLabelerApply,
+    SequentialCategoricalLabeler,
+    TextSequenceLabeler
 )
