@@ -474,7 +474,7 @@ class AggregatedNetworkDataset:
 
 
 class TextSequenceDataset(
-        BaseLabeledDataset[torch.Tensor, List[int]], Dataset):
+        BaseLabeledDataset[T_co, List[int]], Dataset):
     def __init__(
             self,
             dataset: IndexableIterable[T_co],
@@ -525,3 +525,19 @@ class TextSequenceDataset(
             cls,
             datasets: Sequence[IndexableIterable[Tuple[T_co, S_co]]], vocabulary: Dict[str, int]):
         return super().from_iterable(datasets=datasets, vocabulary=vocabulary)
+
+    @classmethod
+    def from_subset(cls, subset: LabeledSubset[T_co, List[int]]):
+        if isinstance(subset._dataset, TextSequenceDataset):
+            dataset: List[T_co] = []
+            labels: List[List[int]] = []
+            for x, y in subset:
+                dataset.append(x)
+                labels.append(y)
+
+            return cls(
+                dataset=dataset,
+                labels=labels,
+                vocabulary=subset._dataset.vocabulary)
+        else:
+            raise TypeError("The subset is not a TextSequenceDataset subset")
