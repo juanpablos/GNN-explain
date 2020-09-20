@@ -280,14 +280,16 @@ class MultilabelRestrictionLabeler(MultiLabelCategoricalLabeler):
 # *----- text sequential
 
 class TextSequenceLabeler(Visitor[List[int]]):
-    def __init__(self):
-
-        self.vocab_id: Dict[str, int] = dict(
-            zip(
-                ["<pad>", "<start>", "<eos>"],
-                range(3)
+    def __init__(self, use_special_tokens: bool = True):
+        self.use_special = use_special_tokens
+        self.vocab_id: Dict[str, int] = {}
+        if use_special_tokens:
+            self.vocab_id.update(
+                zip(
+                    ["<pad>", "<start>", "<eos>"],
+                    range(3)
+                )
             )
-        )
         self.vocab_counter = len(self.vocab_id)
 
         self.result: List[int] = []
@@ -299,6 +301,10 @@ class TextSequenceLabeler(Visitor[List[int]]):
             self, vocabulary: Dict[str, int], add_special_tokens: bool = True):
 
         if add_special_tokens:
+            if not self.use_special:
+                raise ValueError(
+                    "Cannot add special tokens if not selected in init")
+
             max_id = 0
             for k, v in vocabulary.items():
                 v = v + self.vocab_counter
@@ -367,8 +373,8 @@ class TextSequenceLabeler(Visitor[List[int]]):
             upper.extend(exist_result)
 
         if lower and upper:
-            and_token = self._register("AND")
-            self.result.append(and_token)
+            and_id = self._register("AND")
+            self.result.append(and_id)
 
         self.result.extend(lower)
         self.result.extend(upper)
@@ -377,6 +383,10 @@ class TextSequenceLabeler(Visitor[List[int]]):
         if not self.result:
             raise ValueError(
                 f"Current formula don't have any result: {formula}")
+
+        if self.use_special:
+            self.result = [self.vocab_id["<start>"]] + \
+                self.result + [self.vocab_id["<eos>"]]
 
     def __str__(self):
         return "TextSequenceAtomic()"
