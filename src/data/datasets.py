@@ -66,18 +66,13 @@ class NoLabelSubset(NoLabelDataset[T_co]):
         return NoLabelDataset(dataset=list(self))
 
 
-class LabeledDataset(Dataset, Generic[T_co, S_co]):
+class BaseLabeledDataset(Generic[T_co, S_co]):
     def __init__(
             self,
             dataset: IndexableIterable[T_co],
-            labels: IndexableIterable[S_co],
-            multilabel: bool):
-
+            labels: IndexableIterable[S_co]):
         self._dataset: IndexableIterable[T_co] = dataset
         self._labels: IndexableIterable[S_co] = labels
-        self._multilabel = multilabel
-        self._unique_labels = set()
-        self._process_labels()
 
     def __getitem__(self, index: int) -> Tuple[T_co, S_co]:
         return self.dataset[index], self.labels[index]
@@ -97,20 +92,6 @@ class LabeledDataset(Dataset, Generic[T_co, S_co]):
     def labels(self) -> IndexableIterable[S_co]:
         return self._labels
 
-    @property
-    def multilabel(self):
-        return self._multilabel
-
-    @property
-    def unique_labels(self):
-        return self._unique_labels
-
-    def _process_labels(self):
-        if self.multilabel:
-            self._unique_labels.update(range(len(self.labels[0])))
-        else:
-            self._unique_labels.update(self.labels)
-
     @staticmethod
     def _check_if_element_cond(data):
         data_element = data[0]
@@ -127,7 +108,7 @@ class LabeledDataset(Dataset, Generic[T_co, S_co]):
     def from_tuple_sequence(
             cls,
             dataset: IndexableIterable[Tuple[T_co, S_co]],
-            multilabel: bool):
+            **kwargs):
         cls._check_if_element_cond(dataset)
 
         data_elements: List[T_co] = []
@@ -136,23 +117,65 @@ class LabeledDataset(Dataset, Generic[T_co, S_co]):
             data_elements.append(x)
             labels.append(y)
 
-        return cls(data_elements, labels, multilabel=multilabel)
+        return cls(data_elements, labels, **kwargs)
 
     @classmethod
     def from_iterable(
             cls,
-            datasets: Sequence[IndexableIterable[Tuple[T_co, S_co]]], multilabel: bool):
+            datasets: Sequence[IndexableIterable[Tuple[T_co, S_co]]],
+            **kwargs):
 
         dataset: List[T_co] = []
         labels: List[S_co] = []
         for d in datasets:
             if not isinstance(d, LabeledDataset):
                 logger.debug("Getting dataset from tuples")
-                d = cls.from_tuple_sequence(d, multilabel=multilabel)
+                d = cls.from_tuple_sequence(d, **kwargs)
             dataset.extend(d.dataset)
             labels.extend(d.labels)
 
-        return cls(dataset=dataset, labels=labels, multilabel=multilabel)
+        return cls(dataset=dataset, labels=labels, **kwargs)
+
+
+class LabeledDataset(BaseLabeledDataset[T_co, S_co], Dataset):
+    def __init__(
+            self,
+            dataset: IndexableIterable[T_co],
+            labels: IndexableIterable[S_co],
+            multilabel: bool):
+        super().__init__(dataset=dataset, labels=labels)
+
+        self._multilabel = multilabel
+        self._unique_labels = set()
+        self._process_labels()
+
+    @property
+    def multilabel(self):
+        return self._multilabel
+
+    @property
+    def unique_labels(self):
+        return self._unique_labels
+
+    def _process_labels(self):
+        if self.multilabel:
+            self._unique_labels.update(range(len(self.labels[0])))
+        else:
+            self._unique_labels.update(self.labels)
+
+    @classmethod
+    def from_tuple_sequence(
+            cls,
+            dataset: IndexableIterable[Tuple[T_co, S_co]],
+            multilabel: bool):
+        return super().from_tuple_sequence(dataset=dataset, multilabel=multilabel)
+
+    @classmethod
+    def from_iterable(
+            cls,
+            datasets: Sequence[IndexableIterable[Tuple[T_co, S_co]]],
+            multilabel: bool):
+        return super().from_iterable(datasets=datasets, multilabel=multilabel)
 
 
 class LabeledSubset(LabeledDataset[T_co, S_co]):
@@ -250,7 +273,7 @@ class NetworkDataset(Dataset, Generic[S_co]):
         self._multilabel = multilabel
         self._formula = formula
         self._text = text
-        self._vocab = vocabulary if vocabulary is not None else {}
+        self._vocabulary = vocabulary if vocabulary is not None else {}
 
     @classmethod
     def categorical(cls,
@@ -332,7 +355,7 @@ class NetworkDataset(Dataset, Generic[S_co]):
 
     @property
     def vocab(self):
-        return self._vocab
+        return self._vocabulary
 
     @property
     def inverse_vocab(self):
