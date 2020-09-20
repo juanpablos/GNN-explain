@@ -445,3 +445,57 @@ class AggregatedNetworkDataset:
 
     def available_formulas(self) -> Dict[str, str]:
         return {k: v["file"] for k, v in self.formulas.items()}
+
+
+class TextSequenceDataset(
+        BaseLabeledDataset[torch.Tensor, List[int]], Dataset):
+    def __init__(
+            self,
+            dataset: IndexableIterable[T_co],
+            labels: IndexableIterable[List[int]],
+            vocabulary: Dict[str, int]):
+
+        self._dataset: IndexableIterable[T_co] = dataset
+        self._labels: IndexableIterable[List[int]] = labels
+
+        self._vocabulary = vocabulary
+        self._inverse_vocabulary = {v: k for k, v in vocabulary.items()}
+
+    def __getitem__(self, index: int):
+        return self.dataset[index], self.labels[index]
+
+    def __len__(self):
+        return len(self.dataset)
+
+    def __iter__(self):
+        for x, y in zip(self.dataset, self.labels):
+            yield x, y
+
+    @property
+    def dataset(self):
+        return self._dataset
+
+    @property
+    def labels(self):
+        return self._labels
+
+    @property
+    def vocabulary(self):
+        return self._vocabulary
+
+    @property
+    def inverse_vocabulary(self):
+        return self._inverse_vocabulary
+
+    @classmethod
+    def from_tuple_sequence(
+            cls,
+            dataset: IndexableIterable[Tuple[T_co, S_co]],
+            vocabulary: Dict[str, int]):
+        return super().from_tuple_sequence(dataset=dataset, vocabulary=vocabulary)
+
+    @classmethod
+    def from_iterable(
+            cls,
+            datasets: Sequence[IndexableIterable[Tuple[T_co, S_co]]], vocabulary: Dict[str, int]):
+        return super().from_iterable(datasets=datasets, vocabulary=vocabulary)
