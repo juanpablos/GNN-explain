@@ -1,5 +1,9 @@
+from __future__ import annotations
+
 import bisect
 import logging
+import warnings
+from abc import ABC, abstractclassmethod
 from typing import Dict, Generic, Iterator, List, Sequence, Tuple
 
 import torch
@@ -66,7 +70,7 @@ class NoLabelSubset(NoLabelDataset[T_co]):
         return NoLabelDataset(dataset=list(self))
 
 
-class BaseLabeledDataset(Generic[T_co, S_co]):
+class BaseLabeledDataset(ABC, Generic[T_co, S_co]):
     def __init__(
             self,
             dataset: IndexableIterable[T_co],
@@ -136,6 +140,13 @@ class BaseLabeledDataset(Generic[T_co, S_co]):
 
         return cls(dataset=dataset, labels=labels, **kwargs)
 
+    @abstractclassmethod
+    def from_subset(cls,
+                    subset: LabeledSubset[T_co,
+                                          S_co]) -> BaseLabeledDataset[T_co,
+                                                                       S_co]:
+        raise NotImplementedError
+
 
 class LabeledDataset(BaseLabeledDataset[T_co, S_co], Dataset):
     def __init__(
@@ -177,12 +188,28 @@ class LabeledDataset(BaseLabeledDataset[T_co, S_co], Dataset):
             multilabel: bool):
         return super().from_iterable(datasets=datasets, multilabel=multilabel)
 
+    @classmethod
+    def from_subset(cls, subset: LabeledSubset[T_co, S_co]):
+        if isinstance(subset._dataset, LabeledDataset):
+            dataset: List[T_co] = []
+            labels: List[S_co] = []
+            for x, y in subset:
+                dataset.append(x)
+                labels.append(y)
 
-class LabeledSubset(LabeledDataset[T_co, S_co]):
+            return cls(
+                dataset=dataset,
+                labels=labels,
+                multilabel=subset._dataset.multilabel)
+        else:
+            raise TypeError("The subset is not a LabeledDatset subset")
+
+
+class LabeledSubset(BaseLabeledDataset[T_co, S_co], Dataset):
     def __init__(self,
-                 dataset: LabeledDataset[T_co, S_co],
+                 dataset: BaseLabeledDataset[T_co, S_co],
                  indices: Sequence[int]):
-        self._dataset: LabeledDataset[T_co, S_co] = dataset
+        self._dataset: BaseLabeledDataset[T_co, S_co] = dataset
         self._indices = indices
 
     def __getitem__(self, idx: int):
@@ -196,35 +223,34 @@ class LabeledSubset(LabeledDataset[T_co, S_co]):
             yield self._dataset[ind]
 
     @property
-    def dataset(self):
-        return self.apply_subset().dataset
-
-    @property
-    def labels(self):
-        return self.apply_subset().labels
-
-    @property
     def indices(self):
         return self._indices
 
-    @property
-    def multilabel(self):
-        return self._dataset.multilabel
+    def __getattr__(self, name: str):
+        if name in ["dataset", "labels"]:
+            warnings.warn(
+                "Creating concrete dataset from subset. "
+                "To avoid computation overhead call `apply_subset` "
+                "and store that object",
+                stacklevel=3)
+            return getattr(self.apply_subset(), name)
 
-    @property
-    def unique_labels(self):
-        return self.apply_subset().unique_labels
+        raise AttributeError(
+            "Do not call Concrete Dataset methods "
+            f"on {self.__class__}. Call `apply_subset` and then the method.")
 
     def apply_subset(self):
-        dataset: List[T_co] = []
-        labels: List[S_co] = []
-        for x, y in self:
-            dataset.append(x)
-            labels.append(y)
-        return LabeledDataset(
-            dataset=dataset,
-            labels=labels,
-            multilabel=self._dataset.multilabel)
+        return self._dataset.from_subset(subset=self)
+
+    @classmethod
+    def from_tuple_sequence(cls, *args, **kwargs):
+        raise NotImplementedError(
+            f"from_tuple_sequence is not implemented for {cls}")
+
+    @classmethod
+    def from_iterable(cls, *args, **kwargs):
+        raise NotImplementedError(
+            f"from_iterable is not implemented for {cls}")
 
 
 class DummyIterable(Generic[S_co]):
