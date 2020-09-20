@@ -11,22 +11,6 @@ from src.typing import Indexable, IndexableIterable, S_co, T_co
 logger = logging.getLogger(__name__)
 
 
-class DummyIterable(Generic[S_co]):
-    def __init__(self, value: S_co, length: int):
-        self.value: S_co = value
-        self.length: int = length
-
-    def __len__(self):
-        return self.length
-
-    def __getitem__(self, index: int):
-        return self.value
-
-    def __iter__(self):
-        for _ in range(self.length):
-            yield self.value
-
-
 class NoLabelDataset(Dataset, Generic[T_co]):
     def __init__(self, dataset: IndexableIterable[T_co]):
         self._dataset: IndexableIterable[T_co] = dataset
@@ -171,68 +155,6 @@ class LabeledDataset(Dataset, Generic[T_co, S_co]):
         return cls(dataset=dataset, labels=labels, multilabel=multilabel)
 
 
-class NetworkDataset(LabeledDataset[torch.Tensor, S_co]):
-    """
-    A Pytorch dataset that loads a pickle file storing a list of the outputs of torch.nn.Module.state_dict(), that is basically a Dict[str, Tensor]. This dataset loads that file, for each network it flattens the tensors into a single vector and stores a tuple (flattened vector, label). Stores exactly the first 'limit' elements of the list.
-    """
-
-    def __init__(
-            self,
-            label: S_co,
-            formula: Element,
-            file: str = "",
-            limit: int = None,
-            multilabel: bool = False,
-            preloaded: IndexableIterable[torch.Tensor] = None,
-            _legacy_load_without_batch: bool = False):
-
-        if file == "" and preloaded is None:
-            raise ValueError("Cannot have `file` and `preloaded` unset")
-
-        if preloaded is None:
-            dataset, labels = self.__load(
-                file, limit, _legacy_load_without_batch)
-        else:
-            dataset = preloaded
-
-        labels = DummyIterable(label, length=len(dataset))
-
-        super().__init__(dataset=dataset, labels=labels, multilabel=multilabel)
-        self.formula = formula
-
-    def __load(self, filename, limit, no_batch):
-        networks = torch.load(filename)
-
-        dataset = []
-
-        if limit is not None:
-            if not isinstance(limit, int):
-                raise ValueError("Limit must be an integer")
-            if len(networks) < limit:
-                raise ValueError(
-                    "Limit is larger than the size of the dataset")
-
-        for i, weights in enumerate(networks, start=1):
-
-            # legacy
-            if no_batch:
-                weights = self.clean_state(weights)
-            # /legacy
-
-            concat_weights = torch.cat([w.flatten() for w in weights.values()])
-            dataset.append(concat_weights)
-
-            if i == limit:
-                break
-
-        return dataset
-
-    @staticmethod
-    def clean_state(model_dict):
-        """Removes the weights associated with batchnorm"""
-        return {k: v for k, v in model_dict.items() if "batch" not in k}
-
-
 class LabeledSubset(LabeledDataset[T_co, S_co]):
     def __init__(self,
                  dataset: LabeledDataset[T_co, S_co],
@@ -280,6 +202,173 @@ class LabeledSubset(LabeledDataset[T_co, S_co]):
             dataset=dataset,
             labels=labels,
             multilabel=self._dataset.multilabel)
+
+
+class DummyIterable(Generic[S_co]):
+    def __init__(self, value: S_co, length: int):
+        self.value: S_co = value
+        self.length: int = length
+
+    def __len__(self):
+        return self.length
+
+    def __getitem__(self, index: int):
+        return self.value
+
+    def __iter__(self):
+        for _ in range(self.length):
+            yield self.value
+
+
+class NetworkDataset(Dataset, Generic[S_co]):
+    """
+    A Pytorch dataset that loads a pickle file storing a list of the outputs of torch.nn.Module.state_dict(), that is basically a Dict[str, Tensor]. This dataset loads that file, for each network it flattens the tensors into a single vector and stores a tuple (flattened vector, label). Stores exactly the first 'limit' elements of the list.
+    """
+
+    def __init__(
+            self,
+            label: S_co,
+            formula: Element,
+            file: str = "",
+            limit: int = None,
+            multilabel: bool = False,
+            text: bool = False,
+            vocabulary: Dict[str, int] = None,
+            preloaded: IndexableIterable[torch.Tensor] = None,
+            _legacy_load_without_batch: bool = False):
+
+        if file == "" and preloaded is None:
+            raise ValueError("Cannot have `file` and `preloaded` unset")
+
+        if preloaded is None:
+            dataset = self.__load(file, limit, _legacy_load_without_batch)
+        else:
+            dataset = preloaded
+
+        self._dataset = dataset
+        self._labels = DummyIterable(label, length=len(dataset))
+        self._multilabel = multilabel
+        self._formula = formula
+        self._text = text
+        self._vocab = vocabulary if vocabulary is not None else {}
+
+    @classmethod
+    def categorical(cls,
+                    label: S_co,
+                    formula: Element,
+                    file: str = "",
+                    limit: int = None,
+                    multilabel: bool = False,
+                    preloaded: IndexableIterable[torch.Tensor] = None,
+                    _legacy_load_without_batch: bool = False):
+
+        dataset = cls(
+            label=label,
+            formula=formula,
+            file=file,
+            limit=limit,
+            multilabel=multilabel,
+            text=False,
+            vocabulary=None,
+            preloaded=preloaded,
+            _legacy_load_without_batch=_legacy_load_without_batch,
+        )
+        setattr(dataset, "is_categorical", True)
+        return dataset
+
+    @classmethod
+    def text_sequence(cls,
+                      label: S_co,
+                      formula: Element,
+                      file: str = "",
+                      limit: int = None,
+                      vocabulary: Dict[str, int] = None,
+                      preloaded: IndexableIterable[torch.Tensor] = None,
+                      _legacy_load_without_batch: bool = False):
+
+        dataset = cls(
+            label=label,
+            formula=formula,
+            file=file,
+            limit=limit,
+            multilabel=False,
+            text=True,
+            vocabulary=vocabulary,
+            preloaded=preloaded,
+            _legacy_load_without_batch=_legacy_load_without_batch,
+        )
+        setattr(dataset, "is_text", True)
+        return dataset
+
+    def __len__(self):
+        return len(self.dataset)
+
+    def __getitem__(self, index: int):
+        return self.dataset[index], self.labels[index]
+
+    def __iter__(self):
+        for x, y in zip(self.dataset, self.labels):
+            yield x, y
+
+    @property
+    def dataset(self):
+        return self._dataset
+
+    @property
+    def labels(self):
+        return self._labels
+
+    @property
+    def multilabel(self):
+        return self._multilabel
+
+    @property
+    def formula(self):
+        return self._formula
+
+    @property
+    def text(self):
+        return self._text
+
+    @property
+    def vocab(self):
+        return self._vocab
+
+    @property
+    def inverse_vocab(self):
+        return {v: k for k, v in self.vocab.items()}
+
+    def __load(self, filename, limit, no_batch):
+        networks = torch.load(filename)
+
+        dataset = []
+
+        if limit is not None:
+            if not isinstance(limit, int):
+                raise ValueError("Limit must be an integer")
+            if len(networks) < limit:
+                raise ValueError(
+                    "Limit is larger than the size of the dataset")
+
+        for i, weights in enumerate(networks, start=1):
+
+            # legacy
+            if no_batch:
+                weights = self.clean_state(weights)
+            # /legacy
+
+            concat_weights = torch.cat([w.flatten() for w in weights.values()])
+            dataset.append(concat_weights)
+
+            if i == limit:
+                break
+
+        return dataset
+
+    @staticmethod
+    def clean_state(model_dict):
+        """Removes the weights associated with batchnorm"""
+        return {k: v for k, v in model_dict.items() if "batch" not in k}
 
 
 class NetworkDatasetCollectionWrapper(Dataset, Generic[S_co]):
