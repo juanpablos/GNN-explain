@@ -1,6 +1,6 @@
 from torch_geometric.nn.conv import MessagePassing
 
-from src.gnn.mlp import MLP
+from src.models.mlp import MLP
 
 
 class ACConv(MessagePassing):

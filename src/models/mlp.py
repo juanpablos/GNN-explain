@@ -3,7 +3,7 @@ from typing import List, Optional
 import torch
 import torch.nn as nn
 
-from src.gnn.utils import reset
+from src.models.utils import reset
 
 
 class MLP(nn.Module):

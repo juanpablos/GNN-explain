@@ -6,10 +6,15 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
-from sklearn.metrics import accuracy_score, precision_recall_fscore_support, hamming_loss, jaccard_score
+from sklearn.metrics import (
+    accuracy_score,
+    hamming_loss,
+    jaccard_score,
+    precision_recall_fscore_support
+)
 from torch.utils.data import DataLoader
 
-from src.gnn import MLP
+from src.models import MLP
 
 from . import Trainer
 

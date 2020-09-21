@@ -7,7 +7,7 @@ import torch.optim as optim
 from torch_geometric.data import DataLoader
 from torch_scatter import scatter_mean
 
-from src.gnn import ACGNN
+from src.models import ACGNN
 
 from . import Trainer
 
