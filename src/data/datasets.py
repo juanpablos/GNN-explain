@@ -4,7 +4,7 @@ import bisect
 import logging
 import warnings
 from abc import ABC, abstractclassmethod
-from typing import Dict, Generic, Iterator, List, Sequence, Tuple
+from typing import Dict, Generic, Iterator, List, Optional, Sequence, Tuple
 
 import torch
 from torch.utils.data import Dataset
@@ -294,12 +294,14 @@ class NetworkDataset(Dataset, Generic[S_co]):
         else:
             dataset = preloaded
 
-        self._dataset = dataset
-        self._labels = DummyIterable(label, length=len(dataset))
+        self._dataset: IndexableIterable[torch.Tensor] = dataset
+        self._labels: IndexableIterable[S_co] = DummyIterable(
+            label, length=len(dataset))
         self._multilabel = multilabel
         self._formula = formula
         self._text = text
-        self._vocabulary = vocabulary if vocabulary is not None else {}
+        self._vocabulary: Dict[str, int] = vocabulary \
+            if vocabulary is not None else {}
 
     @classmethod
     def categorical(cls,
@@ -387,10 +389,10 @@ class NetworkDataset(Dataset, Generic[S_co]):
     def inverse_vocab(self):
         return {v: k for k, v in self.vocab.items()}
 
-    def __load(self, filename, limit, no_batch):
+    def __load(self, filename: str, limit: Optional[int], no_batch: bool):
         networks = torch.load(filename)
 
-        dataset = []
+        dataset: List[torch.Tensor] = []
 
         if limit is not None:
             if not isinstance(limit, int):
