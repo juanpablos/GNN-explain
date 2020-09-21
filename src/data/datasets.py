@@ -4,7 +4,17 @@ import bisect
 import logging
 import warnings
 from abc import ABC
-from typing import Dict, Generic, Iterator, List, Optional, Sequence, Tuple
+from typing import (
+    Dict,
+    Generic,
+    Iterator,
+    List,
+    Optional,
+    Sequence,
+    Tuple,
+    Type,
+    TypeVar
+)
 
 import torch
 from torch.utils.data import Dataset
@@ -13,6 +23,8 @@ from src.graphs.foc import Element
 from src.typing import DatasetLike, Indexable, IndexableIterable, S_co, T_co
 
 logger = logging.getLogger(__name__)
+
+LabeledDatasetType = TypeVar("LabeledDatasetType", bound="BaseLabeledDataset")
 
 
 class NoLabelDataset(Dataset, Generic[T_co]):
@@ -110,9 +122,9 @@ class BaseLabeledDataset(ABC, Generic[T_co, S_co]):
 
     @classmethod
     def from_tuple_sequence(
-            cls,
+            cls: Type[LabeledDatasetType],
             dataset: IndexableIterable[Tuple[T_co, S_co]],
-            **kwargs):
+            **kwargs) -> LabeledDatasetType:
         cls._check_if_element_cond(dataset)
 
         data_elements: List[T_co] = []
@@ -125,9 +137,9 @@ class BaseLabeledDataset(ABC, Generic[T_co, S_co]):
 
     @classmethod
     def from_iterable(
-            cls,
+            cls: Type[LabeledDatasetType],
             datasets: Sequence[IndexableIterable[Tuple[T_co, S_co]]],
-            **kwargs):
+            **kwargs) -> LabeledDatasetType:
 
         dataset: List[T_co] = []
         labels: List[S_co] = []
@@ -141,10 +153,9 @@ class BaseLabeledDataset(ABC, Generic[T_co, S_co]):
         return cls(dataset=dataset, labels=labels, **kwargs)
 
     @classmethod
-    def from_subset(cls,
+    def from_subset(cls: Type[LabeledDatasetType],
                     subset: LabeledSubset[T_co,
-                                          S_co]) -> BaseLabeledDataset[T_co,
-                                                                       S_co]:
+                                          S_co]) -> LabeledDatasetType:
         raise NotImplementedError(
             f"from_iterable is not implemented for {cls}")
 
