@@ -1,6 +1,8 @@
 import logging
 import os
-from typing import Dict, List
+from typing import Dict, List, cast
+
+import torch
 
 from src.data.datasets import (
     AggregatedNetworkDataset,
@@ -162,6 +164,9 @@ def categorical_loader(
 
     dataset_all = LabeledDataset.from_iterable(
         datasets, multilabel=is_multilabel)
+
+    # FIX: wait for https://github.com/microsoft/pylance-release/issues/395
+    dataset_all = cast(LabeledDataset[torch.Tensor, T], dataset_all)
 
     if testing_selected_formulas:
         assert len(test_dataset) > 0, "test_dataset is empty"

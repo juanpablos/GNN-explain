@@ -10,7 +10,7 @@ from sklearn.metrics import classification_report
 from src.data.formula_index import FormulaMapping
 from src.data.formulas import *
 from src.data.formulas.labeler import MultiLabelCategoricalLabeler
-from src.data.loader import load_gnn_files
+from src.data.loader import categorical_loader
 from src.data.utils import (
     get_input_dim,
     get_label_distribution,
@@ -62,7 +62,7 @@ def run_experiment(
     # data_reconstruction: point_index -> formula_object
     (datasets, class_mapping,
      hash_formula, hash_label,
-     data_reconstruction) = load_gnn_files(
+     data_reconstruction) = categorical_loader(
         **data_config,
         _legacy_load_without_batch=_legacy_load_without_batch)
 

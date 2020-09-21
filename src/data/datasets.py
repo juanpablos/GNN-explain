@@ -234,6 +234,8 @@ class LabeledSubset(BaseLabeledDataset[T_co, S_co], Dataset):
                 "and store that object",
                 stacklevel=3)
             return getattr(self.apply_subset(), name)
+        elif name in ["multilabel"]:
+            return getattr(self._dataset, name)
 
         raise AttributeError(
             "Do not call Concrete Dataset methods "

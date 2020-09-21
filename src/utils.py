@@ -6,6 +6,7 @@ from collections import defaultdict
 from collections.abc import Mapping
 from typing import Any, Dict, List
 
+from src.data.utils import label_tensor2idx
 from src.graphs.foc import FOC, Element
 from src.typing import GNNModelConfig
 
@@ -128,12 +129,12 @@ def write_result_info(
 
     # hash_label:
     #   single label: formula_hash -> label_id
-    #   multilabel: formula_hash -> List[label_id]
+    #   multilabel: formula_hash -> multilabel tensor mask
     # label_id -> list[hashes]
     groups: Dict[Any, List[str]] = defaultdict(list)
     for _hash, label in hash_label.items():
         if multilabel:
-            for label_el in label:
+            for label_el in label_tensor2idx(label):
                 groups[label_el].append(_hash)
         else:
             groups[label].append(_hash)

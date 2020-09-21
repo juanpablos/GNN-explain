@@ -1,6 +1,6 @@
 import logging
 import warnings
-from typing import Any, Counter, Dict, List, Union
+from typing import Any, Counter, List, Union
 
 import torch
 from sklearn.model_selection import train_test_split as sk_split
@@ -64,14 +64,16 @@ def get_input_dim(data):
     return x.shape
 
 
-def get_label_distribution(dataset: LabeledDataset[T, S]):
-    label_info: Dict[S, int] = Counter()
+def get_label_distribution(dataset: Union[LabeledDataset[T, S],
+                                          LabeledSubset[T, S]]):
+    label_info: Counter[S] = Counter()
 
     if dataset.multilabel:
-        for label in dataset.labels:
+        for _, label in dataset:
             label_info.update(label_tensor2idx(label))
     else:
         label_info.update(dataset.labels)
+
     n_elements = len(dataset)
 
     return label_info, {k: float(v) /
@@ -82,5 +84,5 @@ def label_idx2tensor(label: List[Any], n_labels: int):
     return torch.zeros(n_labels).index_fill_(0, torch.tensor(label), 1.)
 
 
-def label_tensor2idx(label: torch.Tensor) -> List[Any]:
+def label_tensor2idx(label: torch.Tensor) -> List[int]:
     return label.nonzero().view(-1).tolist()
