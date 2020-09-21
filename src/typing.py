@@ -12,7 +12,6 @@ from typing import (
     runtime_checkable
 )
 
-import torch
 
 from src.data.formula_index import FormulaMapping
 from src.data.formulas.filter import Filter
@@ -81,5 +80,9 @@ class IndexableIterable(Indexable[T_co], Protocol[T_co]):
     def __iter__(self) -> Iterator[T_co]: ...
 
 
-class Selectable(Protocol):
-    def __getitem__(self, item: str) -> torch.Tensor: ...
+@runtime_checkable
+class DatasetLike(Protocol):
+    @property
+    def dataset(self): ...
+    @property
+    def labels(self): ...

@@ -3,14 +3,14 @@ from __future__ import annotations
 import bisect
 import logging
 import warnings
-from abc import ABC, abstractclassmethod
+from abc import ABC
 from typing import Dict, Generic, Iterator, List, Optional, Sequence, Tuple
 
 import torch
 from torch.utils.data import Dataset
 
 from src.graphs.foc import Element
-from src.typing import Indexable, IndexableIterable, S_co, T_co
+from src.typing import DatasetLike, Indexable, IndexableIterable, S_co, T_co
 
 logger = logging.getLogger(__name__)
 
@@ -132,7 +132,7 @@ class BaseLabeledDataset(ABC, Generic[T_co, S_co]):
         dataset: List[T_co] = []
         labels: List[S_co] = []
         for d in datasets:
-            if not isinstance(d, LabeledDataset):
+            if not isinstance(d, DatasetLike):
                 logger.debug("Getting dataset from tuples")
                 d = cls.from_tuple_sequence(d, **kwargs)
             dataset.extend(d.dataset)
@@ -140,12 +140,13 @@ class BaseLabeledDataset(ABC, Generic[T_co, S_co]):
 
         return cls(dataset=dataset, labels=labels, **kwargs)
 
-    @abstractclassmethod
+    @classmethod
     def from_subset(cls,
                     subset: LabeledSubset[T_co,
                                           S_co]) -> BaseLabeledDataset[T_co,
                                                                        S_co]:
-        raise NotImplementedError
+        raise NotImplementedError(
+            f"from_iterable is not implemented for {cls}")
 
 
 class LabeledDataset(BaseLabeledDataset[T_co, S_co], Dataset):

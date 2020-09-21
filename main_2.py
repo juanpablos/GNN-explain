@@ -332,7 +332,7 @@ if __name__ == "__main__":
     logger.addHandler(ch)
     # logger.addHandler(fh)
 
-    __layers = [2048]
+    __layers = [1024, 1024, 1024, 1024]
     # for __batch in [128, 256, 512]:
     #     for __lr in [0.0005, 0.001, 0.005]:
 
