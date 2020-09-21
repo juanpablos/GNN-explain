@@ -9,13 +9,15 @@ from src.data.datasets import (
     LabeledDataset,
     LabeledSubset,
     NetworkDataset,
-    NetworkDatasetCollectionWrapper
+    NetworkDatasetCollectionWrapper,
+    TextSequenceDataset
 )
 from src.data.formula_index import FormulaMapping
 from src.data.formulas.filter import Filter
 from src.data.formulas.labeler import (
     LabelerApply,
-    MultiLabelCategoricalLabeler
+    MultiLabelCategoricalLabeler,
+    SequenceLabelerApply
 )
 from src.data.utils import label_idx2tensor
 from src.typing import S, T
@@ -179,6 +181,99 @@ def categorical_loader(
 
     return (return_dataset,
             classes,
+            selected_formulas,
+            selected_labels,
+            NetworkDatasetCollectionWrapper(datasets))
+
+
+def text_sequence_loader(
+    root: str,
+    model_hash: str,
+    selector: Filter,
+    labeler: SequenceLabelerApply,
+    formula_mapping: FormulaMapping,
+    test_selector: Filter,
+    load_aggregated: str = None,
+    _legacy_load_without_batch: bool = False
+):
+
+    model_path, selected_formulas, \
+        testing_selected_formulas, \
+        available_formulas, preloaded = __load_formulas(
+            root=root,
+            model_hash=model_hash,
+            selector=selector,
+            formula_mapping=formula_mapping,
+            test_selector=test_selector,
+            load_aggregated=load_aggregated
+        )
+
+    logger.debug(f"Running formula labeler {labeler}")
+    # mapping from the selected
+    #   formula_hash -> List[token_id]
+    # vocabulary is a dictionary token_str -> token_id
+    selected_labels, vocabulary = labeler(selected_formulas)
+    # !! vocabulary is joint for train and test, there is no <unk> token
+
+    # contains all formulas in use in the experiment
+    datasets: List[NetworkDataset[List[int]]] = []
+
+    # contains formulas used for training when test manually selected
+    train_dataset: List[int] = []
+    # contains formulas used for testing when test manually selected
+    test_dataset: List[int] = []
+
+    logger.info(f"Labeling {len(selected_labels)} formulas")
+    for formula_hash, label in selected_labels.items():
+        formula_object = selected_formulas[formula_hash]
+
+        if preloaded is None:
+            logger.info(f"\tLoading {formula_hash}: {formula_object}: {label}")
+            file = available_formulas[formula_hash]
+            file_path = os.path.join(model_path, file)
+            dataset = NetworkDataset.text_sequence(
+                label=label,
+                formula=formula_object,
+                file=file_path,
+                vocabulary=vocabulary,
+                _legacy_load_without_batch=_legacy_load_without_batch)
+        else:
+            logger.info(
+                f"\tLabeling {formula_hash}: {formula_object}: {label}")
+            dataset = NetworkDataset.text_sequence(
+                label=label,
+                formula=formula_object,
+                preloaded=preloaded[formula_hash],
+                vocabulary=vocabulary)
+
+        if testing_selected_formulas:
+            current_len = len(datasets)
+            current_indices = [i + current_len for i in range(len(dataset))]
+            if formula_hash in testing_selected_formulas:
+                test_dataset.extend(current_indices)
+            else:
+                train_dataset.extend(current_indices)
+
+        # we append all formulas here
+        datasets.append(dataset)
+
+    dataset_all = TextSequenceDataset.from_iterable(datasets,
+                                                    vocabulary=vocabulary)
+
+    # FIX: wait for https://github.com/microsoft/pylance-release/issues/395
+    dataset_all = cast(TextSequenceDataset[torch.Tensor], dataset_all)
+
+    if testing_selected_formulas:
+        assert len(test_dataset) > 0, "test_dataset is empty"
+        return_dataset = (
+            LabeledSubset(dataset=dataset_all, indices=train_dataset),
+            LabeledSubset(dataset=dataset_all, indices=test_dataset)
+        )
+    else:
+        return_dataset = dataset_all
+
+    return (return_dataset,
+            vocabulary,
             selected_formulas,
             selected_labels,
             NetworkDatasetCollectionWrapper(datasets))
