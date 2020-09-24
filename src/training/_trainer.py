@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import List, Literal, Tuple, TypeVar, Union
+from typing import Generic, List, Literal, Tuple, TypeVar, Union
 
 import torch
 import torch.nn as nn
@@ -67,7 +67,7 @@ class Trainer(ABC):
 TrainType = TypeVar("TrainType", bound=Trainer)
 
 
-class TrainerBuilder:
+class TrainerBuilder(Generic[TrainType]):
     def __init__(self, trainer: TrainType):
         self.__trainer: TrainType = trainer
 
@@ -103,7 +103,7 @@ class TrainerBuilder:
             num_workers=num_workers,
             **kwargs)
 
-    def validate_trainer(self):
+    def validate_trainer(self) -> TrainType:
         variables = ["loss",
                      "model",
                      "optim",

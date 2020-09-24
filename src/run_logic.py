@@ -7,7 +7,7 @@ import torch
 
 from src.training import TrainerBuilder
 from src.training.utils import StopTraining
-from src.typing import MinModelConfig, StopFormat
+from src.typing import MinModelConfig, StopFormat, T
 
 logger = logging.getLogger(__name__)
 
@@ -26,7 +26,7 @@ def seed_everything(seed):
 
 
 def run(
-    train_builder: TrainerBuilder,
+    train_builder: TrainerBuilder[T],
     model_config: MinModelConfig,
     iterations: int,
     gpu_num: int,
