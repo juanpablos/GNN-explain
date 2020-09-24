@@ -124,6 +124,7 @@ def categorical_loader(
 
     # contains all formulas in use in the experiment
     datasets: List[NetworkDataset[T]] = []
+    total_samples = 0
 
     # contains formulas used for training when test manually selected
     train_dataset: List[int] = []
@@ -154,8 +155,7 @@ def categorical_loader(
                 multilabel=is_multilabel)
 
         if testing_selected_formulas:
-            current_len = len(datasets)
-            current_indices = [i + current_len for i in range(len(dataset))]
+            current_indices = [i + total_samples for i in range(len(dataset))]
             if formula_hash in testing_selected_formulas:
                 test_dataset.extend(current_indices)
             else:
@@ -163,6 +163,7 @@ def categorical_loader(
 
         # we append all formulas here
         datasets.append(dataset)
+        total_samples += len(dataset)
 
     dataset_all = LabeledDataset.from_iterable(
         datasets, multilabel=is_multilabel)
