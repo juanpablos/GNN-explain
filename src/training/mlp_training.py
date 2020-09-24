@@ -37,8 +37,8 @@ class Metric:
 
     def __call__(self, y_true: torch.Tensor, y_pred: torch.Tensor):
         if not self.converted:
-            self.y_true.extend(y_true.detach())
-            self.y_pred.extend(y_pred.detach())
+            self.y_true.append(y_true.detach())
+            self.y_pred.append(y_pred.detach())
         else:
             raise RuntimeError(
                 "Cannot add more test samples because already numpy converted")
