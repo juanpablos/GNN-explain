@@ -240,19 +240,21 @@ def main(
     # test_selector = FilterApply(condition="or")
     # test_selector.add(AtomicOnlyFilter(atomic="all"))
     # test_selector.add(RestrictionFilter(lower=4, upper=None))
-    # test_selector = SelectFilter(hashes=[
-    #     "6aa72b4580",
-    #     "896fc15eba",
-    #     "c4016e9644",
-    #     "0f20edd380",
-    #     "ba75c8dc2b",
-    #     "b628ede2fc",
-    #     "0f6989f7de",
-    #     "a8c45da01a",
-    #     "a2e5ecf2db",
-    #     "3347fca03b"
-    # ])
-    test_selector = NullFilter()
+    test_selector = SelectFilter(hashes=[
+        "4805042859",
+        "aae49a2efc",
+        "ac4932d9e6",
+        "2baa2ed86c",
+        "4056021fb9",
+        "548c9f191e",
+        "c37cb98a75",
+        "b628ede2fc",
+        "f38520e138",
+        "65597e2291",
+        "5e65a2eaac",
+        "838d8aecad"
+    ])
+    # test_selector = NullFilter()
     # * /test_filters
 
     # * labelers
@@ -269,7 +271,7 @@ def main(
         "load_aggregated": "aggregated.pt"
     }
 
-    iterations = 20
+    iterations = 10
     test_batch = 1024
 
     if name is None:
