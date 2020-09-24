@@ -49,7 +49,10 @@ class GraphDataset(NoLabelDataset[T_co]):
     """A Pytorch dataset that takes a (infinite) generator and stores 'limit' elements of it."""
 
     def __init__(self, generator: Iterator[T_co], limit: int):
-        super().__init__(dataset=[next(generator) for _ in range(limit)])
+        # FIX: here until
+        # https://github.com/microsoft/pylance-release/issues/409
+        dataset = [next(generator) for _ in range(limit)]
+        super().__init__(dataset=dataset)
 
 
 class NoLabelSubset(NoLabelDataset[T_co]):
@@ -191,14 +194,18 @@ class LabeledDataset(BaseLabeledDataset[T_co, S_co], Dataset):
             cls,
             dataset: IndexableIterable[Tuple[T_co, S_co]],
             multilabel: bool):
-        return super().from_tuple_sequence(dataset=dataset, multilabel=multilabel)
+        return super(LabeledDataset, cls).from_tuple_sequence(
+            dataset=dataset,
+            multilabel=multilabel)
 
     @classmethod
     def from_iterable(
             cls,
             datasets: Sequence[IndexableIterable[Tuple[T_co, S_co]]],
             multilabel: bool):
-        return super().from_iterable(datasets=datasets, multilabel=multilabel)
+        return super(LabeledDataset, cls).from_iterable(
+            datasets=datasets,
+            multilabel=multilabel)
 
     @classmethod
     def from_subset(cls, subset: LabeledSubset[T_co, S_co]):
@@ -534,13 +541,15 @@ class TextSequenceDataset(
             cls,
             dataset: IndexableIterable[Tuple[T_co, S_co]],
             vocabulary: Dict[str, int]):
-        return super().from_tuple_sequence(dataset=dataset, vocabulary=vocabulary)
+        return super(TextSequenceDataset, cls).from_tuple_sequence(
+            dataset=dataset, vocabulary=vocabulary)
 
     @classmethod
     def from_iterable(
             cls,
             datasets: Sequence[IndexableIterable[Tuple[T_co, S_co]]], vocabulary: Dict[str, int]):
-        return super().from_iterable(datasets=datasets, vocabulary=vocabulary)
+        return super(TextSequenceDataset, cls).from_iterable(
+            datasets=datasets, vocabulary=vocabulary)
 
     @classmethod
     def from_subset(cls, subset: LabeledSubset[T_co, List[int]]):
