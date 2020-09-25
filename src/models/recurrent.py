@@ -92,7 +92,7 @@ class LSTMDecoder(nn.Module):
         packed_predicted_sequence, _ = self.lstm(
             packed_input, state)  # type: ignore
 
-        padded_predicted_sequence = pad_packed_sequence(
+        padded_predicted_sequence, _ = pad_packed_sequence(
             packed_predicted_sequence, batch_first=True)  # type: ignore
 
         # (*, lstm_hidden)
