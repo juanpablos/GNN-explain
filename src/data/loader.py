@@ -2,6 +2,8 @@ import logging
 import os
 from typing import Dict, List
 
+import torch
+
 from src.data.datasets import (
     AggregatedNetworkDataset,
     LabeledDataset,
@@ -212,7 +214,8 @@ def text_sequence_loader(
     # !! vocabulary is joint for train and test, there is no <unk> token
 
     # contains all formulas in use in the experiment
-    datasets: List[NetworkDataset[List[int]]] = []
+    datasets: List[NetworkDataset[torch.Tensor]] = []
+    total_samples = 0
 
     # contains formulas used for training when test manually selected
     train_dataset: List[int] = []
@@ -222,6 +225,8 @@ def text_sequence_loader(
     logger.info(f"Labeling {len(selected_labels)} formulas")
     for formula_hash, label in selected_labels.items():
         formula_object = selected_formulas[formula_hash]
+
+        label = torch.tensor(label)
 
         if preloaded is None:
             logger.info(f"\tLoading {formula_hash}: {formula_object}: {label}")
@@ -243,8 +248,7 @@ def text_sequence_loader(
                 vocabulary=vocabulary)
 
         if testing_selected_formulas:
-            current_len = len(datasets)
-            current_indices = [i + current_len for i in range(len(dataset))]
+            current_indices = [i + total_samples for i in range(len(dataset))]
             if formula_hash in testing_selected_formulas:
                 test_dataset.extend(current_indices)
             else:
@@ -252,6 +256,7 @@ def text_sequence_loader(
 
         # we append all formulas here
         datasets.append(dataset)
+        total_samples += len(dataset)
 
     dataset_all = TextSequenceDataset.from_iterable(datasets,
                                                     vocabulary=vocabulary)

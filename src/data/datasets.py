@@ -497,15 +497,15 @@ class AggregatedNetworkDataset:
 
 
 class TextSequenceDataset(
-        BaseLabeledDataset[T_co, List[int]], Dataset):
+        BaseLabeledDataset[T_co, torch.Tensor], Dataset):
     def __init__(
             self,
             dataset: IndexableIterable[T_co],
-            labels: IndexableIterable[List[int]],
+            labels: IndexableIterable[torch.Tensor],
             vocabulary: Dict[str, int]):
 
         self._dataset: IndexableIterable[T_co] = dataset
-        self._labels: IndexableIterable[List[int]] = labels
+        self._labels: IndexableIterable[torch.Tensor] = labels
 
         self._vocabulary = vocabulary
         self._inverse_vocabulary = {v: k for k, v in vocabulary.items()}
@@ -539,23 +539,26 @@ class TextSequenceDataset(
     @classmethod
     def from_tuple_sequence(
             cls,
-            dataset: IndexableIterable[Tuple[T_co, S_co]],
+            dataset: IndexableIterable[Tuple[T_co, torch.Tensor]],
             vocabulary: Dict[str, int]):
         return super(TextSequenceDataset, cls).from_tuple_sequence(
             dataset=dataset, vocabulary=vocabulary)
 
     @classmethod
-    def from_iterable(
-            cls,
-            datasets: Sequence[IndexableIterable[Tuple[T_co, S_co]]], vocabulary: Dict[str, int]):
+    def from_iterable(cls,
+                      datasets: Sequence[IndexableIterable[Tuple[
+                          T_co,
+                          torch.Tensor]]],
+                      vocabulary: Dict[str,
+                                       int]):
         return super(TextSequenceDataset, cls).from_iterable(
             datasets=datasets, vocabulary=vocabulary)
 
     @classmethod
-    def from_subset(cls, subset: LabeledSubset[T_co, List[int]]):
+    def from_subset(cls, subset: LabeledSubset[T_co, torch.Tensor]):
         if isinstance(subset._dataset, TextSequenceDataset):
             dataset: List[T_co] = []
-            labels: List[List[int]] = []
+            labels: List[torch.Tensor] = []
             for x, y in subset:
                 dataset.append(x)
                 labels.append(y)
