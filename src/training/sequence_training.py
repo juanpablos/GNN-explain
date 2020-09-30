@@ -96,6 +96,7 @@ class RecurrentTrainer(Trainer):
         self.pad_token = vocabulary["<pad>"]
         self.start_token = vocabulary["<start>"]
         self.vocabulary = vocabulary
+        self.metrics = Metric()
 
     def activation(self, output, dim=1):
         return torch.log_softmax(output, dim=dim)
@@ -244,7 +245,11 @@ class RecurrentTrainer(Trainer):
         loader = self.train_loader if use_train_data else self.test_loader
 
         accum_loss = []
+
         predictions = []
+        scores = []
+        targets = []
+        lengths = []
 
         with torch.no_grad():
             for x, y, y_lens in loader:
@@ -300,6 +305,11 @@ class RecurrentTrainer(Trainer):
 
                     input_tokens = output
 
+                scores.append(batch_scores.detach())
+                predictions.append(batch_predictions.detach())
+                targets.append(y.detach())
+                lengths.append(y_lens.detach())
+
                 # flatten the batch scores to (*, vocab_dim) and the targets to
                 # a vector
                 # the loss will ignore the padding tokens
@@ -307,23 +317,42 @@ class RecurrentTrainer(Trainer):
                                  y.view(-1))
                 accum_loss.append(loss.detach().cpu().numpy())
 
-                # self.metrics(y, y_pred)
-
         average_loss = np.mean(accum_loss)
-        # metrics = self.metrics.get_all()
 
-        # if use_train_data:
-        #     metrics = {
-        #         f"train_{name}": value for name,
-        #         value in metrics.items()}
+        epoch_scores = torch.cat(scores, dim=0).cpu()
+        epoch_predictions = torch.cat(predictions, dim=0).cpu()
+        epoch_targets = torch.cat(targets, dim=0).cpu()
+        epoch_lengths = torch.cat(lengths, dim=0).cpu()
 
-        #     self.metric_logger.update(**metrics)
-        # else:
-        #     metrics = {
-        #         f"test_{name}": value for name,
-        #         value in metrics.items()}
+        metrics = {
+            "acc1": self.metrics.accuracy(
+                scores=epoch_scores,
+                targets=epoch_targets,
+                k=1,
+                lengths=epoch_lengths),
+            "acc5": self.metrics.accuracy(
+                scores=epoch_scores,
+                targets=epoch_targets,
+                k=5,
+                lengths=epoch_lengths),
+            "blue4": self.metrics.blue_score(
+                predictions=epoch_predictions,
+                targets=epoch_targets,
+                lengths=epoch_lengths)
+        }
 
-        #     self.metric_logger.update(test_loss=average_loss, **metrics)
+        if use_train_data:
+            metrics = {
+                f"train_{name}": value for name,
+                value in metrics.items()}
+
+            self.metric_logger.update(**metrics)
+        else:
+            metrics = {
+                f"test_{name}": value for name,
+                value in metrics.items()}
+
+            self.metric_logger.update(test_loss=average_loss, **metrics)
 
         return average_loss
 
