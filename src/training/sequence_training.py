@@ -15,15 +15,19 @@ from . import Trainer
 logger = logging.getLogger(__name__)
 
 
-def collate(batch):
-    # both: tuple of tensors
-    x, y = zip(*batch)
-    x = torch.stack(x)
+class Collator:
+    def __init__(self, pad_token: int):
+        self.pad_token = pad_token
 
-    y_lens = torch.tensor([target.size(0) for target in y])
-    y_pad = pad_sequence(y, batch_first=True)
+    def __call__(self, batch):
+        # both: tuple of tensors
+        x, y = zip(*batch)
+        x = torch.stack(x)
 
-    return x, y_pad, y_lens
+        y_lens = torch.tensor([target.size(0) for target in y])
+        y_pad = pad_sequence(y, batch_first=True, padding_value=self.pad_token)
+
+        return x, y_pad, y_lens
 
 
 class RecurrentTrainer(Trainer):
@@ -134,7 +138,10 @@ class RecurrentTrainer(Trainer):
         if mode not in ["train", "test"]:
             raise ValueError("Supported modes are only `train` and `test`")
 
-        loader = DataLoader(data, collate_fn=collate, **kwargs)
+        loader = DataLoader(
+            data,
+            collate_fn=Collator(self.pad_token),
+            **kwargs)
         if mode == "train":
             self.train_loader = loader
         elif mode == "test":
