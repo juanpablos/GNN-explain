@@ -38,6 +38,12 @@ def _accuracy_aux(node_labels, predicted_labels, batch, device):
 
 
 class GNNTrainer(Trainer):
+    loss: nn.Module
+    model: ACGNN
+    optim: torch.optim.Optimizer
+    train_loader: DataLoader
+    test_loader: DataLoader
+
     available_metrics = [
         "train_loss",
         "test_loss",
@@ -86,9 +92,12 @@ class GNNTrainer(Trainer):
         else:
             raise NotImplementedError("Only acgnn supported")
 
-        # just in case
-        self.model = self.model.to(self.device)
         return self.model
+
+    def init_trainer(self, **optim_params):
+        self.init_loss()
+        self.model = self.model.to(self.device)
+        self.init_optim(**optim_params)
 
     def init_loss(self):
         self.loss = nn.BCEWithLogitsLoss(reduction="mean")

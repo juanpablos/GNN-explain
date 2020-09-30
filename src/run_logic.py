@@ -5,9 +5,9 @@ import random
 import numpy as np
 import torch
 
-from src.training import TrainerBuilder
+from src.training import Trainer
 from src.training.utils import StopTraining
-from src.typing import MinModelConfig, StopFormat, T
+from src.typing import StopFormat
 
 logger = logging.getLogger(__name__)
 
@@ -26,8 +26,7 @@ def seed_everything(seed):
 
 
 def run(
-    train_builder: TrainerBuilder[T],
-    model_config: MinModelConfig,
+    trainer: Trainer,
     iterations: int,
     gpu_num: int,
     lr: float = 0.01,
@@ -40,14 +39,8 @@ def run(
     else:
         device = torch.device("cpu")
 
-    train_builder.init_device(device=device)
-
-    model = train_builder.init_model(**model_config)
-
-    train_builder.init_loss()
-    train_builder.init_optim(lr=lr)
-
-    trainer = train_builder.validate_trainer()
+    trainer.set_device(device=device)
+    trainer.init_trainer(lr=lr)
     stop = StopTraining(stop_when)
 
     it = 1
@@ -72,4 +65,4 @@ def run(
 
     logger.info(f"{it: 03d} {trainer.log()}")
 
-    return model
+    return trainer.get_models()

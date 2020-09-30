@@ -18,7 +18,6 @@ from src.data.utils import (
 )
 from src.eval_utils import evaluate_model
 from src.run_logic import run, seed_everything
-from src.training import TrainerBuilder
 from src.training.mlp_training import MLPTrainer
 from src.typing import MinModelConfig, NetworkDataConfig
 from src.utils import write_result_info
@@ -99,7 +98,6 @@ def run_experiment(
                          n_classes=n_classes,
                          metrics_average="macro",
                          multilabel=multilabel)
-    builder = TrainerBuilder(trainer=trainer)
 
     trainer.init_dataloader(
         train_data,
@@ -116,11 +114,12 @@ def run_experiment(
         shuffle=True,
         num_workers=data_workers)
 
+    trainer.init_model(**model_config)
+
     logger.debug("Running")
     logger.debug(f"Input size is {input_shape[0]}")
-    model = run(
-        train_builder=builder,
-        model_config=model_config,
+    model, = run(
+        trainer=trainer,
         iterations=iterations,
         gpu_num=gpu_num,
         lr=lr,

@@ -13,7 +13,6 @@ from src.data.datasets import GraphDataset
 from src.generate_graphs import graph_stream
 from src.graphs import *
 from src.run_logic import run, seed_everything
-from src.training import TrainerBuilder
 from src.training.gnn_training import GNNTrainer
 from src.typing import GNNModelConfig, StopFormat
 from src.utils import cleanup, merge_update, save_file_exists, write_metadata
@@ -73,7 +72,6 @@ def run_experiment(
             time_graph += timer() - s
 
             trainer = GNNTrainer(logging_variables="all")
-            builder = TrainerBuilder(trainer=trainer)
 
             trainer.init_dataloader(
                 train_data,
@@ -90,9 +88,10 @@ def run_experiment(
                 shuffle=True,
                 num_workers=data_workers)
 
-            model = run(
-                train_builder=builder,
-                model_config=model_config,
+            trainer.init_model(**model_config)
+
+            model, = run(
+                trainer=trainer,
                 iterations=iterations,
                 gpu_num=gpu_num,
                 lr=lr,

@@ -136,6 +136,12 @@ class Metric:
 
 
 class MLPTrainer(Trainer):
+    loss: nn.Module
+    model: MLP
+    optim: torch.optim.Optimizer
+    train_loader: DataLoader
+    test_loader: DataLoader
+
     available_metrics = [
         "train_loss",
         "test_loss",
@@ -205,9 +211,12 @@ class MLPTrainer(Trainer):
                          hidden_layers=hidden_layers,
                          **kwargs)
 
-        # just in case
-        self.model = self.model.to(self.device)
         return self.model
+
+    def init_trainer(self, **optim_params):
+        self.init_loss()
+        self.model = self.model.to(self.device)
+        self.init_optim(**optim_params)
 
     def init_loss(self):
         if self.n_classes > 2 and not self.multilabel:
