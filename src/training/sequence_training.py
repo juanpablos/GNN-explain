@@ -1,4 +1,5 @@
 import logging
+from itertools import chain
 from typing import Dict, List, Literal, Union
 
 import numpy as np
@@ -34,12 +35,18 @@ class RecurrentTrainer(Trainer):
     loss: nn.Module
     encoder: MLP
     decoder: Union[LSTMDecoder, LSTMCellDecoder]
-    encoder_optim: torch.optim.Optimizer
-    decoder_optim: torch.optim.Optimizer
+    optim: torch.optim.Optimizer
     train_loader: DataLoader
     test_loader: DataLoader
 
-    available_metrics = []
+    available_metrics = [
+        "train_acc1",
+        "train_acc5",
+        "train_blue4",
+        "test_acc1",
+        "test_acc5",
+        "test_blue4"
+    ]
 
     def __init__(self,
                  vocabulary: Dict[str, int],
@@ -50,13 +57,11 @@ class RecurrentTrainer(Trainer):
         self.start_token = vocabulary["<start>"]
         self.vocabulary = vocabulary
 
-    def activation(self, output):
-        # only one step at a time, no need to predict all
-        return torch.log_softmax(output, dim=1)
+    def activation(self, output, dim=1):
+        return torch.log_softmax(output, dim=dim)
 
-    def inference(self, output):
-        # only one step at a time, no need to predict all
-        _, y_pred = output.max(dim=1)
+    def inference(self, output, dim=1):
+        _, y_pred = output.max(dim=dim)
         return y_pred
 
     def init_encoder(self,
@@ -110,25 +115,24 @@ class RecurrentTrainer(Trainer):
 
         return self.decoder
 
-    def init_trainer(self, encoder_optim_params, decoder_optim_params):
+    def init_trainer(self, **optim_params):
         self.init_loss()
         self.encoder = self.encoder.to(self.device)
         self.decoder = self.decoder.to(self.device)
-        self.init_optim_encoder(**encoder_optim_params)
-        self.init_optim_decoder(**decoder_optim_params)
+        self.init_optim(**optim_params)
 
     def init_loss(self):
         self.loss = nn.CrossEntropyLoss(
             reduction="mean", ignore_index=self.pad_token)
         return self.loss
 
-    def init_optim_encoder(self, lr):
-        self.encoder_optim = optim.Adam(self.encoder.parameters(), lr=lr)
-        return self.encoder_optim
-
-    def init_optim_decoder(self, lr):
-        self.decoder_optim = optim.Adam(self.decoder.parameters(), lr=lr)
-        return self.decoder_optim
+    def init_optim(self, lr):
+        encoder_parameters = self.encoder.parameters()
+        decoder_parameters = self.decoder.parameters()
+        self.optim = optim.Adam(
+            chain(encoder_parameters, decoder_parameters),
+            lr=lr)
+        return self.optim
 
     def init_dataloader(self,
                         data,
@@ -176,11 +180,9 @@ class RecurrentTrainer(Trainer):
             # the loss ignores padding
             loss = self.loss(output, targets)
 
-            self.encoder_optim.zero_grad()
-            self.decoder_optim.zero_grad()
+            self.optim.zero_grad()
             loss.backward()
-            self.encoder_optim.step()
-            self.decoder_optim.step()
+            self.optim.step()
 
             accum_loss.append(loss.detach().cpu().numpy())
 
