@@ -297,7 +297,7 @@ class RecurrentTrainer(Trainer):
                     batch_scores[:, t, :] = batch_pred
 
                     # (batch, vocab_dim)
-                    output = self.activation(batch_pred)
+                    # output = self.activation(batch_pred)
                     # (batch,)
                     output = self.inference(output)
                     # copy predicted tokens to batch_predictions
