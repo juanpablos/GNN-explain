@@ -58,7 +58,7 @@ class Metric:
         # average over predictions that have the correct index in the topk
         return (correct / targets.size(0)).item()
 
-    def blue_score(self, predictions, targets, lengths):
+    def bleu_score(self, predictions, targets, lengths):
         # use indices instead of string tokens
         # predictions: indices (batch, L) with padding
         # targets: indices (batch, L) with padding
@@ -82,10 +82,10 @@ class RecurrentTrainer(Trainer):
     available_metrics = [
         "train_acc1",
         "train_acc5",
-        "train_blue4",
+        "train_bleu4",
         "test_acc1",
         "test_acc5",
-        "test_blue4"
+        "test_bleu4"
     ]
 
     def __init__(self,
@@ -284,7 +284,7 @@ class RecurrentTrainer(Trainer):
                 states = self.decoder.init_hidden_state(
                     encoder_out=encoder_out)
 
-                for t in range(y.size(1)):
+                for t in torch.arange(y.size(1)):
                     # batch_pred: (batch, vocab_dim)
                     # states: tuple (batch, lstm_hidden)
                     batch_pred, states = self.encoder(
@@ -335,7 +335,7 @@ class RecurrentTrainer(Trainer):
                 targets=epoch_targets,
                 k=5,
                 lengths=epoch_lengths),
-            "blue4": self.metrics.blue_score(
+            "bleu4": self.metrics.bleu_score(
                 predictions=epoch_predictions,
                 targets=epoch_targets,
                 lengths=epoch_lengths)
