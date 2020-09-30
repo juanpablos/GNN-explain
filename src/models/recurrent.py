@@ -262,15 +262,17 @@ class LSTMCellDecoder(nn.Module):
             # so if len=3 [<start>, hey, <eos>] we just input [<start>, hey]
             fixed_target_lengths = target_lengths - 1
 
+            max_len = fixed_target_lengths.max()
+
             # (batch, L, vocab_dim)
             prediction = torch.zeros(
                 encoder_out.size(0),
-                fixed_target_lengths.max(),
+                max_len,
                 self.vocab_dim,
                 dtype=encoder_out.dtype,
                 device=encoder_out.device)
 
-            for t in torch.arange(fixed_target_lengths.max()):
+            for t in torch.arange(max_len):
                 # T
                 step_batch = (fixed_target_lengths > t).sum()
                 # (T, encoder)
@@ -293,6 +295,7 @@ class LSTMCellDecoder(nn.Module):
             # flatten
             output_predictions = prediction.view(-1, self.vocab_dim)
             # skip <start>
+            # padded_target is batch sorted the same as output_predictions
             target_predictions = padded_target[:, 1:]
 
             # prediction includes pads
