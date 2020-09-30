@@ -6,6 +6,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
+from nltk.translate.bleu_score import corpus_bleu
 from torch.nn.utils.rnn import pad_sequence
 from torch.utils.data import DataLoader
 
@@ -29,6 +30,45 @@ class Collator:
         y_pad = pad_sequence(y, batch_first=True, padding_value=self.pad_token)
 
         return x, y_pad, y_lens
+
+
+class Metric:
+    def accuracy(self, scores, targets, k, lengths):
+        # scores: logits (batch, L, vocab) with padding
+        # targets: indices (batch, L) with padding
+        # k: int
+        # lengths: (batch,)
+
+        # (batch, L, k)
+        _, indices = scores.topk(k, dim=2, largest=True, sorted=True)
+        # expand the targets to check if they occur in one of the topk
+        _expanded = targets.unsqueeze(dim=2).expand_as(indices)
+
+        # check if the correct index is in one of the topk
+        # matches: (batch, L)
+        matches = torch.any(indices.eq(_expanded), dim=2)
+
+        # all sequence indices must occur somewhere in the topk
+        # filter by length
+        # correct: int
+        correct = torch.tensor(0.0)
+        for i, l in enumerate(lengths):
+            correct += torch.all(matches[i, :l]).float()
+
+        # average over predictions that have the correct index in the topk
+        return (correct / targets.size(0)).item()
+
+    def blue_score(self, predictions, targets, lengths):
+        # use indices instead of string tokens
+        # predictions: indices (batch, L) with padding
+        # targets: indices (batch, L) with padding
+
+        references = []
+        hypothesis = []
+        for i, l in enumerate(lengths):
+            references.append([targets[i, :l].tolist()])
+            hypothesis.append(predictions[i, :l].tolist())
+        return corpus_bleu(references, hypothesis)
 
 
 class RecurrentTrainer(Trainer):
