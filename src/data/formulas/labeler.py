@@ -12,6 +12,7 @@ from typing import (
 )
 
 from src.data.formulas.visitor import Visitor
+from src.data.vocabulary import Vocabulary
 from src.graphs.foc import AND, NEG, OR, Element, Exist, Property, Role
 
 T = TypeVar("T")
@@ -280,74 +281,40 @@ class MultilabelRestrictionLabeler(MultiLabelCategoricalLabeler):
 # *----- text sequential
 
 class TextSequenceLabeler(Visitor[List[int]]):
-    def __init__(self, use_special_tokens: bool = True):
-        self.use_special = use_special_tokens
-        self.vocab_id: Dict[str, int] = {}
-        if use_special_tokens:
-            self.vocab_id.update(
-                zip(
-                    ["<pad>", "<start>", "<eos>"],
-                    range(3)
-                )
-            )
-        self.vocab_counter = len(self.vocab_id)
-
+    def __init__(self):
+        self.vocabulary = Vocabulary()
         self.result: List[int] = []
 
     def reset(self):
         self.result = []
 
-    def preload_vocabulary(
-            self, vocabulary: Dict[str, int], add_special_tokens: bool = True):
-
-        if add_special_tokens:
-            if not self.use_special:
-                raise ValueError(
-                    "Cannot add special tokens if not selected in init")
-
-            max_id = 0
-            for k, v in vocabulary.items():
-                v = v + self.vocab_counter
-                self.vocab_id[k] = v
-
-                max_id = max(max_id, v)
-        else:
-            self.vocab_id = vocabulary
-            max_id = max(vocabulary.values())
-
-        self.vocab_counter = max_id + 1
-
-    def _register(self, token):
-        if token not in self.vocab_id:
-            self.vocab_id[token] = self.vocab_counter
-            self.vocab_counter += 1
-
-        return self.vocab_id[token]
+    def preload_vocabulary(self, vocabulary: Dict[str, int]):
+        self.vocabulary.load_vocab(vocabulary)
 
     def _visit_AND(self, node: AND):
-        token_id = self._register("AND")
+        token_id = self.vocabulary.add_or_get("AND")
         self.result.extend([token_id] * (len(node.operands) - 1))
         super()._visit_AND(node)
 
     def _visit_OR(self, node: OR):
-        token_id = self._register("OR")
+        token_id = self.vocabulary.add_or_get("OR")
         self.result.extend([token_id] * (len(node.operands) - 1))
         super()._visit_OR(node)
 
     def _visit_NEG(self, node: NEG):
-        token_id = self._register("NEG")
+        token_id = self.vocabulary.add_or_get("NEG")
         self.result.append(token_id)
         super()._visit_NEG(node)
 
     def _visit_Property(self, node: Property):
         prop = node.name
-        token_id = self._register(prop)
+        token_id = self.vocabulary.add_or_get(prop)
         self.result.append(token_id)
         super()._visit_Property(node)
 
     def _visit_Role(self, node: Role):
         role = node.name
-        token_id = self._register(role)
+        token_id = self.vocabulary.add_or_get(role)
         self.result.append(token_id)
         super()._visit_Role(node)
 
@@ -362,18 +329,18 @@ class TextSequenceLabeler(Visitor[List[int]]):
 
         lower = []
         if node.lower is not None:
-            lower_id = self._register(f"Exist({node.lower}, None)")
+            lower_id = self.vocabulary.add_or_get(f"Exist({node.lower}, None)")
             lower.append(lower_id)
             lower.extend(exist_result)
 
         upper = []
         if node.upper is not None:
-            upper_id = self._register(f"Exist(None, {node.upper})")
+            upper_id = self.vocabulary.add_or_get(f"Exist(None, {node.upper})")
             upper.append(upper_id)
             upper.extend(exist_result)
 
         if lower and upper:
-            and_id = self._register("AND")
+            and_id = self.vocabulary.add_or_get("AND")
             self.result.append(and_id)
 
         self.result.extend(lower)
@@ -384,9 +351,8 @@ class TextSequenceLabeler(Visitor[List[int]]):
             raise ValueError(
                 f"Current formula don't have any result: {formula}")
 
-        if self.use_special:
-            self.result = [self.vocab_id["<start>"]] + \
-                self.result + [self.vocab_id["<eos>"]]
+        self.result = [self.vocabulary.start_token_id] + \
+            self.result + [self.vocabulary.end_token_id]
 
     def __str__(self):
         return "TextSequenceAtomic()"
@@ -415,4 +381,4 @@ class SequenceLabelerApply:
     def __call__(self, formulas: Mapping[str, Element]):
         labels = {_hash: self.labeler(formula)
                   for _hash, formula in formulas.items()}
-        return labels, self.labeler.vocab_id
+        return labels, self.labeler.vocabulary

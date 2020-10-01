@@ -209,9 +209,9 @@ def text_sequence_loader(
     logger.debug(f"Running formula labeler {labeler}")
     # mapping from the selected
     #   formula_hash -> List[token_id]
-    # vocabulary is a dictionary token_str -> token_id
+    # vocabulary is a Vocabulary object holding the tokens and their id mapping
     selected_labels, vocabulary = labeler(selected_formulas)
-    # !! vocabulary is joint for train and test, there is no <unk> token
+    # ! vocabulary is joint for train and test, there is no <unk> token
 
     # contains all formulas in use in the experiment
     datasets: List[NetworkDataset[torch.Tensor]] = []

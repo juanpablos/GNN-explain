@@ -19,6 +19,7 @@ from typing import (
 import torch
 from torch.utils.data import Dataset
 
+from src.data.vocabulary import Vocabulary
 from src.graphs.foc import Element
 from src.typing import DatasetLike, Indexable, IndexableIterable, S_co, T_co
 
@@ -303,7 +304,7 @@ class NetworkDataset(Dataset, Generic[S_co]):
             limit: int = None,
             multilabel: bool = False,
             text: bool = False,
-            vocabulary: Dict[str, int] = None,
+            vocabulary: Vocabulary = None,
             preloaded: IndexableIterable[torch.Tensor] = None,
             _legacy_load_without_batch: bool = False):
 
@@ -321,8 +322,7 @@ class NetworkDataset(Dataset, Generic[S_co]):
         self._multilabel = multilabel
         self._formula = formula
         self._text = text
-        self._vocabulary: Dict[str, int] = vocabulary \
-            if vocabulary is not None else {}
+        self._vocabulary = vocabulary
 
     @classmethod
     def categorical(cls,
@@ -354,7 +354,7 @@ class NetworkDataset(Dataset, Generic[S_co]):
                       formula: Element,
                       file: str = "",
                       limit: int = None,
-                      vocabulary: Dict[str, int] = None,
+                      vocabulary: Vocabulary = None,
                       preloaded: IndexableIterable[torch.Tensor] = None,
                       _legacy_load_without_batch: bool = False):
 
@@ -403,12 +403,8 @@ class NetworkDataset(Dataset, Generic[S_co]):
         return self._text
 
     @property
-    def vocab(self):
+    def vocabulary(self):
         return self._vocabulary
-
-    @property
-    def inverse_vocab(self):
-        return {v: k for k, v in self.vocab.items()}
 
     def __load(self, filename: str, limit: Optional[int], no_batch: bool):
         networks = torch.load(filename)
@@ -502,13 +498,12 @@ class TextSequenceDataset(
             self,
             dataset: IndexableIterable[T_co],
             labels: IndexableIterable[torch.Tensor],
-            vocabulary: Dict[str, int]):
+            vocabulary: Vocabulary):
 
         self._dataset: IndexableIterable[T_co] = dataset
         self._labels: IndexableIterable[torch.Tensor] = labels
 
         self._vocabulary = vocabulary
-        self._inverse_vocabulary = {v: k for k, v in vocabulary.items()}
 
     def __getitem__(self, index: int):
         return self.dataset[index], self.labels[index]
@@ -532,15 +527,11 @@ class TextSequenceDataset(
     def vocabulary(self):
         return self._vocabulary
 
-    @property
-    def inverse_vocabulary(self):
-        return self._inverse_vocabulary
-
     @classmethod
     def from_tuple_sequence(
             cls,
             dataset: IndexableIterable[Tuple[T_co, torch.Tensor]],
-            vocabulary: Dict[str, int]):
+            vocabulary: Vocabulary):
         return super(TextSequenceDataset, cls).from_tuple_sequence(
             dataset=dataset, vocabulary=vocabulary)
 
@@ -549,8 +540,7 @@ class TextSequenceDataset(
                       datasets: Sequence[IndexableIterable[Tuple[
                           T_co,
                           torch.Tensor]]],
-                      vocabulary: Dict[str,
-                                       int]):
+                      vocabulary: Vocabulary):
         return super(TextSequenceDataset, cls).from_iterable(
             datasets=datasets, vocabulary=vocabulary)
 
