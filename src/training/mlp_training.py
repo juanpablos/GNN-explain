@@ -22,63 +22,39 @@ logger = logging.getLogger(__name__)
 
 
 class Metric:
+    y_true: np.ndarray
+    y_pred: np.ndarray
+
     def __init__(self, average: str = "macro", multilabel: bool = False):
         if average not in ["binary", "micro", "macro"]:
             raise ValueError(
                 "Argument `average` must be one of `binary`, `micro`, `macro`")
-        self.y_true: List[torch.Tensor] = []
-        self.y_pred: List[torch.Tensor] = []
         self.average = average
         self.multilabel = multilabel
-        self.converted = False
-
-        self.use_y_true = np.array([])
-        self.use_y_pred = np.array([])
 
     def __call__(self, y_true: torch.Tensor, y_pred: torch.Tensor):
-        if not self.converted:
-            self.y_true.append(y_true.detach())
-            self.y_pred.append(y_pred.detach())
-        else:
-            raise RuntimeError(
-                "Cannot add more test samples because already numpy converted")
-
-    def clear(self):
-        self.y_true.clear()
-        self.y_pred.clear()
-        self.use_y_true = np.array([])
-        self.use_y_pred = np.array([])
-        self.converted = False
-
-    def convert(self):
-        if not self.converted:
-            self.use_y_true = torch.cat(self.y_true, dim=0).cpu().numpy()
-            self.use_y_pred = torch.cat(self.y_pred, dim=0).cpu().numpy()
-            self.converted = True
+        self.y_true = y_true.cpu().numpy()
+        self.y_pred = y_pred.cpu().numpy()
 
     def precision_recall_fscore(self) -> Dict[str, Any]:
-        self.convert()
         precision, recall, f1score, _ = precision_recall_fscore_support(
-            self.use_y_true, self.use_y_pred, average=self.average, beta=1.0)
+            self.y_true, self.y_pred, average=self.average, beta=1.0)
 
         return {"precision": precision, "recall": recall, "f1": f1score}
 
     def accuracy(self):
-        self.convert()
-        return {"acc": accuracy_score(self.use_y_true, self.use_y_pred)}
+        return {"acc": accuracy_score(self.y_true, self.y_pred)}
 
     def multilabel_metrics(self):
-        self.convert()
         return {
             "jaccard": jaccard_score(
-                self.use_y_true,
-                self.use_y_pred,
+                self.y_true,
+                self.y_pred,
                 average=self.average),
-            "hamming": hamming_loss(self.use_y_true, self.use_y_pred)
+            "hamming": hamming_loss(self.y_true, self.y_pred)
         }
 
     def get_all(self):
-        self.convert()
         res = {**self.precision_recall_fscore(), **self.accuracy()}
 
         if self.multilabel:
@@ -87,15 +63,14 @@ class Metric:
         return res
 
     def report(self):
-        self.convert()
         metrics = {}
 
         precision_avg, recall_avg, f1score_avg, _ = \
             precision_recall_fscore_support(
-                self.use_y_true, self.use_y_pred, average=self.average, beta=1.0)
+                self.y_true, self.y_pred, average=self.average, beta=1.0)
         precision_single, recall_single, f1score_single, _ = \
             precision_recall_fscore_support(
-                self.use_y_true, self.use_y_pred, average=None, beta=1.0)
+                self.y_true, self.y_pred, average=None, beta=1.0)
 
         precision = {
             "average": precision_avg,
@@ -110,7 +85,7 @@ class Metric:
             "single": f1score_single
         }
 
-        acc = {"total": accuracy_score(self.use_y_true, self.use_y_pred)}
+        acc = {"total": accuracy_score(self.y_true, self.y_pred)}
 
         metrics["precision"] = precision
         metrics["recall"] = recall
@@ -119,15 +94,15 @@ class Metric:
 
         if self.multilabel:
             jaccard_avg = jaccard_score(
-                self.use_y_true, self.use_y_pred, average=self.average)
+                self.y_true, self.y_pred, average=self.average)
             jaccard_single = jaccard_score(
-                self.use_y_true, self.use_y_pred, average=None)
+                self.y_true, self.y_pred, average=None)
 
             jaccard = {
                 "average": jaccard_avg,
                 "single": jaccard_single
             }
-            hamming = {"total": hamming_loss(self.use_y_true, self.use_y_pred)}
+            hamming = {"total": hamming_loss(self.y_true, self.y_pred)}
 
             metrics["jaccard"] = jaccard
             metrics["hamming"] = hamming
@@ -283,12 +258,14 @@ class MLPTrainer(Trainer):
 
         #!########
         self.model.eval()
-        self.metrics.clear()
         #!########
 
         loader = self.train_loader if use_train_data else self.test_loader
 
         accum_loss = []
+
+        y_trues = []
+        y_preds = []
 
         for x, y in loader:
             x = x.to(self.device)
@@ -303,7 +280,13 @@ class MLPTrainer(Trainer):
             output = self.activation(output)
             y_pred = self.inference(output)
 
-            self.metrics(y, y_pred)
+            y_trues.append(y.detach())
+            y_preds.append(y_pred.detach())
+
+        epoch_trues = torch.cat(y_trues, dim=0).cpu()
+        epoch_preds = torch.cat(y_preds, dim=0).cpu()
+
+        self.metrics(epoch_trues, epoch_preds)
 
         average_loss = np.mean(accum_loss)
         metrics = self.metrics.get_all()

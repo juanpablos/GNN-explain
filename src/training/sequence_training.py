@@ -49,11 +49,11 @@ class Metric:
         # matches: (batch, L)
         matches = torch.any(indices.eq(_expanded), dim=2)
 
-        correct = torch.tensor(0.0)
-        total_tokens = torch.tensor(0.0)
+        correct = 0.0
+        total_tokens = 0.0
         for i, l in enumerate(lengths):
-            correct += matches[i, :l].sum().float()
-            total_tokens += l
+            correct += matches[i, :l].sum().item()
+            total_tokens += l.item()
 
         # average over predictions that have the correct index in the topk
         return correct / total_tokens
@@ -63,9 +63,9 @@ class Metric:
         # targets: indices (batch, L) with padding
         # lengths: (batch,)
 
-        correct = torch.tensor(0.0)
+        correct = 0.0
         for i, l in enumerate(lengths):
-            correct += predictions[i, :l].equal(targets[i, :l])
+            correct += predictions[i, :l].equal(targets[i, :l]).item()
 
         return correct / targets.size(0)
 
