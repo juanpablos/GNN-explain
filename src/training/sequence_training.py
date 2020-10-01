@@ -1,6 +1,6 @@
 import logging
 from itertools import chain
-from typing import Dict, List, Literal, Union
+from typing import List, Literal, Union
 
 import numpy as np
 import torch
@@ -122,12 +122,10 @@ class RecurrentTrainer(Trainer):
     ]
 
     def __init__(self,
-                 vocabulary: Dict[str, int],
+                 vocabulary: Vocabulary,
                  logging_variables: Union[Literal["all"], List[str]] = "all"):
 
         super().__init__(logging_variables=logging_variables)
-        self.pad_token = vocabulary["<pad>"]
-        self.start_token = vocabulary["<start>"]
         self.vocabulary = vocabulary
         self.metrics = Metric()
 
@@ -197,7 +195,7 @@ class RecurrentTrainer(Trainer):
 
     def init_loss(self):
         self.loss = nn.CrossEntropyLoss(
-            reduction="mean", ignore_index=self.pad_token)
+            reduction="mean", ignore_index=self.vocabulary.pad_token_id)
         return self.loss
 
     def init_optim(self, lr):
@@ -218,7 +216,7 @@ class RecurrentTrainer(Trainer):
 
         loader = DataLoader(
             data,
-            collate_fn=Collator(self.pad_token),
+            collate_fn=Collator(self.vocabulary.pad_token_id),
             **kwargs)
         if mode == "train":
             self.train_loader = loader
@@ -300,17 +298,17 @@ class RecurrentTrainer(Trainer):
                 # (batch,)
                 input_tokens = y.new_full(
                     (x.size(0),),
-                    fill_value=self.start_token).to(self.device)
+                    fill_value=self.vocabulary.start_token_id).to(self.device)
 
                 # (batch, L), L is max seq
                 batch_predictions = y.new_full(
                     (x.size(0), y.size(1)),
-                    fill_value=self.pad_token).to(self.device)
+                    fill_value=self.vocabulary.pad_token_id).to(self.device)
 
                 # (batch, L, vocab_dim), L is max seq
                 batch_scores = torch.full(
                     (x.size(0), y.size(1), self.decoder.vocab_dim),
-                    fill_value=self.pad_token,
+                    fill_value=self.vocabulary.pad_token_id,
                     dtype=torch.float).to(self.device)
 
                 # tuple (batch, lstm_hidden)
@@ -395,3 +393,6 @@ class RecurrentTrainer(Trainer):
 
     def log(self):
         return self.metric_logger.log()
+
+    def get_models(self):
+        return [self.encoder, self.decoder]

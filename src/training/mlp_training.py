@@ -325,3 +325,6 @@ class MLPTrainer(Trainer):
 
     def log(self):
         return self.metric_logger.log()
+
+    def get_models(self):
+        return [self.model]

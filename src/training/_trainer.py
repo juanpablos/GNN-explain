@@ -27,6 +27,7 @@ class Trainer(ABC):
     def set_device(self, device: torch.device):
         self.device = device
 
+    @abstractmethod
     def get_models(self) -> List[nn.Module]: ...
 
     @abstractmethod

@@ -382,3 +382,6 @@ class SequenceLabelerApply:
         labels = {_hash: self.labeler(formula)
                   for _hash, formula in formulas.items()}
         return labels, self.labeler.vocabulary
+
+    def __str__(self):
+        return str(self.labeler)
