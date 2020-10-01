@@ -224,7 +224,7 @@ class GNNTrainer(Trainer):
                 test_micro=micro_avg,
                 test_macro=macro_avg)
 
-        return average_loss, micro_avg, macro_avg
+        return {"loss": average_loss, "micro": micro_avg, "macro": macro_avg}
 
     def log(self):
         return self.metric_logger.log()

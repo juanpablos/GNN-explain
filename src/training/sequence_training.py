@@ -376,6 +376,8 @@ class RecurrentTrainer(Trainer):
                 lengths=epoch_lengths)
         }
 
+        return_metrics = {"loss": average_loss, **metrics}
+
         if use_train_data:
             metrics = {
                 f"train_{name}": value for name,
@@ -389,7 +391,7 @@ class RecurrentTrainer(Trainer):
 
             self.metric_logger.update(test_loss=average_loss, **metrics)
 
-        return average_loss
+        return return_metrics
 
     def log(self):
         return self.metric_logger.log()

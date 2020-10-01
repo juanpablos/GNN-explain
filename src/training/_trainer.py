@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import List, Literal, Tuple, Union
+from typing import Any, Dict, List, Literal, Union
 
 import torch
 import torch.nn as nn
@@ -39,7 +39,7 @@ class Trainer(ABC):
     @abstractmethod
     def evaluate(self,
                  use_train_data: bool,
-                 **kwargs) -> Tuple[float, ...]: ...
+                 **kwargs) -> Dict[str, Any]: ...
 
     @abstractmethod
     def log(self) -> str: ...

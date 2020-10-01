@@ -1,1 +1,1 @@
-from ._trainer import Trainer, TrainerBuilder
+from ._trainer import Trainer
