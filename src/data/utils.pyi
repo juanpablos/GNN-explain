@@ -3,6 +3,7 @@ from typing import Any, Dict, List, Tuple, Union, overload
 import torch
 
 from src.data.datasets import (
+    BaseLabeledDataset,
     LabeledDataset,
     LabeledSubset,
     NoLabelDataset,
@@ -12,7 +13,7 @@ from src.typing import S, T
 
 
 @overload
-def train_test_dataset(dataset: LabeledDataset[T, S],
+def train_test_dataset(dataset: BaseLabeledDataset[T, S],
                        test_size: float = ...,
                        random_state: int = ...,
                        shuffle: bool = ...,

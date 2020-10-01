@@ -15,7 +15,7 @@ from typing import (
 
 from src.data.formula_index import FormulaMapping
 from src.data.formulas.filter import Filter
-from src.data.formulas.labeler import LabelerApply
+from src.data.formulas.labeler import LabelerApply, SequenceLabelerApply
 
 T = TypeVar("T")
 S = TypeVar("S")
@@ -27,7 +27,7 @@ class NetworkDataConfig(TypedDict):
     root: str
     model_hash: str
     selector: Filter
-    labeler: LabelerApply
+    labeler: Union[LabelerApply, SequenceLabelerApply]
     formula_mapping: FormulaMapping
     test_selector: Filter
     load_aggregated: Optional[str]
@@ -55,6 +55,15 @@ class GNNModelConfig(MinModelConfig):
     mlp_layers: int
     combine_layers: int
     task: Literal["node", "graph"]
+
+
+class LSTMConfig(TypedDict):
+    encoder_dim: int
+    embedding_dim: int
+    hidden_dim: int
+    vocab_size: Optional[int]
+    context_hidden_init: bool
+    dropout_prob: float
 
 
 class MetricHistory(Protocol):

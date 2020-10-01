@@ -1,4 +1,3 @@
-
 from typing import Dict
 
 
@@ -11,6 +10,9 @@ class Vocabulary:
         }
         self.token2id: Dict[str, int] = {
             v: k for k, v in self.id2token.items()}
+
+    def __len__(self):
+        return len(self.id2token)
 
     def add_or_get(self, token: str) -> int:
         if token not in self.token2id:

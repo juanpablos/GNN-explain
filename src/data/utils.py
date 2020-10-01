@@ -6,6 +6,7 @@ import torch
 from sklearn.model_selection import train_test_split as sk_split
 
 from src.data.datasets import (
+    BaseLabeledDataset,
     LabeledDataset,
     LabeledSubset,
     NoLabelDataset,
@@ -17,7 +18,7 @@ logger = logging.getLogger(__name__)
 
 
 def train_test_dataset(
-        dataset: Union[LabeledDataset[T, S], NoLabelDataset[T]],
+        dataset: Union[BaseLabeledDataset[T, S], NoLabelDataset[T]],
         test_size: float = 0.25,
         random_state: int = None,
         shuffle: bool = True,
@@ -42,7 +43,7 @@ def train_test_dataset(
                                    shuffle=shuffle,
                                    stratify=classes)
 
-    if isinstance(dataset, LabeledDataset):
+    if isinstance(dataset, BaseLabeledDataset):
         return LabeledSubset(dataset, train_idx),\
             LabeledSubset(dataset, test_idx)
     else:
