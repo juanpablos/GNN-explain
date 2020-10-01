@@ -10,6 +10,7 @@ from nltk.translate.bleu_score import corpus_bleu
 from torch.nn.utils.rnn import pad_sequence
 from torch.utils.data import DataLoader
 
+from src.data.vocabulary import Vocabulary
 from src.models import MLP, LSTMCellDecoder, LSTMDecoder
 
 from . import Trainer
@@ -79,6 +80,26 @@ class Metric:
             references.append([targets[i, :l].tolist()])
             hypothesis.append(predictions[i, :l].tolist())
         return corpus_bleu(references, hypothesis)
+
+    def sintaxis_check(self, predictions, vocabulary: Vocabulary):
+        eos_token_id = vocabulary.end_token_id
+
+        n_sequences, sequence_length = predictions.size()
+        predictions = predictions.tolist()
+
+        correct = 0.0
+        for sequence in predictions:
+            formula = []
+            for j in range(sequence_length):
+                token_id = sequence[j]
+                if token_id == eos_token_id:
+                    break
+                formula.append(vocabulary.get_token(token_id))
+
+            # TODO: perform check
+            correct += ...
+
+        return correct / n_sequences
 
 
 class RecurrentTrainer(Trainer):
