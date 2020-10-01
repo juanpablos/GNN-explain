@@ -33,7 +33,7 @@ class Collator:
 
 
 class Metric:
-    def accuracy(self, scores, targets, k, lengths):
+    def token_accuracy(self, scores, targets, k, lengths):
         # scores: logits (batch, L, vocab) with padding
         # targets: indices (batch, L) with padding
         # k: int
@@ -48,15 +48,25 @@ class Metric:
         # matches: (batch, L)
         matches = torch.any(indices.eq(_expanded), dim=2)
 
-        # all sequence indices must occur somewhere in the topk
-        # filter by length
-        # correct: int
         correct = torch.tensor(0.0)
+        total_tokens = torch.tensor(0.0)
         for i, l in enumerate(lengths):
-            correct += torch.all(matches[i, :l]).float()
+            correct += matches[i, :l].sum().float()
+            total_tokens += l
 
         # average over predictions that have the correct index in the topk
-        return (correct / targets.size(0)).item()
+        return correct / total_tokens
+
+    def sentence_accuracy(self, predictions, targets, lengths):
+        # predictions: indices (batch, L) with padding
+        # targets: indices (batch, L) with padding
+        # lengths: (batch,)
+
+        correct = torch.tensor(0.0)
+        for i, l in enumerate(lengths):
+            correct += predictions[i, :l].equal(targets[i, :l])
+
+        return correct / targets.size(0)
 
     def bleu_score(self, predictions, targets, lengths):
         # use indices instead of string tokens
@@ -80,12 +90,14 @@ class RecurrentTrainer(Trainer):
     test_loader: DataLoader
 
     available_metrics = [
-        "train_acc1",
-        "train_acc5",
+        "train_token_acc1",
+        "train_token_acc3",
+        "train_sent_acc",
         "train_bleu4",
-        "test_acc1",
-        "test_acc5",
-        "test_bleu4"
+        "test_token_acc1",
+        "test_token_acc3",
+        "test_sent_acc",
+        "test_bleu4",
     ]
 
     def __init__(self,
@@ -325,15 +337,19 @@ class RecurrentTrainer(Trainer):
         epoch_lengths = torch.cat(lengths, dim=0).cpu()
 
         metrics = {
-            "acc1": self.metrics.accuracy(
+            "token_acc1": self.metrics.token_accuracy(
                 scores=epoch_scores,
                 targets=epoch_targets,
                 k=1,
                 lengths=epoch_lengths),
-            "acc5": self.metrics.accuracy(
+            "token_acc3": self.metrics.token_accuracy(
                 scores=epoch_scores,
                 targets=epoch_targets,
-                k=5,
+                k=3,
+                lengths=epoch_lengths),
+            "sent_acc": self.metrics.sentence_accuracy(
+                predictions=epoch_predictions,
+                targets=epoch_targets,
                 lengths=epoch_lengths),
             "bleu4": self.metrics.bleu_score(
                 predictions=epoch_predictions,
