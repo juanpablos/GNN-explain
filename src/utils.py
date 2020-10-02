@@ -178,3 +178,26 @@ def write_result_info(
                 o.write(line)
 
     return counter
+
+
+def write_result_info_text(
+        path: str,
+        filename: str,
+        formula_metrics: Dict[Element, Dict[str, Any]]):
+
+    logger.debug("Writing result info")
+
+    os.makedirs(f"{path}/info/", exist_ok=True)
+
+    filename, counter = get_next_filename(path=f"{path}/info",
+                                          filename=filename,
+                                          ext="txt")
+
+    with open(f"{path}/info/{filename}.txt", "w", encoding="utf-8") as o:
+        for formula, metrics in formula_metrics.items():
+            o.write(f"{formula}\n")
+            for name, metric in metrics.items():
+                o.write(f"\t{name}: {metric}\n")
+            o.write("\n")
+
+    return counter

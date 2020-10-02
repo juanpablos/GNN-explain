@@ -439,9 +439,8 @@ class NetworkDataset(Dataset, Generic[S_co]):
         return {k: v for k, v in model_dict.items() if "batch" not in k}
 
 
-class NetworkDatasetCollectionWrapper(Dataset, Generic[S_co]):
-
-    def __init__(self, datasets: Sequence[NetworkDataset[S_co]]):
+class NetworkDatasetCollectionWrapper(Dataset):
+    def __init__(self, datasets: Sequence[NetworkDataset]):
         if len(datasets) < 1:
             raise ValueError("datasets cannot be an empty sequence")
 

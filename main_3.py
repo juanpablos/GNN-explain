@@ -1,31 +1,20 @@
 import logging
 import os
 import random
-from src.training.sequence_training import RecurrentTrainer
 from timeit import default_timer as timer
 from typing import List
 
 import torch
-from sklearn.metrics import classification_report
 
 from src.data.formula_index import FormulaMapping
 from src.data.formulas import *
-from src.data.formulas.labeler import MultiLabelCategoricalLabeler
-from src.data.loader import categorical_loader, text_sequence_loader
-from src.data.utils import (
-    get_input_dim,
-    get_label_distribution,
-    train_test_dataset
-)
-from src.eval_utils import evaluate_model
+from src.data.loader import text_sequence_loader
+from src.data.utils import get_input_dim, train_test_dataset
+from src.eval_utils import evaluate_text_model
 from src.run_logic import run, seed_everything
-from src.training.mlp_training import MLPTrainer
+from src.training.sequence_training import RecurrentTrainer
 from src.typing import LSTMConfig, MinModelConfig, NetworkDataConfig
-from src.utils import write_result_info
-from src.visualization.confusion_matrix import (
-    plot_confusion_matrix,
-    plot_multilabel_confusion_matrix
-)
+from src.utils import write_result_info_text
 from src.visualization.curve_plot import plot_training
 
 logger = logging.getLogger("src")
@@ -80,14 +69,6 @@ def run_experiment(
     vocab_size = len(vocabulary)
     logger.debug(f"vocab size of {vocab_size} detected")
 
-    # TODO: fix the distributions for text
-    _, train_distribution = get_label_distribution(train_data)
-    test_label_count, test_distribution = get_label_distribution(test_data)
-    logger.debug(
-        f"Train dataset distribution {train_distribution}")
-    logger.debug(
-        f"Test dataset distribution {test_distribution}")
-
     input_shape = get_input_dim(train_data)
     assert len(input_shape) == 1, "The input dimension is different from 1"
 
@@ -124,68 +105,32 @@ def run_experiment(
         lr=lr,
         run_train_test=run_train_test)
 
-    # mistakes is a counter for each formula for each label mistake in test:
-    # mistakes: formula -> (int -> int)
-    # formula_count is a counter for each formula for each label in the test set
-    # formula_count: formula -> (int -> int)
-    _y, _y_pred, mistakes, formula_count = evaluate_model(
-        model=model, test_data=test_data, reconstruction=data_reconstruction,
-        trainer=trainer, gpu=gpu_num, multilabel=multilabel)
+    formula_metrics = evaluate_text_model(
+        trainer=trainer,
+        test_data=test_data,
+        reconstruction=data_reconstruction
+    )
 
     # returns a number to put after the file name in case it already exists
     # "" or " (N)"
-    ext = write_result_info(
+    ext = write_result_info_text(
         path=results_path,
         filename=info_filename,
-        hash_formula=hash_formula,
-        hash_label=hash_label,
-        classes=class_mapping,
-        multilabel=multilabel,
-        mistakes=mistakes,
-        formula_count=formula_count,
-        metrics=trainer.metrics.report())
+        formula_metrics=formula_metrics)
 
     if model_name is not None:
         logger.debug("Writing model")
-        model.cpu()
+        encoder.cpu()
+        decoder.cpu()
         os.makedirs(f"{results_path}/models/", exist_ok=True)
         obj = {
-            "model": model.state_dict(),
-            "class_mapping": class_mapping
+            "encoder": encoder.state_dict(),
+            "decoder": decoder.state_dict(),
+            "vocabulary": vocabulary
         }
         torch.save(obj, f"{results_path}/models/{model_name}{ext}.pt")
 
-    # class_mapping is an ordered dict
-    target_names = list(class_mapping.values())
-    # * no problem with multilabel as is
-    logger.debug("Printing classification report")
-    print(classification_report(_y, _y_pred, target_names=target_names))
-
     if plot_filename is not None:
-        if multilabel:
-            label_numbers = [test_label_count[i] for i in class_mapping]
-            plot_multilabel_confusion_matrix(
-                _y,
-                _y_pred,
-                save_path=results_path,
-                labels=list(class_mapping.values()),
-                label_totals=label_numbers,
-                filename=plot_filename + ext,
-                title=plot_title
-            )
-        else:
-            cm_labels = [
-                f"{label_name} ({test_label_count.get(label, 0)})"
-                for label, label_name in class_mapping.items()]
-            plot_confusion_matrix(
-                _y,
-                _y_pred,
-                save_path=results_path,
-                filename=plot_filename + ext,
-                title=plot_title,
-                labels=cm_labels,
-                normalize_cm=True)
-
         metrics = trainer.metric_logger
         plot_training(
             metric_history=metrics,
