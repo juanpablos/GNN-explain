@@ -166,6 +166,7 @@ def main(
         "use_batch_norm": True
     }
     lstm_config: LSTMConfig = {
+        "name": "lstmcell",
         "encoder_dim": encoder_output,
         "embedding_dim": 4,
         "hidden_dim": 256,
@@ -181,12 +182,12 @@ def main(
     # selector.add(AtomicFilter(atomic="all"))
     # selector.add(RestrictionFilter(lower=1, upper=2))
     # selector.add(RestrictionFilter(lower=None, upper=-1))
-    selector = SelectFilter(hashes=[
-        "0c957889eb",
-        "1c998884a4",
-        "4056021fb9"
-    ])
-    # selector = NoFilter()
+    # selector = SelectFilter(hashes=[
+    #     "0c957889eb",
+    #     "1c998884a4",
+    #     "4056021fb9"
+    # ])
+    selector = NoFilter()
     # * /filters
 
     # * test_filters
@@ -232,7 +233,7 @@ def main(
 
     mlp = "+".join(
         [f"{l}L{val}" for l, val in enumerate(mlp_hidden_layers, start=1)])
-    lstm = f"emb{lstm_config['embedding_dim']}-lstmH{lstm_config['hidden_dim']}-init{lstm_config['context_hidden_init']}-drop{lstm_config['dropout_prob']}"
+    lstm = f"emb{lstm_config['embedding_dim']}-lstmIN{encoder_output}-lstmH{lstm_config['hidden_dim']}-init{lstm_config['context_hidden_init']}-drop{lstm_config['dropout_prob']}"
 
     msg = f"{name}-{mlp}-{lstm}-{train_batch}b-{lr}lr"
 

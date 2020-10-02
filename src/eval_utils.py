@@ -87,12 +87,14 @@ def evaluate_text_model(trainer: RecurrentTrainer,
                                          LabeledSubset[T, torch.Tensor]],
                         reconstruction: NetworkDatasetCollectionWrapper):
 
-    data_loader = DataLoader(
-        test_data,
+    data_loader = trainer.init_dataloader(
+        data=test_data,
+        mode=None,
         batch_size=1024,
         pin_memory=False,
         shuffle=False,
-        num_workers=0)
+        num_workers=0
+    )
 
     scores, predictions, targets, lengths, _ = trainer.run_pass(data_loader)
 
@@ -108,22 +110,21 @@ def evaluate_text_model(trainer: RecurrentTrainer,
             "targets": [],
             "lengths": []})
 
-    for i, score, pred, target, length in zip(
-            test_indices, scores, predictions, targets, lengths):
-        formula_col = formula_samples[reconstruction[i]]
+    for i, test_ind in enumerate(test_indices):
+        formula_col = formula_samples[reconstruction[test_ind]]
 
-        formula_col["scores"].append(score)
-        formula_col["predictions"].append(pred)
-        formula_col["targets"].append(target)
-        formula_col["lengths"].append(length)
+        formula_col["scores"].append(scores[i])
+        formula_col["predictions"].append(predictions[i])
+        formula_col["targets"].append(targets[i])
+        formula_col["lengths"].append(lengths[i])
 
     formula_metrics: Dict[Element, Dict[str, Any]] = {}
 
     for formula, metrics in formula_samples.items():
-        _scores = torch.cat(metrics["scores"], dim=0)
-        _predictions = torch.cat(metrics["predictions"], dim=0)
-        _targets = torch.cat(metrics["targets"], dim=0)
-        _lengths = torch.cat(metrics["lengths"], dim=0)
+        _scores = torch.stack(metrics["scores"])
+        _predictions = torch.stack(metrics["predictions"])
+        _targets = torch.stack(metrics["targets"])
+        _lengths = torch.tensor(metrics["lengths"])
 
         formula_metrics[formula] = {
             "token_acc1": trainer.metrics.token_accuracy(

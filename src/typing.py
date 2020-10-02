@@ -58,6 +58,7 @@ class GNNModelConfig(MinModelConfig):
 
 
 class LSTMConfig(TypedDict):
+    name: str
     encoder_dim: int
     embedding_dim: int
     hidden_dim: int

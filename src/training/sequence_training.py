@@ -65,7 +65,7 @@ class Metric:
 
         correct = 0.0
         for i, l in enumerate(lengths):
-            correct += predictions[i, :l].equal(targets[i, :l]).item()
+            correct += predictions[i, :l].equal(targets[i, :l])
 
         return correct / targets.size(0)
 
@@ -208,12 +208,8 @@ class RecurrentTrainer(Trainer):
 
     def init_dataloader(self,
                         data,
-                        mode: Union[Literal["train"], Literal["test"]],
+                        mode: Union[Literal["train"], Literal["test"], None],
                         **kwargs):
-
-        if mode not in ["train", "test"]:
-            raise ValueError("Supported modes are only `train` and `test`")
-
         loader = DataLoader(
             data,
             collate_fn=Collator(self.vocabulary.pad_token_id),
@@ -380,7 +376,7 @@ class RecurrentTrainer(Trainer):
                     # (batch, vocab_dim)
                     # output = self.activation(batch_pred)
                     # (batch,)
-                    output = self.inference(output)
+                    output = self.inference(batch_pred)
                     # copy predicted tokens to batch_predictions
                     batch_predictions[:, t] = output
 
@@ -395,7 +391,7 @@ class RecurrentTrainer(Trainer):
                 # a vector
                 # the loss will ignore the padding tokens
                 loss = self.loss(batch_scores.view(-1, self.decoder.vocab_dim),
-                                 y.view(-1))
+                                 y.flatten())
                 accum_loss.append(loss.detach().cpu().numpy())
 
         average_loss = np.mean(accum_loss)

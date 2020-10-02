@@ -60,8 +60,8 @@ class LSTMDecoder(nn.Module):
     def forward(
             self,
             encoder_out,
-            padded_target=None,
-            target_lengths=None):
+            padded_target,
+            target_lengths):
         """
         encoder_out: (batch, encoder)
         padded_target: (batch, L)
@@ -116,13 +116,13 @@ class LSTMDecoder(nn.Module):
 
         # prediction includes pads
         # (*, vocab_dim), (*)
-        return prediction, target_predictions.view(-1)
+        return prediction, target_predictions.flatten()
 
     def single_step(
             self,
             encoder_out,
-            sequence_step=None,
-            step_state=None):
+            sequence_step,
+            step_state):
         """
         encoder_out: (batch, encoder)
         sequence_step: (batch,)
@@ -217,8 +217,8 @@ class LSTMCellDecoder(nn.Module):
 
     def forward(self,
                 encoder_out,
-                padded_target=None,
-                target_lengths=None):
+                padded_target,
+                target_lengths):
         """
         encoder_out: (batch, encoder)
         padded_target: (batch, L)
@@ -287,12 +287,12 @@ class LSTMCellDecoder(nn.Module):
 
         # prediction includes pads
         # (*, vocab_dim), (*)
-        return output_predictions, target_predictions.view(-1)
+        return output_predictions, target_predictions.flatten()
 
     def single_step(self,
                     encoder_out,
-                    sequence_step=None,
-                    step_state=None):
+                    sequence_step,
+                    step_state):
         """
         encoder_out: (batch, encoder)
         sequence_step: (batch,)

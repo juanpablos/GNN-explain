@@ -26,10 +26,10 @@ def plot_training(
     for name, historic in metric_history.items(select=use_selected):
         if x_axis is None:
             x_axis = np.arange(len(historic)) + 1
-        if any(m in name for m in ["precision", "recall", "f1", "acc"]):
-            ax2.plot(x_axis, historic, label=name)
-        else:
+        if "loss" in name:
             ax1.plot(x_axis, historic, label=name)  # type: ignore
+        else:
+            ax2.plot(x_axis, historic, label=name)
 
     ax1.set_xlabel("Epochs")  # type: ignore
 
