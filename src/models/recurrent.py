@@ -61,105 +61,108 @@ class LSTMDecoder(nn.Module):
             self,
             encoder_out,
             padded_target=None,
-            target_lengths=None,
-            sequence_step=None,
-            step_state=None,
-            train: bool = True):
+            target_lengths=None):
         """
         encoder_out: (batch, encoder)
         padded_target: (batch, L)
         target_lengths: (batch,)
+
+        input:
+            encoder_out (batch, encoder)
+            padded_targets (batch, L)
+            target_lengths (batch)
+        return:
+            predictions (batch * L, vocab_dim)
+            targets (batch * L)
+        """
+
+        # (batch, L, embedding)
+        emb_targets = self.embed(padded_target)
+
+        # * we have to repeat each `encoder_out` `seq` times so we can concat them
+        # we only have 1 `encoder_out` per batch, but we need `seq` of them
+        # (batch, L, encoder)
+        _expanded = encoder_out.unsqueeze(
+            1).expand(-1, emb_targets.size(1), -1)
+        # * teacher-forcing
+        # (batch, L, encoder+embedding)
+        concat_input = torch.cat([_expanded, emb_targets], dim=2)
+
+        packed_input = pack_padded_sequence(
+            concat_input,
+            # * we decode from <start> to <eos>, but don't decode <eos>
+            # so if len=3 [<start>, hey, <eos>] we just input
+            # [<start>, hey]
+            lengths=target_lengths - 1,
+            batch_first=True,
+            enforce_sorted=False)
+
+        state = self.init_hidden_state(encoder_out)
+        packed_predicted_sequence, _ = self.lstm(
+            packed_input, state)  # type: ignore
+
+        padded_predicted_sequence, _ = pad_packed_sequence(
+            packed_predicted_sequence, batch_first=True)  # type: ignore
+
+        # (*, lstm_hidden)
+        flattened_seq = padded_predicted_sequence.view(-1, self.hidden_dim)
+        flattened_seq = self.dropout(flattened_seq)
+
+        # (*, vocab_dim)
+        prediction = self.linear(flattened_seq)
+
+        # skip <start>
+        target_predictions = padded_target[:, 1:]
+
+        # prediction includes pads
+        # (*, vocab_dim), (*)
+        return prediction, target_predictions.view(-1)
+
+    def single_step(
+            self,
+            encoder_out,
+            sequence_step=None,
+            step_state=None):
+        """
+        encoder_out: (batch, encoder)
         sequence_step: (batch,)
         step_state: tuple[(batch, lstm_hidden)]
 
-        if training:
-            input:
-                encoder_out (batch, encoder)
-                padded_targets (batch, L)
-                target_lengths (batch)
-            return:
-                predictions (batch * L, vocab_dim)
-                targets (batch * L)
-
-        else:
-            input:
-                encoder_out (batch, encoder)
-                sequence_step (batch)
-                step_state tuple[(batch, lstm_hidden)]
-            return:
-                prediction (batch, vocab_dim)
-                tuple[ h, c ] tuple[(batch, lstm_hidden)]
+        input:
+            encoder_out (batch, encoder)
+            sequence_step (batch)
+            step_state tuple[(batch, lstm_hidden)]
+        return:
+            prediction (batch, vocab_dim)
+            tuple[ h, c ] tuple[(batch, lstm_hidden)]
         """
 
-        if train:
-            # (batch, L, embedding)
-            emb_targets = self.embed(padded_target)
+        # (batch, embedding)
+        step_emb = self.embed(sequence_step)
 
-            # * we have to repeat each `encoder_out` `seq` times so we can concat them
-            # we only have 1 `encoder_out` per batch, but we need `seq` of them
-            # (batch, L, encoder)
-            _expanded = encoder_out.unsqueeze(
-                1).expand(-1, emb_targets.size(1), -1)
-            # * teacher-forcing
-            # (batch, L, encoder+embedding)
-            concat_input = torch.cat([_expanded, emb_targets], dim=2)
+        # (batch, encoder+embedding)
+        concat_input = torch.cat([encoder_out, step_emb], dim=1)
 
-            packed_input = pack_padded_sequence(
-                concat_input,
-                # * we decode from <start> to <eos>, but don't decode <eos>
-                # so if len=3 [<start>, hey, <eos>] we just input
-                # [<start>, hey]
-                lengths=target_lengths - 1,
-                batch_first=True,
-                enforce_sorted=False)
+        # (batch, 1, embedding+encoder)
+        concat_input = concat_input.unsqueeze(1)
 
-            state = self.init_hidden_state(encoder_out)
-            packed_predicted_sequence, _ = self.lstm(
-                packed_input, state)  # type: ignore
+        # h: (1, batch, lstm_hidden)
+        # c: (1, batch, lstm_hidden)
+        _, (h, c) = self.lstm(
+            concat_input, step_state)
 
-            padded_predicted_sequence, _ = pad_packed_sequence(
-                packed_predicted_sequence, batch_first=True)  # type: ignore
+        # (batch, lstm_hidden)
+        c = c.squeeze(0)
+        h = h.squeeze(0)
+        # h = self.dropout(h)
 
-            # (*, lstm_hidden)
-            flattened_seq = padded_predicted_sequence.view(-1, self.hidden_dim)
-            flattened_seq = self.dropout(flattened_seq)
+        # (batch, vocab_dim)
+        prediction = self.linear(h)
 
-            # (*, vocab_dim)
-            prediction = self.linear(flattened_seq)
-
-            # skip <start>
-            target_predictions = padded_target[:, 1:]
-
-            # prediction includes pads
-            # (*, vocab_dim), (*)
-            return prediction, target_predictions.view(-1)
-        else:
-            # (batch, embedding)
-            step_emb = self.embed(sequence_step)
-
-            # (batch, encoder+embedding)
-            concat_input = torch.cat([encoder_out, step_emb], dim=1)
-
-            # (batch, 1, embedding+encoder)
-            concat_input = concat_input.unsqueeze(1)
-
-            # h: (1, batch, lstm_hidden)
-            # c: (1, batch, lstm_hidden)
-            _, (h, c) = self.lstm(
-                concat_input, step_state)
-
-            # (batch, lstm_hidden)
-            c = c.squeeze(0)
-            h = h.squeeze(0)
-            # h = self.dropout(h)
-
-            # (batch, vocab_dim)
-            prediction = self.linear(h)
-
-            # prediction: (batch, vocab_dim)
-            # h: (batch, lstm_hidden)
-            # c: (batch, lstm_hidden)
-            return prediction, (h, c)
+        # prediction: (batch, vocab_dim)
+        # h: (batch, lstm_hidden)
+        # c: (batch, lstm_hidden)
+        return prediction, (h, c)
 
 
 class LSTMCellDecoder(nn.Module):
@@ -215,109 +218,111 @@ class LSTMCellDecoder(nn.Module):
     def forward(self,
                 encoder_out,
                 padded_target=None,
-                target_lengths=None,
-                sequence_step=None,
-                step_state=None,
-                train: bool = True):
+                target_lengths=None):
         """
         encoder_out: (batch, encoder)
         padded_target: (batch, L)
         target_lengths: (batch,)
+
+        input:
+            encoder_out (batch, encoder)
+            padded_targets (batch, L)
+            target_lengths (batch)
+        return:
+            predictions (batch * L, vocab_dim)
+            targets (batch * L)
+        """
+
+        _, sorted_indices = target_lengths.sort(
+            descending=True)
+
+        encoder_out = encoder_out[sorted_indices]
+        padded_target = padded_target[sorted_indices]
+
+        # (batch, L, embedding)
+        emb_targets = self.embed(padded_target)
+
+        # both: (batch, lstm_hidden)
+        h, c = self.init_hidden_state(encoder_out)
+
+        # * we decode from <start> to <eos>, but don't decode <eos>
+        # so if len=3 [<start>, hey, <eos>] we just input [<start>, hey]
+        fixed_target_lengths = target_lengths - 1
+
+        max_len = fixed_target_lengths.max()
+
+        # (batch, L, vocab_dim)
+        prediction = torch.zeros(
+            encoder_out.size(0),
+            max_len,
+            self.vocab_dim,
+            dtype=encoder_out.dtype,
+            device=encoder_out.device)
+
+        for t in torch.arange(max_len):
+            # T
+            step_batch = (fixed_target_lengths > t).sum()
+            # (T, encoder)
+            time_x = encoder_out[:step_batch]
+            # (T, embedding)
+            time_t_target = emb_targets[:step_batch, t, :]
+
+            # both: (T, lstm_hidden)
+            h, c = self.lstm(
+                torch.cat([time_x, time_t_target], dim=1),
+                (h[:step_batch], c[:step_batch])
+            )
+
+            # (T, vocab_size)
+            t_pred = self.linear(self.dropout(h))
+
+            # fill predictions
+            prediction[:step_batch, t, :] = t_pred
+
+        # flatten
+        output_predictions = prediction.view(-1, self.vocab_dim)
+        # skip <start>
+        # padded_target is batch sorted the same as output_predictions
+        target_predictions = padded_target[:, 1:]
+
+        # prediction includes pads
+        # (*, vocab_dim), (*)
+        return output_predictions, target_predictions.view(-1)
+
+    def single_step(self,
+                    encoder_out,
+                    sequence_step=None,
+                    step_state=None):
+        """
+        encoder_out: (batch, encoder)
         sequence_step: (batch,)
         step_state: tuple[(batch, lstm_hidden)]
 
-        if training:
-            input:
-                encoder_out (batch, encoder)
-                padded_targets (batch, L)
-                target_lengths (batch)
-            return:
-                predictions (batch * L, vocab_dim)
-                targets (batch * L)
-
-        else:
-            input:
-                encoder_out (batch, encoder)
-                sequence_step (batch)
-                step_state tuple[(batch, lstm_hidden)]
-            return:
-                prediction (batch, vocab_dim)
-                tuple[ h, c ] tuple[(batch, lstm_hidden)]
+        input:
+            encoder_out (batch, encoder)
+            sequence_step (batch)
+            step_state tuple[(batch, lstm_hidden)]
+        return:
+            prediction (batch, vocab_dim)
+            tuple[ h, c ] tuple[(batch, lstm_hidden)]
         """
 
-        if train:
-            _, sorted_indices = target_lengths.sort(
-                descending=True)
+        # (batch, embedding)
+        step_emb = self.embed(sequence_step)
 
-            encoder_out = encoder_out[sorted_indices]
-            padded_target = padded_target[sorted_indices]
+        # (batch, encoder+embedding)
+        concat_input = torch.cat([encoder_out, step_emb], dim=1)
 
-            # (batch, L, embedding)
-            emb_targets = self.embed(padded_target)
+        # h: (batch, lstm_hidden)
+        # c: (batch, lstm_hidden)
+        h, c = self.lstm(concat_input, step_state)
 
-            # both: (batch, lstm_hidden)
-            h, c = self.init_hidden_state(encoder_out)
+        # h = self.dropout(h)
 
-            # * we decode from <start> to <eos>, but don't decode <eos>
-            # so if len=3 [<start>, hey, <eos>] we just input [<start>, hey]
-            fixed_target_lengths = target_lengths - 1
+        # (batch, vocab_dim)
+        prediction = self.linear(h)
 
-            max_len = fixed_target_lengths.max()
-
-            # (batch, L, vocab_dim)
-            prediction = torch.zeros(
-                encoder_out.size(0),
-                max_len,
-                self.vocab_dim,
-                dtype=encoder_out.dtype,
-                device=encoder_out.device)
-
-            for t in torch.arange(max_len):
-                # T
-                step_batch = (fixed_target_lengths > t).sum()
-                # (T, encoder)
-                time_x = encoder_out[:step_batch]
-                # (T, embedding)
-                time_t_target = emb_targets[:step_batch, t, :]
-
-                # both: (T, lstm_hidden)
-                h, c = self.lstm(
-                    torch.cat([time_x, time_t_target], dim=1),
-                    (h[:step_batch], c[:step_batch])
-                )
-
-                # (T, vocab_size)
-                t_pred = self.linear(self.dropout(h))
-
-                # fill predictions
-                prediction[:step_batch, t, :] = t_pred
-
-            # flatten
-            output_predictions = prediction.view(-1, self.vocab_dim)
-            # skip <start>
-            # padded_target is batch sorted the same as output_predictions
-            target_predictions = padded_target[:, 1:]
-
-            # prediction includes pads
-            # (*, vocab_dim), (*)
-            return output_predictions, target_predictions.view(-1)
-        else:
-            # (batch, embedding)
-            step_emb = self.embed(sequence_step)
-
-            # (batch, encoder+embedding)
-            concat_input = torch.cat([encoder_out, step_emb], dim=1)
-
-            # h: (batch, lstm_hidden)
-            # c: (batch, lstm_hidden)
-            h, c = self.lstm(concat_input, step_state)
-
-            # h = self.dropout(h)
-
-            # (batch, vocab_dim)
-            prediction = self.linear(h)
-
-            # prediction: (batch, vocab_dim)
-            # h: (batch, lstm_hidden)
-            # c: (batch, lstm_hidden)
-            return prediction, (h, c)
+        # prediction: (batch, vocab_dim)
+        # h: (batch, lstm_hidden)
+        # c: (batch, lstm_hidden)
+        return prediction, (h, c)

@@ -243,11 +243,13 @@ class RecurrentTrainer(Trainer):
             encoder_out = self.encoder(x)
             # output: (batch * L, vocab_dim), L max seq
             # targets: (batch * L,)
+            # output order is not guaranteed
+            # when model is LSTMCell they are sorted by real length
+            # when model is LSTM they are sorted by input order
             output, targets = self.decoder(
                 encoder_out=encoder_out,
                 padded_target=y,
-                target_lengths=y_lens,
-                train=True)
+                target_lengths=y_lens)
 
             # the loss ignores padding
             loss = self.loss(output, targets)
@@ -275,85 +277,9 @@ class RecurrentTrainer(Trainer):
 
         loader = self.train_loader if use_train_data else self.test_loader
 
-        accum_loss = []
-
-        predictions = []
-        scores = []
-        targets = []
-        lengths = []
-
-        with torch.no_grad():
-            for x, y, y_lens in loader:
-                x = x.to(self.device)
-                y = y.to(self.device)
-                y_lens = y_lens.to(self.device)
-
-                # remove the <start> token
-                y = y[:, 1:]
-                y_lens = y_lens - 1
-
-                # (batch, encoder_dim)
-                encoder_out = self.encoder(x)
-
-                # (batch,)
-                input_tokens = y.new_full(
-                    (x.size(0),),
-                    fill_value=self.vocabulary.start_token_id).to(self.device)
-
-                # (batch, L), L is max seq
-                batch_predictions = y.new_full(
-                    (x.size(0), y.size(1)),
-                    fill_value=self.vocabulary.pad_token_id).to(self.device)
-
-                # (batch, L, vocab_dim), L is max seq
-                batch_scores = torch.full(
-                    (x.size(0), y.size(1), self.decoder.vocab_dim),
-                    fill_value=self.vocabulary.pad_token_id,
-                    dtype=torch.float).to(self.device)
-
-                # tuple (batch, lstm_hidden)
-                states = self.decoder.init_hidden_state(
-                    encoder_out=encoder_out)
-
-                for t in torch.arange(y.size(1)):
-                    # batch_pred: (batch, vocab_dim)
-                    # states: tuple (batch, lstm_hidden)
-                    batch_pred, states = self.encoder(
-                        encoder_out=encoder_out,
-                        sequence_step=input_tokens,
-                        step_state=states,
-                        train=False
-                    )
-
-                    batch_scores[:, t, :] = batch_pred
-
-                    # (batch, vocab_dim)
-                    # output = self.activation(batch_pred)
-                    # (batch,)
-                    output = self.inference(output)
-                    # copy predicted tokens to batch_predictions
-                    batch_predictions[:, t] = output
-
-                    input_tokens = output
-
-                scores.append(batch_scores.detach())
-                predictions.append(batch_predictions.detach())
-                targets.append(y.detach())
-                lengths.append(y_lens.detach())
-
-                # flatten the batch scores to (*, vocab_dim) and the targets to
-                # a vector
-                # the loss will ignore the padding tokens
-                loss = self.loss(batch_scores.view(-1, self.decoder.vocab_dim),
-                                 y.view(-1))
-                accum_loss.append(loss.detach().cpu().numpy())
-
-        average_loss = np.mean(accum_loss)
-
-        epoch_scores = torch.cat(scores, dim=0).cpu()
-        epoch_predictions = torch.cat(predictions, dim=0).cpu()
-        epoch_targets = torch.cat(targets, dim=0).cpu()
-        epoch_lengths = torch.cat(lengths, dim=0).cpu()
+        epoch_scores, epoch_predictions, \
+            epoch_targets, epoch_lengths, \
+            average_loss = self.run_pass(loader)
 
         metrics = {
             "token_acc1": self.metrics.token_accuracy(
@@ -392,6 +318,94 @@ class RecurrentTrainer(Trainer):
             self.metric_logger.update(test_loss=average_loss, **metrics)
 
         return return_metrics
+
+    def run_pass(self, dataloader):
+
+        #!########
+        self.encoder.eval()
+        self.decoder.eval()
+        #!########
+
+        accum_loss = []
+
+        predictions = []
+        scores = []
+        targets = []
+        lengths = []
+
+        with torch.no_grad():
+            for x, y, y_lens in dataloader:
+                x = x.to(self.device)
+                y = y.to(self.device)
+                y_lens = y_lens.to(self.device)
+
+                # remove the <start> token
+                y = y[:, 1:]
+                y_lens = y_lens - 1
+
+                # (batch, encoder_dim)
+                encoder_out = self.encoder(x)
+
+                # (batch,)
+                input_tokens = y.new_full(
+                    (x.size(0),),
+                    fill_value=self.vocabulary.start_token_id).to(self.device)
+
+                # (batch, L), L is max seq
+                batch_predictions = y.new_full(
+                    (x.size(0), y.size(1)),
+                    fill_value=self.vocabulary.pad_token_id).to(self.device)
+
+                # (batch, L, vocab_dim), L is max seq
+                batch_scores = torch.full(
+                    (x.size(0), y.size(1), self.decoder.vocab_dim),
+                    fill_value=self.vocabulary.pad_token_id,
+                    dtype=torch.float).to(self.device)
+
+                # tuple (batch, lstm_hidden)
+                states = self.decoder.init_hidden_state(
+                    encoder_out=encoder_out)
+
+                for t in torch.arange(y.size(1)):
+                    # batch_pred: (batch, vocab_dim)
+                    # states: tuple (batch, lstm_hidden)
+                    batch_pred, states = self.decoder.single_step(
+                        encoder_out=encoder_out,
+                        sequence_step=input_tokens,
+                        step_state=states
+                    )
+
+                    batch_scores[:, t, :] = batch_pred
+
+                    # (batch, vocab_dim)
+                    # output = self.activation(batch_pred)
+                    # (batch,)
+                    output = self.inference(output)
+                    # copy predicted tokens to batch_predictions
+                    batch_predictions[:, t] = output
+
+                    input_tokens = output
+
+                scores.append(batch_scores.detach())
+                predictions.append(batch_predictions.detach())
+                targets.append(y.detach())
+                lengths.append(y_lens.detach())
+
+                # flatten the batch scores to (*, vocab_dim) and the targets to
+                # a vector
+                # the loss will ignore the padding tokens
+                loss = self.loss(batch_scores.view(-1, self.decoder.vocab_dim),
+                                 y.view(-1))
+                accum_loss.append(loss.detach().cpu().numpy())
+
+        average_loss = np.mean(accum_loss)
+
+        epoch_scores = torch.cat(scores, dim=0).cpu()
+        epoch_predictions = torch.cat(predictions, dim=0).cpu()
+        epoch_targets = torch.cat(targets, dim=0).cpu()
+        epoch_lengths = torch.cat(lengths, dim=0).cpu()
+
+        return epoch_scores, epoch_predictions, epoch_targets, epoch_lengths, average_loss
 
     def log(self):
         return self.metric_logger.log()
