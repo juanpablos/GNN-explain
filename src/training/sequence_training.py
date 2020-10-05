@@ -329,9 +329,12 @@ class RecurrentTrainer(Trainer):
         targets = []
         lengths = []
 
+        total_batch = 0
+        max_sequence = 0
+
         with torch.no_grad():
             for x, y, y_lens in dataloader:
-                x = x.to(self.device)
+                x: torch.Tensor = x.to(self.device)
                 y = y.to(self.device)
                 y_lens = y_lens.to(self.device)
 
@@ -345,18 +348,20 @@ class RecurrentTrainer(Trainer):
                 # (batch,)
                 input_tokens = y.new_full(
                     (x.size(0),),
-                    fill_value=self.vocabulary.start_token_id).to(self.device)
+                    fill_value=self.vocabulary.start_token_id)
 
                 # (batch, L), L is max seq
                 batch_predictions = y.new_full(
                     (x.size(0), y.size(1)),
-                    fill_value=self.vocabulary.pad_token_id).to(self.device)
+                    fill_value=self.vocabulary.pad_token_id)
 
                 # (batch, L, vocab_dim), L is max seq
-                batch_scores = torch.full(
+                batch_scores = x.new_full(
                     (x.size(0), y.size(1), self.decoder.vocab_dim),
-                    fill_value=self.vocabulary.pad_token_id,
-                    dtype=torch.float).to(self.device)
+                    fill_value=self.vocabulary.pad_token_id)
+
+                total_batch += batch_scores.size(0)
+                max_sequence = max(max_sequence, batch_scores.size(1))
 
                 # tuple (batch, lstm_hidden)
                 states = self.decoder.init_hidden_state(
@@ -376,7 +381,7 @@ class RecurrentTrainer(Trainer):
                     # (batch, vocab_dim)
                     # output = self.activation(batch_pred)
                     # (batch,)
-                    output = self.inference(batch_pred)
+                    output = self.inference(batch_pred, dim=1)
                     # copy predicted tokens to batch_predictions
                     batch_predictions[:, t] = output
 
@@ -396,12 +401,52 @@ class RecurrentTrainer(Trainer):
 
         average_loss = np.mean(accum_loss)
 
-        epoch_scores = torch.cat(scores, dim=0).cpu()
-        epoch_predictions = torch.cat(predictions, dim=0).cpu()
-        epoch_targets = torch.cat(targets, dim=0).cpu()
+        epoch_scores = self.concat0_tensors(
+            scores,
+            batch_total=total_batch,
+            max_variable=max_sequence).cpu()
+        epoch_predictions = self.concat0_tensors(
+            predictions,
+            batch_total=total_batch,
+            max_variable=max_sequence).cpu()
+        epoch_targets = self.concat0_tensors(
+            targets,
+            batch_total=total_batch,
+            max_variable=max_sequence).cpu()
+        # no need to pad this one, it is a 1D tensor
         epoch_lengths = torch.cat(lengths, dim=0).cpu()
 
         return epoch_scores, epoch_predictions, epoch_targets, epoch_lengths, average_loss
+
+    def concat0_tensors(self,
+                        tensor_list: List[torch.Tensor],
+                        batch_dim: int = 0,
+                        pad_dim: int = 1,
+                        batch_total: int = None,
+                        max_variable: int = None):
+        if batch_total is None:
+            batch_total = sum(t.size(batch_dim) for t in tensor_list)
+        if max_variable is None:
+            max_variable = max(t.size(pad_dim) for t in tensor_list)
+
+        size = list(tensor_list[0].size())
+        size[batch_dim] = batch_total
+        size[pad_dim] = max_variable
+
+        collected_tensor = tensor_list[0].new_full(
+            size,
+            fill_value=self.vocabulary.pad_token_id)
+
+        current0 = 0
+        for tensor in tensor_list:
+            # if batch_dim=0 and pad_dim=1 then it is the same as
+            # collected[current:current+tensor.size(0),:tensor.size(1)] = tensor
+            collected_tensor.narrow(
+                batch_dim, current0, tensor.size(batch_dim)).narrow(
+                pad_dim, 0, tensor.size(pad_dim))[:] = tensor
+            current0 += tensor.size(0)
+
+        return collected_tensor
 
     def log(self):
         return self.metric_logger.log()
