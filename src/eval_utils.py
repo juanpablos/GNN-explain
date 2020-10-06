@@ -96,7 +96,8 @@ def evaluate_text_model(trainer: RecurrentTrainer,
         num_workers=0
     )
 
-    scores, predictions, targets, lengths, _ = trainer.run_pass(data_loader)
+    scores, predictions, targets, lengths, _ = trainer.run_pass(
+        data_loader, keep_device=True)
 
     if isinstance(test_data, LabeledSubset):
         test_indices = test_data.indices
@@ -127,21 +128,21 @@ def evaluate_text_model(trainer: RecurrentTrainer,
         _lengths = torch.tensor(metrics["lengths"])
 
         formula_metrics[formula] = {
-            "token_acc1": trainer.metrics.token_accuracy(
+            "token_acc1": trainer.metrics.token_accuracy2(
                 scores=_scores,
                 targets=_targets,
                 k=1,
                 lengths=_lengths),
-            "token_acc3": trainer.metrics.token_accuracy(
+            "token_acc3": trainer.metrics.token_accuracy2(
                 scores=_scores,
                 targets=_targets,
                 k=3,
                 lengths=_lengths),
-            "sent_acc": trainer.metrics.sentence_accuracy(
+            "sent_acc": trainer.metrics.sentence_accuracy2(
                 predictions=_predictions,
                 targets=_targets,
                 lengths=_lengths),
-            "bleu4": trainer.metrics.bleu_score(
+            "bleu4": trainer.metrics.bleu_score2(
                 predictions=_predictions,
                 targets=_targets,
                 lengths=_lengths)

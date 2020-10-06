@@ -19,8 +19,8 @@ logger = logging.getLogger(__name__)
 
 
 class Collator:
-    def __init__(self, pad_token: int):
-        self.pad_token = pad_token
+    def __init__(self, pad_token_id: int):
+        self.pad_token_id = pad_token_id
 
     def __call__(self, batch):
         # both: tuple of tensors
@@ -28,12 +28,18 @@ class Collator:
         x = torch.stack(x)
 
         y_lens = torch.tensor([target.size(0) for target in y])
-        y_pad = pad_sequence(y, batch_first=True, padding_value=self.pad_token)
+        y_pad = pad_sequence(
+            y,
+            batch_first=True,
+            padding_value=self.pad_token_id)
 
         return x, y_pad, y_lens
 
 
 class Metric:
+    def __init__(self, pad_token_id: int):
+        self.pad_token_id = pad_token_id
+
     def token_accuracy(self, scores, targets, k, lengths):
         # scores: logits (batch, L, vocab) with padding
         # targets: indices (batch, L) with padding
@@ -41,7 +47,7 @@ class Metric:
         # lengths: (batch,)
 
         # (batch, L, k)
-        _, indices = scores.topk(k, dim=2, largest=True, sorted=True)
+        _, indices = scores.topk(k, dim=2, largest=True, sorted=False)
         # expand the targets to check if they occur in one of the topk
         _expanded = targets.unsqueeze(dim=2).expand_as(indices)
 
@@ -58,6 +64,33 @@ class Metric:
         # average over predictions that have the correct index in the topk
         return correct / total_tokens
 
+    def token_accuracy2(self, scores, targets, k, lengths):
+        # scores: logits (batch, L, vocab) with padding
+        # targets: indices (batch, L) with padding
+        # k: int
+        # lengths: (batch,)
+
+        # (batch, L, k)
+        _, indices = scores.topk(k, dim=2, largest=True, sorted=False)
+        # expand the targets to check if they occur in one of the topk
+        _expanded = targets.unsqueeze(dim=2).expand_as(indices)
+
+        # check if the correct index is in one of the topk
+        # matches: (batch, L)
+        matches = torch.any(indices.eq(_expanded), dim=2)
+
+        # flatten, but ignore the padding
+        clean_flatten = torch.nn.utils.rnn.pack_padded_sequence(
+            matches,
+            lengths,
+            batch_first=True,
+            enforce_sorted=False)
+        # sum all correct
+        correct = clean_flatten.data.sum().float().item()
+
+        # average over predictions that have the correct index in the topk
+        return correct / lengths.sum().float().item()
+
     def sentence_accuracy(self, predictions, targets, lengths):
         # predictions: indices (batch, L) with padding
         # targets: indices (batch, L) with padding
@@ -69,6 +102,37 @@ class Metric:
 
         return correct / targets.size(0)
 
+    def sentence_accuracy2(self, predictions: torch.Tensor, targets, lengths):
+        # predictions: indices (batch, L) with padding
+        # targets: indices (batch, L) with padding
+        # lengths: (batch,)
+
+        # this deletes the extra predictions and replaces them with padding
+        cleaned = torch.nn.utils.rnn.pack_padded_sequence(
+            predictions,
+            lengths,
+            batch_first=True,
+            enforce_sorted=False)
+        padded, _ = torch.nn.utils.rnn.pad_packed_sequence(
+            cleaned, batch_first=True)
+
+        # predictions have the same size with targets, but when removing the
+        # extra values of prediction and padding again the paddings are of
+        # length batch_length, that is not necessarily the max_len of the data
+        # so we have to re-pad with the extra bit that was removed.
+        correct_padded = torch.full_like(
+            predictions, fill_value=self.pad_token_id)
+        correct_padded[:, :padded.size(1)] = padded
+
+        # this also works
+        # padded = torch.nn.functional.pad(
+        #     padded,
+        #     [0, targets.size(1) - padded.size(1)],
+        #     mode="constant",
+        #     value=self.pad_token_id)
+
+        return correct_padded.eq(targets).all(dim=1).float().mean().item()
+
     def bleu_score(self, predictions, targets, lengths):
         # use indices instead of string tokens
         # predictions: indices (batch, L) with padding
@@ -79,6 +143,26 @@ class Metric:
         for i, l in enumerate(lengths):
             references.append([targets[i, :l].tolist()])
             hypothesis.append(predictions[i, :l].tolist())
+
+        return corpus_bleu(references, hypothesis)
+
+    def bleu_score2(self, predictions, targets, lengths):
+        # use indices instead of string tokens
+        # predictions: indices (batch, L) with padding
+        # targets: indices (batch, L) with padding
+
+        # converting everything into a list first is faster than indexing the
+        # tensors
+        predictions = predictions.tolist()
+        targets = targets.tolist()
+        lengths = lengths.tolist()
+
+        references = []
+        hypothesis = []
+        for i, l in enumerate(lengths):
+            references.append([targets[i][:l]])
+            hypothesis.append(predictions[i][:l])
+
         return corpus_bleu(references, hypothesis)
 
     def sintaxis_check(self, predictions, vocabulary: Vocabulary):
@@ -127,7 +211,7 @@ class RecurrentTrainer(Trainer):
 
         super().__init__(logging_variables=logging_variables)
         self.vocabulary = vocabulary
-        self.metrics = Metric()
+        self.metrics = Metric(pad_token_id=self.vocabulary.pad_token_id)
 
     def activation(self, output, dim=1):
         return torch.log_softmax(output, dim=dim)
@@ -275,24 +359,24 @@ class RecurrentTrainer(Trainer):
 
         epoch_scores, epoch_predictions, \
             epoch_targets, epoch_lengths, \
-            average_loss = self.run_pass(loader)
+            average_loss = self.run_pass(loader, keep_device=True)
 
         metrics = {
-            "token_acc1": self.metrics.token_accuracy(
+            "token_acc1": self.metrics.token_accuracy2(
                 scores=epoch_scores,
                 targets=epoch_targets,
                 k=1,
                 lengths=epoch_lengths),
-            "token_acc3": self.metrics.token_accuracy(
+            "token_acc3": self.metrics.token_accuracy2(
                 scores=epoch_scores,
                 targets=epoch_targets,
                 k=3,
                 lengths=epoch_lengths),
-            "sent_acc": self.metrics.sentence_accuracy(
+            "sent_acc": self.metrics.sentence_accuracy2(
                 predictions=epoch_predictions,
                 targets=epoch_targets,
                 lengths=epoch_lengths),
-            "bleu4": self.metrics.bleu_score(
+            "bleu4": self.metrics.bleu_score2(
                 predictions=epoch_predictions,
                 targets=epoch_targets,
                 lengths=epoch_lengths)
@@ -315,7 +399,7 @@ class RecurrentTrainer(Trainer):
 
         return return_metrics
 
-    def run_pass(self, dataloader):
+    def run_pass(self, dataloader, keep_device: bool = True):
 
         #!########
         self.encoder.eval()
@@ -404,17 +488,23 @@ class RecurrentTrainer(Trainer):
         epoch_scores = self.concat0_tensors(
             scores,
             batch_total=total_batch,
-            max_variable=max_sequence).cpu()
+            max_variable=max_sequence)
         epoch_predictions = self.concat0_tensors(
             predictions,
             batch_total=total_batch,
-            max_variable=max_sequence).cpu()
+            max_variable=max_sequence)
         epoch_targets = self.concat0_tensors(
             targets,
             batch_total=total_batch,
-            max_variable=max_sequence).cpu()
+            max_variable=max_sequence)
         # no need to pad this one, it is a 1D tensor
-        epoch_lengths = torch.cat(lengths, dim=0).cpu()
+        epoch_lengths = torch.cat(lengths, dim=0)
+
+        if not keep_device:
+            epoch_scores = epoch_scores.cpu()
+            epoch_predictions = epoch_predictions.cpu()
+            epoch_targets = epoch_targets.cpu()
+            epoch_lengths = epoch_lengths.cpu()
 
         return epoch_scores, epoch_predictions, epoch_targets, epoch_lengths, average_loss
 
