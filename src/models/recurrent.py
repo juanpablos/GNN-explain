@@ -12,12 +12,14 @@ class LSTMDecoder(nn.Module):
             hidden_dim: int,
             vocab_size: int,
             context_hidden_init: bool,
-            dropout_prob: float = 0.0):
+            dropout_prob: float = 0.0,
+            pad_token_id: int = 0):
         super().__init__()
 
         self.hidden_dim = hidden_dim
         self.vocab_dim = vocab_size
         self.use_input_init = context_hidden_init
+        self.pad_token_id = pad_token_id
 
         # * targets are padded sequences
         self.embed = nn.Embedding(
@@ -43,16 +45,8 @@ class LSTMDecoder(nn.Module):
             c = self.init_c(encoder_out)
         else:
             # init with zeros
-            h = torch.zeros(
-                encoder_out.size(0),
-                self.hidden_dim,
-                dtype=encoder_out.dtype,
-                device=encoder_out.device)
-            c = torch.zeros(
-                encoder_out.size(0),
-                self.hidden_dim,
-                dtype=encoder_out.dtype,
-                device=encoder_out.device)
+            h = encoder_out.new_zeros(encoder_out.size(0), self.hidden_dim)
+            c = encoder_out.new_zeros(encoder_out.size(0), self.hidden_dim)
 
         # (batch, lstm_hidden)
         return h, c
@@ -173,12 +167,14 @@ class LSTMCellDecoder(nn.Module):
             hidden_dim: int,
             vocab_size: int,
             context_hidden_init: bool,
-            dropout_prob: float = 0.0):
+            dropout_prob: float = 0.0,
+            pad_token_id: int = 0):
         super().__init__()
 
         self.hidden_dim = hidden_dim
         self.vocab_dim = vocab_size
         self.use_input_init = context_hidden_init
+        self.pad_token_id = pad_token_id
 
         # * targets are padded sequences
         self.embed = nn.Embedding(
@@ -203,16 +199,10 @@ class LSTMCellDecoder(nn.Module):
             c = self.init_c(encoder_out)
         else:
             # init with zeros
-            h = torch.zeros(
-                encoder_out.size(0),
-                self.hidden_dim,
-                dtype=encoder_out.dtype,
-                device=encoder_out.device)
-            c = torch.zeros(
-                encoder_out.size(0),
-                self.hidden_dim,
-                dtype=encoder_out.dtype,
-                device=encoder_out.device)
+            h = encoder_out.new_zeros(encoder_out.size(0), self.hidden_dim)
+            c = encoder_out.new_zeros(encoder_out.size(0), self.hidden_dim)
+
+        # (batch, lstm_hidden)
         return h, c
 
     def forward(self,
@@ -252,12 +242,9 @@ class LSTMCellDecoder(nn.Module):
         max_len = fixed_target_lengths.max()
 
         # (batch, L, vocab_dim)
-        prediction = torch.zeros(
-            encoder_out.size(0),
-            max_len,
-            self.vocab_dim,
-            dtype=encoder_out.dtype,
-            device=encoder_out.device)
+        prediction = encoder_out.new_full(
+            (encoder_out.size(0), max_len, self.vocab_dim),
+            fill_value=self.pad_token_id)
 
         for t in torch.arange(max_len):
             # T

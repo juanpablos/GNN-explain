@@ -250,6 +250,8 @@ class RecurrentTrainer(Trainer):
                      dropout_prob: float = 0.0,
                      **kwargs):
 
+        pad_token_id = self.vocabulary.pad_token_id
+
         if name == "lstm":
             self.decoder = LSTMDecoder(
                 encoder_dim=encoder_dim,
@@ -257,7 +259,8 @@ class RecurrentTrainer(Trainer):
                 hidden_dim=hidden_dim,
                 vocab_size=vocab_size,
                 context_hidden_init=context_hidden_init,
-                dropout_prob=dropout_prob)
+                dropout_prob=dropout_prob,
+                pad_token_id=pad_token_id)
         elif name == "lstmcell":
             self.decoder = LSTMCellDecoder(
                 encoder_dim=encoder_dim,
@@ -265,7 +268,8 @@ class RecurrentTrainer(Trainer):
                 hidden_dim=hidden_dim,
                 vocab_size=vocab_size,
                 context_hidden_init=context_hidden_init,
-                dropout_prob=dropout_prob)
+                dropout_prob=dropout_prob,
+                pad_token_id=pad_token_id)
         else:
             raise ValueError("Only values `lstm` and `lstmcell` are supported")
 
