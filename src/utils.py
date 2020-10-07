@@ -183,7 +183,7 @@ def write_result_info(
 def write_result_info_text(
         path: str,
         filename: str,
-        formula_metrics: Dict[Element, Dict[str, Any]]):
+        formula_metrics: Dict[str, Dict[str, Any]]):
 
     logger.debug("Writing result info")
 
@@ -193,11 +193,15 @@ def write_result_info_text(
                                           filename=filename,
                                           ext="txt")
 
+    # metric_name -> all|formula -> value
+
     with open(f"{path}/info/{filename}.txt", "w", encoding="utf-8") as o:
-        for formula, metrics in formula_metrics.items():
-            o.write(f"{formula}\n")
-            for name, metric in metrics.items():
-                o.write(f"\t{name}: {metric}\n")
+        for metric_name, single in formula_metrics.items():
+            for formula, value in single.items():
+                if formula == "all":
+                    o.write(f"{metric_name}: {value}\n")
+                else:
+                    o.write(f"\t{formula}: {value}\n")
             o.write("\n")
 
     return counter

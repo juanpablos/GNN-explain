@@ -87,6 +87,28 @@ def evaluate_text_model(trainer: RecurrentTrainer,
                                          LabeledSubset[T, torch.Tensor]],
                         reconstruction: NetworkDatasetCollectionWrapper):
 
+    def get_metrics(eval_scores, eval_predictions, eval_targets, eval_lengths):
+        return {
+            "token_acc1": trainer.metrics.token_accuracy2(
+                scores=eval_scores,
+                targets=eval_targets,
+                k=1,
+                lengths=eval_lengths),
+            "token_acc3": trainer.metrics.token_accuracy2(
+                scores=eval_scores,
+                targets=eval_targets,
+                k=3,
+                lengths=eval_lengths),
+            "sent_acc": trainer.metrics.sentence_accuracy2(
+                predictions=eval_predictions,
+                targets=eval_targets,
+                lengths=eval_lengths),
+            "bleu4": trainer.metrics.bleu_score2(
+                predictions=eval_predictions,
+                targets=eval_targets,
+                lengths=eval_lengths)
+        }
+
     data_loader = trainer.init_dataloader(
         data=test_data,
         mode=None,
@@ -119,7 +141,12 @@ def evaluate_text_model(trainer: RecurrentTrainer,
         formula_col["targets"].append(targets[i])
         formula_col["lengths"].append(lengths[i])
 
-    formula_metrics: Dict[Element, Dict[str, Any]] = {}
+    # metric_name -> all|formula -> value
+    formula_metrics: Dict[str, Dict[str, Any]] = {}
+
+    whole_dataset_metrics = get_metrics(scores, predictions, targets, lengths)
+    for metric_name, metric_value in whole_dataset_metrics.items():
+        formula_metrics.setdefault(metric_name, {})["all"] = metric_value
 
     for formula, metrics in formula_samples.items():
         _scores = torch.stack(metrics["scores"])
@@ -127,25 +154,9 @@ def evaluate_text_model(trainer: RecurrentTrainer,
         _targets = torch.stack(metrics["targets"])
         _lengths = torch.tensor(metrics["lengths"])
 
-        formula_metrics[formula] = {
-            "token_acc1": trainer.metrics.token_accuracy2(
-                scores=_scores,
-                targets=_targets,
-                k=1,
-                lengths=_lengths),
-            "token_acc3": trainer.metrics.token_accuracy2(
-                scores=_scores,
-                targets=_targets,
-                k=3,
-                lengths=_lengths),
-            "sent_acc": trainer.metrics.sentence_accuracy2(
-                predictions=_predictions,
-                targets=_targets,
-                lengths=_lengths),
-            "bleu4": trainer.metrics.bleu_score2(
-                predictions=_predictions,
-                targets=_targets,
-                lengths=_lengths)
-        }
+        single_metrics = get_metrics(_scores, _predictions, _targets, _lengths)
+        for metric_name, metric_value in single_metrics.items():
+            formula_metrics.setdefault(metric_name,
+                                       {})[repr(formula)] = metric_value
 
     return formula_metrics

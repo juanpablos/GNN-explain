@@ -194,21 +194,21 @@ def main(
     # test_selector = FilterApply(condition="or")
     # test_selector.add(AtomicOnlyFilter(atomic="all"))
     # test_selector.add(RestrictionFilter(lower=4, upper=None))
-    # test_selector = SelectFilter(hashes=[
-    #     "4805042859",
-    #     "aae49a2efc",
-    #     "ac4932d9e6",
-    #     "2baa2ed86c",
-    #     "4056021fb9",
-    #     "548c9f191e",
-    #     "c37cb98a75",
-    #     "b628ede2fc",
-    #     "f38520e138",
-    #     "65597e2291",
-    #     "5e65a2eaac",
-    #     "838d8aecad"
-    # ])
-    test_selector = NullFilter()
+    test_selector = SelectFilter(hashes=[
+        "4805042859",
+        "aae49a2efc",
+        "ac4932d9e6",
+        "2baa2ed86c",
+        "4056021fb9",
+        "548c9f191e",
+        "c37cb98a75",
+        "b628ede2fc",
+        "f38520e138",
+        "65597e2291",
+        "5e65a2eaac",
+        "838d8aecad"
+    ])
+    # test_selector = NullFilter()
     # * /test_filters
 
     # * labelers
@@ -237,7 +237,7 @@ def main(
 
     msg = f"{name}-{mlp}-{lstm}-{train_batch}b-{lr}lr"
 
-    results_path = f"./results/exp5-text/{model_hash}"
+    results_path = f"./results/testing/{model_hash}"
     plot_file = None
     if make_plots:
         plot_file = msg
