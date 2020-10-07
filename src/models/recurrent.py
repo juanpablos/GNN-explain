@@ -48,8 +48,8 @@ class LSTMDecoder(nn.Module):
             h = encoder_out.new_zeros(encoder_out.size(0), self.hidden_dim)
             c = encoder_out.new_zeros(encoder_out.size(0), self.hidden_dim)
 
-        # (batch, lstm_hidden)
-        return h, c
+        # (1, batch, lstm_hidden)
+        return h.unsqueeze(0), c.unsqueeze(0)
 
     def forward(
             self,
@@ -57,14 +57,10 @@ class LSTMDecoder(nn.Module):
             padded_target,
             target_lengths):
         """
-        encoder_out: (batch, encoder)
-        padded_target: (batch, L)
-        target_lengths: (batch,)
-
         input:
             encoder_out (batch, encoder)
             padded_targets (batch, L)
-            target_lengths (batch)
+            target_lengths (batch,)
         return:
             predictions (batch * L, vocab_dim)
             targets (batch * L)
@@ -91,10 +87,12 @@ class LSTMDecoder(nn.Module):
             batch_first=True,
             enforce_sorted=False)
 
+        # (1, batch, lstm_hidden)
         state = self.init_hidden_state(encoder_out)
         packed_predicted_sequence, _ = self.lstm(
             packed_input, state)  # type: ignore
 
+        # (batch, L, lstm_hidden)
         padded_predicted_sequence, _ = pad_packed_sequence(
             packed_predicted_sequence, batch_first=True)  # type: ignore
 
@@ -118,14 +116,10 @@ class LSTMDecoder(nn.Module):
             sequence_step,
             step_state):
         """
-        encoder_out: (batch, encoder)
-        sequence_step: (batch,)
-        step_state: tuple[(batch, lstm_hidden)]
-
         input:
             encoder_out (batch, encoder)
-            sequence_step (batch)
-            step_state tuple[(batch, lstm_hidden)]
+            sequence_step (batch,)
+            step_state tuple[(1, batch, lstm_hidden)]
         return:
             prediction (batch, vocab_dim)
             tuple[ h, c ] tuple[(batch, lstm_hidden)]
@@ -145,17 +139,16 @@ class LSTMDecoder(nn.Module):
         _, (h, c) = self.lstm(
             concat_input, step_state)
 
-        # (batch, lstm_hidden)
-        c = c.squeeze(0)
-        h = h.squeeze(0)
         # h = self.dropout(h)
 
+        # (batch, lstm_hidden)
+        output = h.squeeze(0)
         # (batch, vocab_dim)
-        prediction = self.linear(h)
+        prediction = self.linear(output)
 
         # prediction: (batch, vocab_dim)
-        # h: (batch, lstm_hidden)
-        # c: (batch, lstm_hidden)
+        # h: (1, batch, lstm_hidden)
+        # c: (1, batch, lstm_hidden)
         return prediction, (h, c)
 
 
@@ -210,14 +203,10 @@ class LSTMCellDecoder(nn.Module):
                 padded_target,
                 target_lengths):
         """
-        encoder_out: (batch, encoder)
-        padded_target: (batch, L)
-        target_lengths: (batch,)
-
         input:
             encoder_out (batch, encoder)
             padded_targets (batch, L)
-            target_lengths (batch)
+            target_lengths (batch,)
         return:
             predictions (batch * L, vocab_dim)
             targets (batch * L)
@@ -281,13 +270,9 @@ class LSTMCellDecoder(nn.Module):
                     sequence_step,
                     step_state):
         """
-        encoder_out: (batch, encoder)
-        sequence_step: (batch,)
-        step_state: tuple[(batch, lstm_hidden)]
-
         input:
             encoder_out (batch, encoder)
-            sequence_step (batch)
+            sequence_step (batch,)
             step_state tuple[(batch, lstm_hidden)]
         return:
             prediction (batch, vocab_dim)

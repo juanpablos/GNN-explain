@@ -233,7 +233,7 @@ def main(
 
     mlp = "+".join(
         [f"{l}L{val}" for l, val in enumerate(mlp_hidden_layers, start=1)])
-    lstm = f"emb{lstm_config['embedding_dim']}-lstmIN{encoder_output}-lstmH{lstm_config['hidden_dim']}-init{lstm_config['context_hidden_init']}-drop{lstm_config['dropout_prob']}"
+    lstm = f"emb{lstm_config['embedding_dim']}-{lstm_config['name']}IN{encoder_output}-lstmH{lstm_config['hidden_dim']}-init{lstm_config['context_hidden_init']}-drop{lstm_config['dropout_prob']}"
 
     msg = f"{name}-{mlp}-{lstm}-{train_batch}b-{lr}lr"
 

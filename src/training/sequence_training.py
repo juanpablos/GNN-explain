@@ -451,13 +451,17 @@ class RecurrentTrainer(Trainer):
                 total_batch += batch_scores.size(0)
                 max_sequence = max(max_sequence, batch_scores.size(1))
 
-                # tuple (batch, lstm_hidden)
+                # tuple
+                # lstm (1, batch, lstm_hidden)
+                # lstmcell (batch, lstm_hidden)
                 states = self.decoder.init_hidden_state(
                     encoder_out=encoder_out)
 
                 for t in torch.arange(y.size(1)):
                     # batch_pred: (batch, vocab_dim)
-                    # states: tuple (batch, lstm_hidden)
+                    # states
+                    # lstm tuple (1, batch, lstm_hidden)
+                    # lstmcell (batch, lstm_hidden)
                     batch_pred, states = self.decoder.single_step(
                         encoder_out=encoder_out,
                         sequence_step=input_tokens,
