@@ -113,25 +113,29 @@ class Metric:
             lengths,
             batch_first=True,
             enforce_sorted=False)
+
         padded, _ = torch.nn.utils.rnn.pad_packed_sequence(
-            cleaned, batch_first=True)
+            cleaned, batch_first=True, total_length=predictions.size(1))
 
         # predictions have the same size with targets, but when removing the
         # extra values of prediction and padding again the paddings are of
         # length batch_length, that is not necessarily the max_len of the data
-        # so we have to re-pad with the extra bit that was removed.
-        correct_padded = torch.full_like(
-            predictions, fill_value=self.pad_token_id)
-        correct_padded[:, :padded.size(1)] = padded
+        # so we have to extend with the extra bit that was removed with
+        # total_length.
 
-        # this also works
+        # option 2
+        # correct_padded = torch.full_like(
+        #     predictions, fill_value=self.pad_token_id)
+        # correct_padded[:, :padded.size(1)] = padded
+
+        # option 3
         # padded = torch.nn.functional.pad(
         #     padded,
         #     [0, targets.size(1) - padded.size(1)],
         #     mode="constant",
         #     value=self.pad_token_id)
 
-        return correct_padded.eq(targets).all(dim=1).float().mean().item()
+        return padded.eq(targets).all(dim=1).float().mean().item()
 
     def bleu_score(self, predictions, targets, lengths):
         # use indices instead of string tokens
