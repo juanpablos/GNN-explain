@@ -20,6 +20,29 @@ from src.visualization.curve_plot import plot_training
 logger = logging.getLogger("src")
 
 
+def get_model_name(hidden_layers, lstm_config, encoder_output):
+    encoder = "+".join([f"{l}L{val}" for l,
+                        val in enumerate(hidden_layers, start=1)])
+
+    embedding = f"emb{lstm_config['embedding_dim']}"
+    name = lstm_config['name']
+    lstm_input = f"IN{encoder_output}"
+    lstm_hidden = f"lstmH{lstm_config['hidden_dim']}"
+    use_init = f"lstmH{lstm_config['hidden_dim']}"
+    dropout = f"drop{lstm_config['dropout_prob']}"
+    concat_input = f"cat{lstm_config['concat_encoder_input']}"
+
+    lstm = f"{embedding}-{name}{lstm_input}-{lstm_hidden}-{use_init}-{concat_input}-{dropout}"
+
+    if name == "lstmcell":
+        compose_state = f"comp{lstm_config['compose_encoder_state']}"
+        compose_dim = f"d{lstm_config['compose_dim']}"
+
+        lstm = f"{lstm}-{compose_state}{compose_dim}"
+
+    return encoder, lstm
+
+
 def run_experiment(
         encoder_config: MinModelConfig,
         decoder_config: LSTMConfig,
@@ -171,8 +194,11 @@ def main(
         "embedding_dim": 4,
         "hidden_dim": 256,
         "vocab_size": None,
-        "context_hidden_init": True,
-        "dropout_prob": 0
+        "dropout_prob": 0,
+        "init_state_context": True,
+        "concat_encoder_input": False,
+        "compose_encoder_state": False,
+        "compose_dim": 256
     }
 
     model_hash = "f4034364ea-batch"
@@ -182,33 +208,33 @@ def main(
     # selector.add(AtomicFilter(atomic="all"))
     # selector.add(RestrictionFilter(lower=1, upper=2))
     # selector.add(RestrictionFilter(lower=None, upper=-1))
-    # selector = SelectFilter(hashes=[
-    #     "0c957889eb",
-    #     "1c998884a4",
-    #     "4056021fb9"
-    # ])
-    selector = NoFilter()
+    selector = SelectFilter(hashes=[
+        "0c957889eb",
+        "1c998884a4",
+        "4056021fb9"
+    ])
+    # selector = NoFilter()
     # * /filters
 
     # * test_filters
     # test_selector = FilterApply(condition="or")
     # test_selector.add(AtomicOnlyFilter(atomic="all"))
     # test_selector.add(RestrictionFilter(lower=4, upper=None))
-    test_selector = SelectFilter(hashes=[
-        "4805042859",
-        "aae49a2efc",
-        "ac4932d9e6",
-        "2baa2ed86c",
-        "4056021fb9",
-        "548c9f191e",
-        "c37cb98a75",
-        "b628ede2fc",
-        "f38520e138",
-        "65597e2291",
-        "5e65a2eaac",
-        "838d8aecad"
-    ])
-    # test_selector = NullFilter()
+    # test_selector = SelectFilter(hashes=[
+    #     "4805042859",
+    #     "aae49a2efc",
+    #     "ac4932d9e6",
+    #     "2baa2ed86c",
+    #     "4056021fb9",
+    #     "548c9f191e",
+    #     "c37cb98a75",
+    #     "b628ede2fc",
+    #     "f38520e138",
+    #     "65597e2291",
+    #     "5e65a2eaac",
+    #     "838d8aecad"
+    # ])
+    test_selector = NullFilter()
     # * /test_filters
 
     # * labelers
@@ -231,9 +257,8 @@ def main(
     if name is None:
         name = f"{selector}-{labeler}-{test_selector}"
 
-    mlp = "+".join(
-        [f"{l}L{val}" for l, val in enumerate(mlp_hidden_layers, start=1)])
-    lstm = f"emb{lstm_config['embedding_dim']}-{lstm_config['name']}IN{encoder_output}-lstmH{lstm_config['hidden_dim']}-init{lstm_config['context_hidden_init']}-drop{lstm_config['dropout_prob']}"
+    mlp, lstm = get_model_name(hidden_layers=mlp_hidden_layers,
+                               lstm_config=lstm_config, encoder_output=encoder_output)
 
     msg = f"{name}-{mlp}-{lstm}-{train_batch}b-{lr}lr"
 

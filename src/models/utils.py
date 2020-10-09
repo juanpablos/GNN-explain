@@ -9,3 +9,15 @@ def reset(nn):
                 _reset(item)
         else:
             _reset(nn)
+
+
+class Waiter:
+    def __init__(self, wait_for: int):
+        self.remaining = wait_for
+
+    def ok(self):
+        if self.remaining <= 0:
+            return True
+        else:
+            self.remaining -= 1
+            return False

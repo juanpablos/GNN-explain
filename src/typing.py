@@ -57,14 +57,20 @@ class GNNModelConfig(MinModelConfig):
     task: Literal["node", "graph"]
 
 
-class LSTMConfig(TypedDict):
+class LSTMConfigBase(TypedDict):
     name: str
     encoder_dim: int
     embedding_dim: int
     hidden_dim: int
     vocab_size: Optional[int]
-    context_hidden_init: bool
+    init_state_context: bool
     dropout_prob: float
+    concat_encoder_input: bool
+
+
+class LSTMConfig(LSTMConfigBase, total=False):
+    compose_encoder_state: bool
+    compose_dim: int
 
 
 class MetricHistory(Protocol):

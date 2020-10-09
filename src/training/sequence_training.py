@@ -246,7 +246,8 @@ class RecurrentTrainer(Trainer):
                      embedding_dim: int,
                      hidden_dim: int,
                      vocab_size: int,
-                     context_hidden_init: bool,
+                     init_state_context: bool,
+                     concat_encoder_input: bool,
                      dropout_prob: float = 0.0,
                      **kwargs):
 
@@ -258,7 +259,8 @@ class RecurrentTrainer(Trainer):
                 embedding_dim=embedding_dim,
                 hidden_dim=hidden_dim,
                 vocab_size=vocab_size,
-                context_hidden_init=context_hidden_init,
+                init_state_context=init_state_context,
+                concat_encoder_input=concat_encoder_input,
                 dropout_prob=dropout_prob,
                 pad_token_id=pad_token_id)
         elif name == "lstmcell":
@@ -267,9 +269,11 @@ class RecurrentTrainer(Trainer):
                 embedding_dim=embedding_dim,
                 hidden_dim=hidden_dim,
                 vocab_size=vocab_size,
-                context_hidden_init=context_hidden_init,
+                init_state_context=init_state_context,
+                concat_encoder_input=concat_encoder_input,
                 dropout_prob=dropout_prob,
-                pad_token_id=pad_token_id)
+                pad_token_id=pad_token_id,
+                **kwargs)
         else:
             raise ValueError("Only values `lstm` and `lstmcell` are supported")
 
@@ -457,7 +461,7 @@ class RecurrentTrainer(Trainer):
                 states = self.decoder.init_hidden_state(
                     encoder_out=encoder_out)
 
-                for t in torch.arange(y.size(1)):
+                for t in range(y.size(1)):
                     # batch_pred: (batch, vocab_dim)
                     # states
                     # lstm tuple (1, batch, lstm_hidden)
@@ -465,7 +469,8 @@ class RecurrentTrainer(Trainer):
                     batch_pred, states = self.decoder.single_step(
                         encoder_out=encoder_out,
                         sequence_step=input_tokens,
-                        step_state=states
+                        step_state=states,
+                        step=t
                     )
 
                     batch_scores[:, t, :] = batch_pred
