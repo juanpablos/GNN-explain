@@ -195,9 +195,9 @@ def main(
         "hidden_dim": 256,
         "vocab_size": None,
         "dropout_prob": 0,
-        "init_state_context": True,
-        "concat_encoder_input": False,
-        "compose_encoder_state": False,
+        "init_state_context": True,  # works best with
+        "concat_encoder_input": True,  # works best with
+        "compose_encoder_state": False,  # works best without
         "compose_dim": 256
     }
 
@@ -208,33 +208,33 @@ def main(
     # selector.add(AtomicFilter(atomic="all"))
     # selector.add(RestrictionFilter(lower=1, upper=2))
     # selector.add(RestrictionFilter(lower=None, upper=-1))
-    selector = SelectFilter(hashes=[
-        "0c957889eb",
-        "1c998884a4",
-        "4056021fb9"
-    ])
-    # selector = NoFilter()
+    # selector = SelectFilter(hashes=[
+    #     "0c957889eb",
+    #     "1c998884a4",
+    #     "4056021fb9"
+    # ])
+    selector = NoFilter()
     # * /filters
 
     # * test_filters
     # test_selector = FilterApply(condition="or")
     # test_selector.add(AtomicOnlyFilter(atomic="all"))
     # test_selector.add(RestrictionFilter(lower=4, upper=None))
-    # test_selector = SelectFilter(hashes=[
-    #     "4805042859",
-    #     "aae49a2efc",
-    #     "ac4932d9e6",
-    #     "2baa2ed86c",
-    #     "4056021fb9",
-    #     "548c9f191e",
-    #     "c37cb98a75",
-    #     "b628ede2fc",
-    #     "f38520e138",
-    #     "65597e2291",
-    #     "5e65a2eaac",
-    #     "838d8aecad"
-    # ])
-    test_selector = NullFilter()
+    test_selector = SelectFilter(hashes=[
+        "4805042859",
+        "aae49a2efc",
+        "ac4932d9e6",
+        "2baa2ed86c",
+        "4056021fb9",
+        "548c9f191e",
+        "c37cb98a75",
+        "b628ede2fc",
+        "f38520e138",
+        "65597e2291",
+        "5e65a2eaac",
+        "838d8aecad"
+    ])
+    # test_selector = NullFilter()
     # * /test_filters
 
     # * labelers

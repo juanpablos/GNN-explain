@@ -1,7 +1,8 @@
-from src.models.utils import Waiter
 import torch
 import torch.nn as nn
 from torch.nn.utils.rnn import pack_padded_sequence, pad_packed_sequence
+
+from src.models.utils import Waiter
 
 
 class LSTMDecoder(nn.Module):
