@@ -12,6 +12,7 @@ from torch.utils.data import DataLoader
 
 from src.data.vocabulary import Vocabulary
 from src.models import MLP, LSTMCellDecoder, LSTMDecoder
+from src.training.check_formulas import FormulaReconstruction
 
 from . import Trainer
 
@@ -37,8 +38,9 @@ class Collator:
 
 
 class Metric:
-    def __init__(self, pad_token_id: int):
-        self.pad_token_id = pad_token_id
+    def __init__(self, vocabulary: Vocabulary):
+        self.vocabulary = vocabulary
+        self.formula_reconstruction = FormulaReconstruction(vocabulary)
 
     def token_accuracy(self, scores, targets, k, lengths):
         # scores: logits (batch, L, vocab) with padding
@@ -169,25 +171,13 @@ class Metric:
 
         return corpus_bleu(references, hypothesis)
 
-    def sintaxis_check(self, predictions, vocabulary: Vocabulary):
-        eos_token_id = vocabulary.end_token_id
-
-        n_sequences, sequence_length = predictions.size()
+    def sintaxis_check(self, predictions):
         predictions = predictions.tolist()
 
-        correct = 0.0
-        for sequence in predictions:
-            formula = []
-            for j in range(sequence_length):
-                token_id = sequence[j]
-                if token_id == eos_token_id:
-                    break
-                formula.append(vocabulary.get_token(token_id))
+        expressions, correct = self.formula_reconstruction.batch2expression(
+            predictions)
 
-            # TODO: perform check
-            correct += ...
-
-        return correct / n_sequences
+        return float(correct) / len(predictions)
 
 
 class RecurrentTrainer(Trainer):
@@ -203,10 +193,12 @@ class RecurrentTrainer(Trainer):
         "train_token_acc3",
         "train_sent_acc",
         "train_bleu4",
+        "train_valid",
         "test_token_acc1",
         "test_token_acc3",
         "test_sent_acc",
         "test_bleu4",
+        "test_valid",
     ]
 
     def __init__(self,
@@ -215,7 +207,7 @@ class RecurrentTrainer(Trainer):
 
         super().__init__(logging_variables=logging_variables)
         self.vocabulary = vocabulary
-        self.metrics = Metric(pad_token_id=self.vocabulary.pad_token_id)
+        self.metrics = Metric(vocabulary=vocabulary)
 
     def activation(self, output, dim=1):
         return torch.log_softmax(output, dim=dim)
@@ -391,7 +383,10 @@ class RecurrentTrainer(Trainer):
             "bleu4": self.metrics.bleu_score2(
                 predictions=epoch_predictions,
                 targets=epoch_targets,
-                lengths=epoch_lengths)
+                lengths=epoch_lengths),
+            "valid": self.metrics.sintaxis_check(
+                predictions=epoch_predictions
+            )
         }
 
         return_metrics = {"loss": average_loss, **metrics}

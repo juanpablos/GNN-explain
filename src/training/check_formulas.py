@@ -1,5 +1,6 @@
 import re
-from typing import Dict, List, Optional, Tuple
+import warnings
+from typing import Dict, List, Optional, Set, Tuple
 
 from src.data.vocabulary import Vocabulary
 from src.graphs.foc import *
@@ -10,12 +11,9 @@ class FormulaReconstruction:
     def __init__(self, vocabulary: Vocabulary):
         self.vocabulary = vocabulary
 
-        self.properties = set(vocabulary.get_id(token)
-                              for token in ["RED", "BLUE", "GREEN", "BLACK"])
-        self.relations = set(vocabulary.get_id(token)
-                             for token in ["EDGE"])
-        self.operators = set(vocabulary.get_id(token)
-                             for token in ["AND", "OR"])
+        self.properties = self.get_ids(["RED", "BLUE", "GREEN", "BLACK"])
+        self.relations = self.get_ids(["EDGE"])
+        self.operators = self.get_ids(["AND", "OR"])
 
         self.exist_indices = set()
         for token, token_id in self.vocabulary.token2id.items():
@@ -27,6 +25,17 @@ class FormulaReconstruction:
             token = self.vocabulary.get_token(exist_ind)
             _, lower, upper, *_ = re.split(r",|\(|\)", token)
             self.exist_values[exist_ind] = (lower, upper)
+
+    def get_ids(self, tokens):
+        token_ids: Set[int] = set()
+        for token in tokens:
+            try:
+                token_id = self.vocabulary.get_id(token)
+                token_ids.add(token_id)
+            except KeyError as e:
+                warnings.warn(f"{e.args[0]} is not in the vocabulary")
+
+        return token_ids
 
     def id2expression(self, token_id: int):
         # token_id is an index, we have to remap it to the token
@@ -76,9 +85,16 @@ class FormulaReconstruction:
         # * then the formula is not correct
 
         last, string = rec(0)
-        if token_ids[last] != self.vocabulary.end_token_id:
+
+        # the next index should be accesable and should be <eos>
+        if last + 1 > len(token_ids) - 1:
             raise ValueError(
-                "Invalid input: there are tokens left in the input")
+                "Invalid input: the formula does not have end token")
+
+        if token_ids[last + 1] != self.vocabulary.end_token_id:
+            raise ValueError(
+                "Invalid input: there are tokens left in the input "
+                "that are not padding")
 
         return string
 

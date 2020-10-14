@@ -195,9 +195,13 @@ def main(
         "hidden_dim": 256,
         "vocab_size": None,
         "dropout_prob": 0,
-        "init_state_context": True,  # works best with
-        "concat_encoder_input": True,  # works best with
-        "compose_encoder_state": False,  # works best without
+        # works best with
+        "init_state_context": True,
+        # works best with
+        # when too little classes and/or data, works best without
+        "concat_encoder_input": True,
+        # works best without
+        "compose_encoder_state": False,
         "compose_dim": 256
     }
 
