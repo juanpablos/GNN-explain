@@ -12,7 +12,7 @@ import torch
 
 from src.data.datasets import GraphDataset
 from src.data.sampler import SubsetSampler
-from src.generate_graphs import graph_stream
+from src.generate_graphs import graph_data_stream
 from src.graphs import *
 from src.run_logic import run, seed_everything
 from src.training.gnn_training import GNNTrainer
@@ -52,7 +52,7 @@ def run_experiment(
         unique_test: bool = True):
 
     logger.debug("Initializing graph stream")
-    stream = graph_stream(**data_config)
+    stream = graph_data_stream(**data_config)
 
     logger.info(f"Pre-generating database of {total_graphs} graphs")
     data_pool = GraphDataset(stream, limit=total_graphs)

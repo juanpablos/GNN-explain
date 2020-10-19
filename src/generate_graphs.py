@@ -4,16 +4,44 @@ from src.data.graph_transform import stream_transform
 from src.graphs import *
 
 
-def graph_stream(formula: FOC,
-                 generator_fn: str,
-                 min_nodes: int,
-                 max_nodes: int,
-                 seed: int = None,
-                 n_properties: int = 10,
-                 property_distribution: str = "uniform",
-                 distribution: List[float] = None,
-                 verbose: int = 0,
-                 **kwargs):
+def graph_object_stream(generator_fn: str,
+                        min_nodes: int,
+                        max_nodes: int,
+                        seed: int = None,
+                        n_properties: int = 10,
+                        property_distribution: str = "uniform",
+                        distribution: List[float] = None,
+                        verbose: int = 0,
+                        **kwargs):
+
+    _generator = graph_generator(
+        generator_fn=generator_fn,
+        min_nodes=min_nodes,
+        max_nodes=max_nodes,
+        seed=seed,
+        **kwargs)
+    _properties = property_generator(
+        graph_generator=_generator,
+        number_of_graphs=None,
+        n_properties=n_properties,
+        property_distribution=property_distribution,
+        distribution=distribution,
+        seed=seed,
+        verbose=verbose)
+
+    return _properties
+
+
+def graph_data_stream(formula: FOC,
+                      generator_fn: str,
+                      min_nodes: int,
+                      max_nodes: int,
+                      seed: int = None,
+                      n_properties: int = 10,
+                      property_distribution: str = "uniform",
+                      distribution: List[float] = None,
+                      verbose: int = 0,
+                      **kwargs):
     """
 
     Args:
@@ -31,55 +59,19 @@ def graph_stream(formula: FOC,
         torch_geometric.Data: a single data object representing a graph and its labels
     """
 
-    _generator = graph_generator(
+    graphs = graph_object_stream(
         generator_fn=generator_fn,
         min_nodes=min_nodes,
         max_nodes=max_nodes,
         seed=seed,
-        **kwargs)
-    _properties = property_generator(
-        graph_generator=_generator,
-        number_of_graphs=None,
-        n_properties=n_properties,
         property_distribution=property_distribution,
         distribution=distribution,
-        seed=seed,
-        verbose=verbose)
+        verbose=verbose,
+        **kwargs)
 
-    for graph in _properties:
+    for graph in graphs:
         labels = formula(graph)
         yield stream_transform(graph=graph,
                                node_labels=labels,
                                n_node_features=n_properties,
                                feature_type="categorical")
-
-
-def generate_graphs(formula,
-                    generator_fn,
-                    n_graphs,
-                    min_nodes,
-                    max_nodes,
-                    seed,
-                    n_properties,
-                    property_distribution,
-                    distribution,
-                    verbose,
-                    **kwargs):
-
-    _generator = graph_generator(
-        generator_fn=generator_fn,
-        min_nodes=min_nodes,
-        max_nodes=max_nodes,
-        seed=seed,
-        **kwargs)
-    _properties = property_generator(
-        graph_generator=_generator,
-        number_of_graphs=n_graphs,
-        n_properties=n_properties,
-        property_distribution=property_distribution,
-        distribution=distribution,
-        seed=seed,
-        verbose=0)
-
-    # TODO: offline graph reading
-    raise NotImplementedError("Offline graph reading is not yet implemented")

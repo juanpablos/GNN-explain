@@ -10,7 +10,7 @@ from typing import Any, Dict
 import torch
 
 from src.data.datasets import GraphDataset
-from src.generate_graphs import graph_stream
+from src.generate_graphs import graph_data_stream
 from src.graphs import *
 from src.run_logic import run, seed_everything
 from src.training.gnn_training import GNNTrainer
@@ -49,7 +49,7 @@ def run_experiment(
         lr: float = 0.01,
         stop_when: StopFormat = None):
 
-    stream = graph_stream(**data_config)
+    stream = graph_data_stream(**data_config)
     models = []
 
     stats = {
