@@ -5,10 +5,10 @@ from typing import Any, DefaultDict, Dict, List, Union
 import torch
 from torch.utils.data import DataLoader
 
+from src.data.auxiliary import NetworkDatasetCollectionWrapper
 from src.data.datasets import (
     LabeledDataset,
     LabeledSubset,
-    NetworkDatasetCollectionWrapper,
     TextSequenceDataset
 )
 from src.graphs.foc import Element

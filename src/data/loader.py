@@ -4,12 +4,14 @@ from typing import Dict, List
 
 import torch
 
-from src.data.datasets import (
+from src.data.auxiliary import (
     AggregatedNetworkDataset,
+    NetworkDatasetCollectionWrapper
+)
+from src.data.datasets import (
     LabeledDataset,
     LabeledSubset,
     NetworkDataset,
-    NetworkDatasetCollectionWrapper,
     TextSequenceDataset
 )
 from src.data.formula_index import FormulaMapping
