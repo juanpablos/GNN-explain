@@ -21,7 +21,7 @@ from torch.utils.data import Dataset
 
 from src.data.vocabulary import Vocabulary
 from src.graphs.foc import Element
-from src.typing import DatasetLike, Indexable, IndexableIterable, S_co, T_co
+from src.typing import DatasetLike, Indexable, IndexableIterable, S, S_co, T_co
 
 logger = logging.getLogger(__name__)
 
@@ -275,9 +275,9 @@ class LabeledSubset(BaseLabeledDataset[T_co, S_co], Dataset):
             f"from_iterable is not implemented for {cls}")
 
 
-class DummyIterable(Generic[S_co]):
-    def __init__(self, value: S_co, length: int):
-        self.value: S_co = value
+class DummyIterable(Generic[S]):
+    def __init__(self, value: S, length: int):
+        self.value: S = value
         self.length: int = length
 
     def __len__(self):
@@ -291,14 +291,14 @@ class DummyIterable(Generic[S_co]):
             yield self.value
 
 
-class NetworkDataset(Dataset, Generic[S_co]):
+class NetworkDataset(Dataset, Generic[S]):
     """
     A Pytorch dataset that loads a pickle file storing a list of the outputs of torch.nn.Module.state_dict(), that is basically a Dict[str, Tensor]. This dataset loads that file, for each network it flattens the tensors into a single vector and stores a tuple (flattened vector, label). Stores exactly the first 'limit' elements of the list.
     """
 
     def __init__(
             self,
-            label: S_co,
+            label: S,
             formula: Element,
             file: str = "",
             limit: int = None,
@@ -317,7 +317,7 @@ class NetworkDataset(Dataset, Generic[S_co]):
             dataset = preloaded
 
         self._dataset: IndexableIterable[torch.Tensor] = dataset
-        self._labels: IndexableIterable[S_co] = DummyIterable(
+        self._labels: IndexableIterable[S] = DummyIterable(
             label, length=len(dataset))
         self._multilabel = multilabel
         self._formula = formula
@@ -326,7 +326,7 @@ class NetworkDataset(Dataset, Generic[S_co]):
 
     @classmethod
     def categorical(cls,
-                    label: S_co,
+                    label: S,
                     formula: Element,
                     file: str = "",
                     limit: int = None,
@@ -350,7 +350,7 @@ class NetworkDataset(Dataset, Generic[S_co]):
 
     @classmethod
     def text_sequence(cls,
-                      label: S_co,
+                      label: S,
                       formula: Element,
                       file: str = "",
                       limit: int = None,
