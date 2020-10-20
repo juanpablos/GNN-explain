@@ -222,7 +222,7 @@ def main(
                 "min_nodes": 50,
                 "max_nodes": 100,
                 "n_graphs": 5,
-                "m": 8
+                "m": 5
             },
             {
                 "min_nodes": 10,

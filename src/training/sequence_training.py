@@ -205,7 +205,7 @@ class Metric:
             correct, n_nodes = self.formula_mapping[index]
 
             if formula is not None:
-                # ! this takes 0.5 sec per formula
+                # ! this takes 0.01 sec per formula
                 t = timer()
                 pred = self.formula_mapping.run_formula(formula)
                 t1 = timer() - t

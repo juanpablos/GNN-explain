@@ -103,25 +103,23 @@ class FormulaAppliedDatasetWrapper:
             max_nodes = config["max_nodes"]
             n_graphs = config["n_graphs"]
 
+            curr_seed = rand.randint(1, 1 << 30)
+
+            # need kwargs to have "seed" and "n_properties"
+            stream = graph_object_stream(
+                seed=curr_seed,
+                generator_fn="random",
+                property_distribution="uniform",
+                distribution=None,
+                verbose=0,
+                n_properties=n_properties,
+                name="erdos",
+                min_nodes=min_nodes,
+                max_nodes=max_nodes,
+                m=m)
+
             for _ in range(n_graphs):
-
-                curr_seed = rand.randint(1, 1 << 30)
-
-                # need kwargs to have "seed" and "n_properties"
-                stream = graph_object_stream(
-                    seed=curr_seed,
-                    generator_fn="random",
-                    property_distribution="uniform",
-                    distribution=None,
-                    verbose=0,
-                    n_properties=n_properties,
-                    name="erdos",
-                    min_nodes=min_nodes,
-                    max_nodes=max_nodes,
-                    m=m)
-
-                for _ in range(n_graphs):
-                    self.graphs.append(next(stream))
+                self.graphs.append(next(stream))
 
     def _run_formulas(self):
         logger.debug("Evaluating graphs with formulas")
@@ -145,6 +143,7 @@ class FormulaAppliedDatasetWrapper:
         results = []
         for graph in self.graphs:
             res = formula(graph)
+
             results.append(torch.from_numpy(res))
 
         return torch.cat(results, dim=0)
