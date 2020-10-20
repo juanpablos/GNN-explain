@@ -8,6 +8,8 @@ __all__ = ["AND", "FOC", "NEG", "OR", "Exist", "ForAll", "Property", "Role"]
 
 
 class Element(ABC):
+    _valid: bool
+
     @abstractmethod
     def __call__(self, **kwargs):
         raise NotImplementedError("Element is abstract")
@@ -31,16 +33,17 @@ class Element(ABC):
     def __hash__(self):
         return hash(repr(self))
 
+    @property
+    def is_valid(self):
+        return self._valid
 
-class IndependentElement(Element):
-    ...
+    def validate(self):
+        if not self.is_valid:
+            raise ValueError("Invalid Formula")
+        return self
 
 
-class DependentElement(Element):
-    ...
-
-
-class Property(IndependentElement):
+class Property(Element):
     """Returns a 1d vector with the nodes that satisfy the condition"""
     # REV: seach for a better way to do this
     available = {
@@ -58,6 +61,9 @@ class Property(IndependentElement):
         self.name = prop
         self.variable = variable if variable is not None else "."
 
+        # a property is a valid expression as is
+        self._valid = True
+
     def __call__(self, properties, **kwargs):
         """Returns a numpy array with a 1 for nodes that satisfy the property, and 0 to which does not"""
         return properties == self.prop
@@ -69,7 +75,7 @@ class Property(IndependentElement):
         return f"{self.name}({self.variable})"
 
 
-class Role(DependentElement):
+class Role(Element):
     """Returns a 2d matrix with the relations between nodes that satisfy the condition"""
 
     def __init__(
@@ -81,6 +87,9 @@ class Role(DependentElement):
         self.name = relation
         self.variable1 = variable1 if variable1 is not None else "."
         self.variable2 = variable2 if variable2 is not None else "."
+
+        # roles need to be inside an exist expression to be valid
+        self._valid = False
 
     def __call__(self, graph, adjacency, **kwargs):
         """Returns an adjacency matrix for a graph"""
@@ -95,9 +104,12 @@ class Role(DependentElement):
         return f"{self.name}({self.variable1}, {self.variable2})"
 
 
-class Operator(IndependentElement):
+class Operator(Element):
     def __init__(self, *args: Element):
         self.operands = args
+
+        # if one is not valid, then the expression as a whole is not valid
+        self._valid = min(val.is_valid for val in args)
 
     def __repr__(self):
         args = ",".join([repr(el) for el in self.operands])
@@ -108,6 +120,8 @@ class NEG(Operator):
     def __init__(self, expression: Element):
         super().__init__()
         self.expression = expression
+
+        self._valid = expression._valid
 
     def __repr__(self):
         expr = self.expression
@@ -147,7 +161,7 @@ class OR(Operator):
         return reduce(np.logical_or, intermediate)  # type: ignore
 
 
-class Exist(IndependentElement):
+class Exist(Element):
     def __init__(
             self,
             expression: Element,
@@ -169,6 +183,10 @@ class Exist(IndependentElement):
         self.lower = lower
         self.upper = upper
         self.symbol = "∃"
+
+        # Exists makes the expression valid, either the inner expression is a
+        # Property or a Role. If it is a role, then it fixes is
+        self._valid = True
 
     def __repr__(self):
         # ?? Exist(None, 4) should be the same as Exist(0, 4): should we force it?
@@ -199,11 +217,13 @@ class Exist(IndependentElement):
         return (per_node >= lower) & (per_node <= upper)
 
 
-class ForAll(IndependentElement):
+class ForAll(Element):
     def __init__(self, expression: Element, *, variable: str = None):
         self.variable = variable if variable is not None else "."
         self.expression = expression
         self.symbol = "∀"
+
+        self._valid = True
 
     def __repr__(self):
         return f"{self.__class__.__name__}({self.expression!r})"
@@ -224,7 +244,10 @@ class ForAll(IndependentElement):
 
 
 class FOC:
-    def __init__(self, expression: IndependentElement):
+    def __init__(self, expression: Element):
+        if not expression.is_valid:
+            raise ValueError(
+                "Invalid Formula: All Roles must be inside an Exist")
         self.expression = expression
 
     def __call__(self, graph: nx.Graph) -> np.ndarray:
@@ -239,7 +262,9 @@ class FOC:
         if res.ndim > 1:
             res = np.squeeze(res)
 
-        assert res.ndim == 1, "Labels must be one per item"
+        if res.ndim != 1:
+            raise ValueError("Invalid Formula: Labels must be one per item")
+
         return res.astype(int)
 
     def __str__(self):

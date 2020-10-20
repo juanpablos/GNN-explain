@@ -4,7 +4,6 @@ from typing import Dict, List, Optional, Set, Tuple
 
 from src.data.vocabulary import Vocabulary
 from src.graphs.foc import *
-from src.graphs.foc import Element
 
 
 class FormulaReconstruction:
@@ -99,22 +98,14 @@ class FormulaReconstruction:
         return string
 
     def batch2expression(self, batch_data: List[List[int]]):
-        expressions: List[str] = []
+        expressions: List[Optional[FOC]] = []
         n_compiled = 0
         for sample in batch_data:
             try:
                 formula = self.tokens2expression(sample)
-
-                expressions.append(formula)
+                expressions.append(FOC(eval(formula)))
                 n_compiled += 1
             except ValueError:
-                expressions.append("None")
+                expressions.append(None)
 
         return expressions, n_compiled
-
-    def text2object(self, formulas: List[str]):
-        formula_objects: List[Optional[Element]] = []
-        for f in formulas:
-            formula_objects.append(eval(f))
-
-        return formula_objects

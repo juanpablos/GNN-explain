@@ -11,4 +11,5 @@ class FormulaMapping:
             self.mapping: Dict[str, str] = json.load(f)
 
     def __getitem__(self, key: str) -> Element:
-        return eval(self.mapping[key])
+        formula: Element = eval(self.mapping[key])
+        return formula.validate()
