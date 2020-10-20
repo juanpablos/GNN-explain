@@ -49,7 +49,7 @@ class FormulaAppliedDatasetWrapper:
             self,
             datasets: Sequence[NetworkDataset],
             configs: List[Dict[str, int]],
-            n_properties: int,
+            n_properties: int = 4,
             seed: int = 0):
         if len(datasets) < 1:
             raise ValueError("datasets cannot be an empty sequence")
@@ -88,6 +88,8 @@ class FormulaAppliedDatasetWrapper:
             n_properties: int,
             seed: int = 0):
 
+        logger.debug("Creating graphs")
+
         rand = random.Random(seed)
 
         for config in configs:
@@ -122,6 +124,7 @@ class FormulaAppliedDatasetWrapper:
                     self.graphs.append(next(stream))
 
     def _run_formulas(self):
+        logger.debug("Evaluating graphs with formulas")
         for formula in self.formulas:
             result = self.run_formula(formula)
 

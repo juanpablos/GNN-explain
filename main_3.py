@@ -2,7 +2,7 @@ import logging
 import os
 import random
 from timeit import default_timer as timer
-from typing import List
+from typing import Any, Dict, List
 
 import torch
 
@@ -47,6 +47,7 @@ def run_experiment(
         encoder_config: MinModelConfig,
         decoder_config: LSTMConfig,
         data_config: NetworkDataConfig,
+        graph_config: Dict[str, Any],
         iterations: int = 100,
         gpu_num: int = 0,
         seed: int = 10,
@@ -71,10 +72,11 @@ def run_experiment(
     #   single label: formula_hash -> label_id
     #   multilabel: formula_hash -> List[label_id]
     # data_reconstruction: point_index -> formula_object
-    (datasets, vocabulary,
-     hash_formula, hash_label,
-     data_reconstruction) = text_sequence_loader(
+    (datasets, vocabulary, hash_formula, hash_label,
+     data_reconstruction,
+     formula_target) = text_sequence_loader(
         **data_config,
+        graph_config=graph_config,
         _legacy_load_without_batch=_legacy_load_without_batch)
 
     if isinstance(datasets, tuple):
@@ -99,7 +101,8 @@ def run_experiment(
     decoder_config["vocab_size"] = vocab_size
 
     trainer = RecurrentTrainer(logging_variables="all",
-                               vocabulary=vocabulary)
+                               vocabulary=vocabulary,
+                               target_apply_mapping=formula_target)
 
     trainer.init_dataloader(
         train_data,
@@ -205,6 +208,31 @@ def main(
         "compose_dim": 256
     }
 
+    graph_config = {
+        "n_properties": 4,
+        "seed": seed,
+        "configs": [
+            {
+                "min_nodes": 10,
+                "max_nodes": 60,
+                "n_graphs": 5,
+                "m": 4
+            },
+            {
+                "min_nodes": 50,
+                "max_nodes": 100,
+                "n_graphs": 5,
+                "m": 8
+            },
+            {
+                "min_nodes": 10,
+                "max_nodes": 100,
+                "n_graphs": 5,
+                "m": 2
+            },
+        ]
+    }
+
     model_hash = "f4034364ea-batch"
 
     # * filters
@@ -212,33 +240,33 @@ def main(
     # selector.add(AtomicFilter(atomic="all"))
     # selector.add(RestrictionFilter(lower=1, upper=2))
     # selector.add(RestrictionFilter(lower=None, upper=-1))
-    # selector = SelectFilter(hashes=[
-    #     "0c957889eb",
-    #     "1c998884a4",
-    #     "4056021fb9"
-    # ])
-    selector = NoFilter()
+    selector = SelectFilter(hashes=[
+        "0c957889eb",
+        "1c998884a4",
+        "4056021fb9"
+    ])
+    # selector = NoFilter()
     # * /filters
 
     # * test_filters
     # test_selector = FilterApply(condition="or")
     # test_selector.add(AtomicOnlyFilter(atomic="all"))
     # test_selector.add(RestrictionFilter(lower=4, upper=None))
-    test_selector = SelectFilter(hashes=[
-        "4805042859",
-        "aae49a2efc",
-        "ac4932d9e6",
-        "2baa2ed86c",
-        "4056021fb9",
-        "548c9f191e",
-        "c37cb98a75",
-        "b628ede2fc",
-        "f38520e138",
-        "65597e2291",
-        "5e65a2eaac",
-        "838d8aecad"
-    ])
-    # test_selector = NullFilter()
+    # test_selector = SelectFilter(hashes=[
+    #     "4805042859",
+    #     "aae49a2efc",
+    #     "ac4932d9e6",
+    #     "2baa2ed86c",
+    #     "4056021fb9",
+    #     "548c9f191e",
+    #     "c37cb98a75",
+    #     "b628ede2fc",
+    #     "f38520e138",
+    #     "65597e2291",
+    #     "5e65a2eaac",
+    #     "838d8aecad"
+    # ])
+    test_selector = NullFilter()
     # * /test_filters
 
     # * labelers
@@ -279,6 +307,7 @@ def main(
         encoder_config=mlp_config,
         decoder_config=lstm_config,
         data_config=data_config,
+        graph_config=graph_config,
         iterations=iterations,
         gpu_num=0,
         seed=seed,

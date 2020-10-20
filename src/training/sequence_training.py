@@ -1,7 +1,7 @@
 import logging
 from itertools import chain
 from typing import List, Literal, Union
-
+from timeit import default_timer as timer
 import numpy as np
 import torch
 import torch.nn as nn
@@ -205,12 +205,19 @@ class Metric:
             correct, n_nodes = self.formula_mapping[index]
 
             if formula is not None:
+                # ! this takes 0.5 sec per formula
+                t = timer()
                 pred = self.formula_mapping.run_formula(formula)
+                t1 = timer() - t
 
+                t = timer()
                 matching = correct.eq(pred)
 
                 micro += matching.sum().item()  # type: ignore
                 macro += matching.float().mean().item()  # type: ignore
+                t2 = timer() - t
+
+                print(f"eval {t1}\tmatching {t2}")
 
             total_nodes += n_nodes
 
@@ -428,14 +435,20 @@ class RecurrentTrainer(Trainer):
                 predictions=epoch_predictions,
                 targets=epoch_targets,
                 lengths=epoch_lengths),
-            "valid": self.metrics.sintaxis_check(
-                predictions=epoch_predictions
-            )
+
         }
+        t = timer()
+        valid = self.metrics.sintaxis_check(
+            predictions=epoch_predictions
+        )
+        metrics["valid"] = valid
+        print(timer() - t, "sintactic", use_train_data)
+        t = timer()
         micro, macro = self.metrics.semantic_validation(
             predictions=epoch_predictions,
             indices=indices
         )
+        print(timer() - t, "semantic", use_train_data)
         metrics["semval_micro"] = micro
         metrics["semval_macro"] = macro
 

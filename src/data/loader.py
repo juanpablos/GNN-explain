@@ -1,11 +1,12 @@
 import logging
 import os
-from typing import Dict, List
+from typing import Any, Dict, List
 
 import torch
 
 from src.data.auxiliary import (
     AggregatedNetworkDataset,
+    FormulaAppliedDatasetWrapper,
     NetworkDatasetCollectionWrapper
 )
 from src.data.datasets import (
@@ -193,6 +194,7 @@ def text_sequence_loader(
     labeler: SequenceLabelerApply,
     formula_mapping: FormulaMapping,
     test_selector: Filter,
+    graph_config: Dict[str, Any],
     load_aggregated: str = None,
     _legacy_load_without_batch: bool = False
 ):
@@ -276,4 +278,5 @@ def text_sequence_loader(
             vocabulary,
             selected_formulas,
             selected_labels,
-            NetworkDatasetCollectionWrapper(datasets))
+            NetworkDatasetCollectionWrapper(datasets),
+            FormulaAppliedDatasetWrapper(datasets, **graph_config))
