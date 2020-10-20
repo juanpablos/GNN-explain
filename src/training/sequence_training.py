@@ -1,7 +1,8 @@
 import logging
 from itertools import chain
+from multiprocessing import Pool
 from typing import List, Literal, Union
-from timeit import default_timer as timer
+
 import numpy as np
 import torch
 import torch.nn as nn
@@ -189,6 +190,20 @@ class Metric:
 
         return float(correct) / len(predictions)
 
+    def _single_validation(self, index, formula):
+        correct = self.formula_mapping[index]
+
+        avg: float = 0.
+
+        if formula is not None:
+            # ! this takes ~0.01 sec per formula
+            pred = self.formula_mapping.run_formula(formula)
+            matching = correct.eq(pred)
+
+            avg += matching.sum().item()  # type: ignore
+
+        return avg
+
     def semantic_validation(self, predictions, indices):
         if self.cached_formulas is None:
             formulas, _ = self.formula_reconstruction.batch2expression(
@@ -196,32 +211,14 @@ class Metric:
         else:
             formulas = self.cached_formulas
 
-        micro = 0.
-        macro = 0.
-        total_nodes = 0
-        total_graphs = self.formula_mapping.n_graphs
+        total_nodes = self.formula_mapping.n_nodes
 
-        for index, formula in zip(indices, formulas):
-            correct, n_nodes = self.formula_mapping[index]
+        with Pool(4) as p:
+            avg = p.starmap(self._single_validation, zip(
+                indices, formulas), chunksize=len(predictions) // 4)
+        n_formulas = len(predictions)
 
-            if formula is not None:
-                # ! this takes 0.01 sec per formula
-                t = timer()
-                pred = self.formula_mapping.run_formula(formula)
-                t1 = timer() - t
-
-                t = timer()
-                matching = correct.eq(pred)
-
-                micro += matching.sum().item()  # type: ignore
-                macro += matching.float().mean().item()  # type: ignore
-                t2 = timer() - t
-
-                print(f"eval {t1}\tmatching {t2}")
-
-            total_nodes += n_nodes
-
-        return micro / total_nodes, macro / total_graphs
+        return sum(avg) / total_nodes / n_formulas
 
 
 class RecurrentTrainer(Trainer):
@@ -238,15 +235,13 @@ class RecurrentTrainer(Trainer):
         "train_sent_acc",
         "train_bleu4",
         "train_valid",
-        "train_semval_micro",
-        "train_semval_macro",
+        "train_semval",
         "test_token_acc1",
         "test_token_acc3",
         "test_sent_acc",
         "test_bleu4",
         "test_valid",
-        "test_semval_micro",
-        "test_semval_macro"
+        "test_semval",
     ]
 
     def __init__(self,
@@ -435,22 +430,17 @@ class RecurrentTrainer(Trainer):
                 predictions=epoch_predictions,
                 targets=epoch_targets,
                 lengths=epoch_lengths),
+            "valid": self.metrics.sintaxis_check(
+                predictions=epoch_predictions
+            )
 
         }
-        t = timer()
-        valid = self.metrics.sintaxis_check(
-            predictions=epoch_predictions
-        )
-        metrics["valid"] = valid
-        print(timer() - t, "sintactic", use_train_data)
-        t = timer()
-        micro, macro = self.metrics.semantic_validation(
+
+        avg = self.metrics.semantic_validation(
             predictions=epoch_predictions,
             indices=indices
         )
-        print(timer() - t, "semantic", use_train_data)
-        metrics["semval_micro"] = micro
-        metrics["semval_macro"] = macro
+        metrics["semval"] = avg
 
         return_metrics = {"loss": average_loss, **metrics}
 
