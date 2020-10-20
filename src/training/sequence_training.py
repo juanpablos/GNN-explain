@@ -10,6 +10,7 @@ from nltk.translate.bleu_score import corpus_bleu
 from torch.nn.utils.rnn import pad_sequence
 from torch.utils.data import DataLoader
 
+from src.data.auxiliary import FormulaAppliedDatasetWrapper
 from src.data.vocabulary import Vocabulary
 from src.models import MLP, LSTMCellDecoder, LSTMDecoder
 from src.training.check_formulas import FormulaReconstruction
@@ -24,8 +25,9 @@ class Collator:
         self.pad_token_id = pad_token_id
 
     def __call__(self, batch):
-        # both: tuple of tensors
-        x, y = zip(*batch)
+        # x,y: tuple of tensors
+        # inds: tuple of numbers
+        x, y, inds = zip(*batch)
         x = torch.stack(x)
 
         y_lens = torch.tensor([target.size(0) for target in y])
@@ -34,13 +36,19 @@ class Collator:
             batch_first=True,
             padding_value=self.pad_token_id)
 
-        return x, y_pad, y_lens
+        return x, y_pad, y_lens, inds
 
 
 class Metric:
-    def __init__(self, vocabulary: Vocabulary):
+    def __init__(
+            self,
+            vocabulary: Vocabulary,
+            result_mapping: FormulaAppliedDatasetWrapper):
         self.vocabulary = vocabulary
         self.formula_reconstruction = FormulaReconstruction(vocabulary)
+        self.formula_mapping = result_mapping
+
+        self.cached_formulas = None
 
     def token_accuracy(self, scores, targets, k, lengths):
         # scores: logits (batch, L, vocab) with padding
@@ -174,10 +182,39 @@ class Metric:
     def sintaxis_check(self, predictions):
         predictions = predictions.tolist()
 
-        expressions, correct = self.formula_reconstruction.batch2expression(
+        formulas, correct = self.formula_reconstruction.batch2expression(
             predictions)
 
+        self.cached_formulas = formulas
+
         return float(correct) / len(predictions)
+
+    def semantic_validation(self, predictions, indices):
+        if self.cached_formulas is None:
+            formulas, _ = self.formula_reconstruction.batch2expression(
+                predictions)
+        else:
+            formulas = self.cached_formulas
+
+        micro = 0.
+        macro = 0.
+        total_nodes = 0
+        total_graphs = self.formula_mapping.n_graphs
+
+        for index, formula in zip(indices, formulas):
+            correct, n_nodes = self.formula_mapping[index]
+
+            if formula is not None:
+                pred = self.formula_mapping.run_formula(formula)
+
+                matching = correct.eq(pred)
+
+                micro += matching.sum().item()  # type: ignore
+                macro += matching.float().mean().item()  # type: ignore
+
+            total_nodes += n_nodes
+
+        return micro / total_nodes, macro / total_graphs
 
 
 class RecurrentTrainer(Trainer):
@@ -194,20 +231,27 @@ class RecurrentTrainer(Trainer):
         "train_sent_acc",
         "train_bleu4",
         "train_valid",
+        "train_semval_micro",
+        "train_semval_macro",
         "test_token_acc1",
         "test_token_acc3",
         "test_sent_acc",
         "test_bleu4",
         "test_valid",
+        "test_semval_micro",
+        "test_semval_macro"
     ]
 
     def __init__(self,
                  vocabulary: Vocabulary,
+                 target_apply_mapping: FormulaAppliedDatasetWrapper,
                  logging_variables: Union[Literal["all"], List[str]] = "all"):
 
         super().__init__(logging_variables=logging_variables)
         self.vocabulary = vocabulary
-        self.metrics = Metric(vocabulary=vocabulary)
+        self.metrics = Metric(
+            vocabulary=vocabulary,
+            result_mapping=target_apply_mapping)
 
     def activation(self, output, dim=1):
         return torch.log_softmax(output, dim=dim)
@@ -318,7 +362,7 @@ class RecurrentTrainer(Trainer):
 
         accum_loss = []
 
-        for x, y, y_lens in self.train_loader:
+        for x, y, y_lens, _ in self.train_loader:
             x = x.to(self.device)
             y = y.to(self.device)
             y_lens = y_lens.to(self.device)
@@ -363,7 +407,7 @@ class RecurrentTrainer(Trainer):
 
         epoch_scores, epoch_predictions, \
             epoch_targets, epoch_lengths, \
-            average_loss = self.run_pass(loader, keep_device=True)
+            indices, average_loss = self.run_pass(loader, keep_device=True)
 
         metrics = {
             "token_acc1": self.metrics.token_accuracy2(
@@ -388,6 +432,12 @@ class RecurrentTrainer(Trainer):
                 predictions=epoch_predictions
             )
         }
+        micro, macro = self.metrics.semantic_validation(
+            predictions=epoch_predictions,
+            indices=indices
+        )
+        metrics["semval_micro"] = micro
+        metrics["semval_macro"] = macro
 
         return_metrics = {"loss": average_loss, **metrics}
 
@@ -420,11 +470,13 @@ class RecurrentTrainer(Trainer):
         targets = []
         lengths = []
 
+        indices = []
+
         total_batch = 0
         max_sequence = 0
 
         with torch.no_grad():
-            for x, y, y_lens in dataloader:
+            for x, y, y_lens, inds in dataloader:
                 x: torch.Tensor = x.to(self.device)
                 y = y.to(self.device)
                 y_lens = y_lens.to(self.device)
@@ -488,6 +540,8 @@ class RecurrentTrainer(Trainer):
                 targets.append(y.detach())
                 lengths.append(y_lens.detach())
 
+                indices.extend(inds)
+
                 # flatten the batch scores to (*, vocab_dim) and the targets to
                 # a vector
                 # the loss will ignore the padding tokens
@@ -518,7 +572,7 @@ class RecurrentTrainer(Trainer):
             epoch_targets = epoch_targets.cpu()
             epoch_lengths = epoch_lengths.cpu()
 
-        return epoch_scores, epoch_predictions, epoch_targets, epoch_lengths, average_loss
+        return epoch_scores, epoch_predictions, epoch_targets, epoch_lengths, indices, average_loss
 
     def concat0_tensors(self,
                         tensor_list: List[torch.Tensor],

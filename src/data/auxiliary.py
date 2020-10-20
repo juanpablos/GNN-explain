@@ -1,7 +1,7 @@
 import bisect
 import logging
 import random
-from typing import Dict, List, Optional, Sequence
+from typing import Dict, List, Optional, Sequence, Tuple, overload
 
 import torch
 from torch import Tensor
@@ -71,16 +71,16 @@ class FormulaAppliedDatasetWrapper:
             seed=seed)
 
         self.n_graphs = len(self.graphs)
-        self.n_nodes = sum(len(g) for g in self.graphs)
+        self.n_nodes = [len(g) for g in self.graphs]
 
         self._run_formulas()
 
     def __len__(self):
         return self.cumulative_sizes[-1]
 
-    def __getitem__(self, index: int) -> Tensor:
+    def __getitem__(self, index: int) -> Tuple[Tensor, int]:
         dataset_index = bisect.bisect_right(self.cumulative_sizes, index)
-        return self.applied[dataset_index]
+        return self.applied[dataset_index], self.n_nodes[dataset_index]
 
     def _create_graphs(
             self,
@@ -129,6 +129,11 @@ class FormulaAppliedDatasetWrapper:
                 raise ValueError("One of the target formulas is not valid")
 
             self.applied.append(result)
+
+    @overload
+    def run_formula(self, formula: None) -> None: ...
+    @overload
+    def run_formula(self, formula: FOC) -> Tensor: ...
 
     def run_formula(self, formula: Optional[FOC]):
         if formula is None:

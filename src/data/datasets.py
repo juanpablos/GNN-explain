@@ -451,7 +451,7 @@ class TextSequenceDataset(
         self._vocabulary = vocabulary
 
     def __getitem__(self, index: int):
-        return self.dataset[index], self.labels[index]
+        return self.dataset[index], self.labels[index], index
 
     def __len__(self):
         return len(self.dataset)
