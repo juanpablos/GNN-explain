@@ -14,7 +14,7 @@ from src.eval_utils import evaluate_text_model
 from src.run_logic import run, seed_everything
 from src.training.sequence_training import RecurrentTrainer
 from src.typing import LSTMConfig, MinModelConfig, NetworkDataConfig
-from src.utils import write_result_info_text
+from src.utils import write_result_info_text, write_train_data
 from src.visualization.curve_plot import plot_training
 
 logger = logging.getLogger("src")
@@ -61,6 +61,7 @@ def run_experiment(
         model_name: str = None,
         plot_filename: str = None,
         plot_title: str = None,
+        train_file: str = None,
         info_filename: str = "info",
         _legacy_load_without_batch: bool = False
 ):
@@ -160,6 +161,13 @@ def run_experiment(
         }
         torch.save(obj, f"{results_path}/models/{model_name}{ext}.pt")
 
+    metrics = trainer.metric_logger
+    if train_file is not None:
+        write_train_data(
+            metric_history=metrics,
+            save_path=results_path,
+            filename=train_file + ext)
+
     if plot_filename is not None:
         metrics = trainer.metric_logger
         plot_training(
@@ -177,6 +185,7 @@ def main(
         lr: float = 0.001,
         mlp_hidden_layers: List[int] = None,
         save_model: bool = True,
+        write_train_data: bool = True,
         make_plots: bool = True):
 
     if seed is None:
@@ -302,6 +311,9 @@ def main(
     plot_file = None
     if make_plots:
         plot_file = msg
+    train_file = None
+    if write_train_data:
+        train_file = msg
     model_name = None
     if save_model:
         model_name = msg
@@ -325,6 +337,7 @@ def main(
         model_name=model_name,
         plot_filename=plot_file,
         plot_title=msg,  # ? maybe a better message
+        train_file=train_file,
         info_filename=msg,
         _legacy_load_without_batch=True  # ! remove eventually
     )

@@ -8,7 +8,7 @@ from typing import Any, Dict, List
 
 from src.data.utils import label_tensor2idx
 from src.graphs.foc import FOC, Element
-from src.typing import GNNModelConfig
+from src.typing import GNNModelConfig, MetricHistory
 
 logger = logging.getLogger(__name__)
 
@@ -215,3 +215,19 @@ def write_result_info_text(
             o.write(f"\t{formula}: {rates}\n")
 
     return counter
+
+
+def write_train_data(metric_history: MetricHistory,
+                     save_path: str,
+                     filename: str):
+
+    header = list(metric_history.keys())
+    history = [metric_history.get_history(metric) for metric in header]
+
+    os.makedirs(f"{save_path}/train/", exist_ok=True)
+
+    with open(f"{save_path}/train/{filename}.csv", "w", newline="") as f:
+        writer = csv.writer(f, delimiter=",")
+
+        writer.writerow(header)
+        writer.writerows(zip(*history))
