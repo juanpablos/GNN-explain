@@ -193,16 +193,36 @@ class Metric:
     def _single_validation(self, index, formula):
         correct = self.formula_mapping[index]
 
-        avg: float = 0.
+        tp: float = 0.
+        tn: float = 0.
+        fp: float = 0.
+        fn: float = 0.
 
         if formula is not None:
             # ! this takes ~0.01 sec per formula
             pred = self.formula_mapping.run_formula(formula)
-            matching = correct.eq(pred)
 
-            avg += matching.sum().item()  # type: ignore
+            matching = correct == pred
+            matching_select = correct[matching]
 
-        return avg
+            tp_sum = (matching_select == 1).sum()
+
+            pred_sum = (correct == 1).sum()
+            true_sum = (pred == 1).sum()
+
+            fp = pred_sum - tp_sum
+            fn = true_sum - tp_sum
+            tp = tp_sum
+            tn = correct.shape[0] - tp - fp - fn
+
+        return tp, tn, fp, fn
+
+    @staticmethod
+    def _div(a: float, b: float):
+        try:
+            return a / b
+        except ZeroDivisionError:
+            return 0.
 
     def semantic_validation(self, predictions, indices):
         if self.cached_formulas is None:
@@ -211,14 +231,32 @@ class Metric:
         else:
             formulas = self.cached_formulas
 
-        total_nodes = self.formula_mapping.n_nodes
+        # total_nodes = self.formula_mapping.n_nodes
+        # n_formulas = len(predictions)
 
         with Pool(4) as p:
-            avg = p.starmap(self._single_validation, zip(
+            indicators = p.starmap(self._single_validation, zip(
                 indices, formulas), chunksize=len(predictions) // 4)
-        n_formulas = len(predictions)
 
-        return sum(avg) / total_nodes / n_formulas
+        tp: float = 0.
+        tn: float = 0.
+        fp: float = 0.
+        fn: float = 0.
+        for _tp, _tn, _fp, _fn in indicators:
+            tp += _tp
+            tn += _tn
+            fp += _fp
+            fn += _fn
+
+        precision = self._div(tp, tp + fp)
+        recall = self._div(tp, tp + fn)
+        acc = self._div(tp + tn, tp + tn + fp + fn)
+
+        return {
+            "PRE": precision,
+            "REC": recall,
+            "ACC": acc
+        }
 
 
 class RecurrentTrainer(Trainer):
@@ -235,13 +273,17 @@ class RecurrentTrainer(Trainer):
         "train_sent_acc",
         "train_bleu4",
         "train_valid",
-        "train_semval",
+        "train_semvalPRE",
+        "train_semvalREC",
+        "train_semvalACC",
         "test_token_acc1",
         "test_token_acc3",
         "test_sent_acc",
         "test_bleu4",
         "test_valid",
-        "test_semval",
+        "test_semvalPRE",
+        "test_semvalREC",
+        "test_semvalACC",
     ]
 
     def __init__(self,
@@ -436,11 +478,12 @@ class RecurrentTrainer(Trainer):
 
         }
 
-        avg = self.metrics.semantic_validation(
+        semval = self.metrics.semantic_validation(
             predictions=epoch_predictions,
             indices=indices
         )
-        metrics["semval"] = avg
+        for metric_name, value in semval.items():
+            metrics[f"semval{metric_name}"] = value
 
         return_metrics = {"loss": average_loss, **metrics}
 

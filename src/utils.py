@@ -183,7 +183,8 @@ def write_result_info(
 def write_result_info_text(
         path: str,
         filename: str,
-        formula_metrics: Dict[str, Dict[str, Any]]):
+        formula_metrics: Dict[str, Dict[str, Any]],
+        semantic_eval_data: Dict[str, Any]):
 
     logger.debug("Writing result info")
 
@@ -203,5 +204,14 @@ def write_result_info_text(
                 else:
                     o.write(f"\t{formula}: {value}\n")
             o.write("\n")
+
+        # write the sematic graph evaluation data
+        o.write(
+            f"\nTotal Semantic Evaluation Average: {semantic_eval_data['total']}\n\n")
+
+        for formula, rates in zip(semantic_eval_data['formulas'],
+                                  semantic_eval_data['formula_positives']):
+            o.write(f"Individual formula positive rate:\n")
+            o.write(f"\t{formula}: {rates}\n")
 
     return counter

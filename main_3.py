@@ -94,6 +94,9 @@ def run_experiment(
     vocab_size = len(vocabulary)
     logger.debug(f"vocab size of {vocab_size} detected")
 
+    logger.debug(
+        f"Semantic Evaluation information: {formula_target.graph_statistics()['total']} positives")
+
     input_shape = get_input_dim(train_data)
     assert len(input_shape) == 1, "The input dimension is different from 1"
 
@@ -142,7 +145,8 @@ def run_experiment(
     ext = write_result_info_text(
         path=results_path,
         filename=info_filename,
-        formula_metrics=formula_metrics)
+        formula_metrics=formula_metrics,
+        semantic_eval_data=formula_target.graph_statistics())
 
     if model_name is not None:
         logger.debug("Writing model")
@@ -240,33 +244,33 @@ def main(
     # selector.add(AtomicFilter(atomic="all"))
     # selector.add(RestrictionFilter(lower=1, upper=2))
     # selector.add(RestrictionFilter(lower=None, upper=-1))
-    selector = SelectFilter(hashes=[
-        "0c957889eb",
-        "1c998884a4",
-        "4056021fb9"
-    ])
-    # selector = NoFilter()
+    # selector = SelectFilter(hashes=[
+    #     "0c957889eb",
+    #     "1c998884a4",
+    #     "4056021fb9"
+    # ])
+    selector = NoFilter()
     # * /filters
 
     # * test_filters
     # test_selector = FilterApply(condition="or")
     # test_selector.add(AtomicOnlyFilter(atomic="all"))
     # test_selector.add(RestrictionFilter(lower=4, upper=None))
-    # test_selector = SelectFilter(hashes=[
-    #     "4805042859",
-    #     "aae49a2efc",
-    #     "ac4932d9e6",
-    #     "2baa2ed86c",
-    #     "4056021fb9",
-    #     "548c9f191e",
-    #     "c37cb98a75",
-    #     "b628ede2fc",
-    #     "f38520e138",
-    #     "65597e2291",
-    #     "5e65a2eaac",
-    #     "838d8aecad"
-    # ])
-    test_selector = NullFilter()
+    test_selector = SelectFilter(hashes=[
+        "4805042859",
+        "aae49a2efc",
+        "ac4932d9e6",
+        "2baa2ed86c",
+        "4056021fb9",
+        "548c9f191e",
+        "c37cb98a75",
+        "b628ede2fc",
+        "f38520e138",
+        "65597e2291",
+        "5e65a2eaac",
+        "838d8aecad"
+    ])
+    # test_selector = NullFilter()
     # * /test_filters
 
     # * labelers

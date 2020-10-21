@@ -93,7 +93,8 @@ def evaluate_text_model(trainer: RecurrentTrainer,
             eval_targets,
             eval_lengths,
             eval_indices):
-        return {
+
+        _metrics = {
             "token_acc1": trainer.metrics.token_accuracy2(
                 scores=eval_scores,
                 targets=eval_targets,
@@ -111,12 +112,17 @@ def evaluate_text_model(trainer: RecurrentTrainer,
             "bleu4": trainer.metrics.bleu_score2(
                 predictions=eval_predictions,
                 targets=eval_targets,
-                lengths=eval_lengths),
-            "semval": trainer.metrics.semantic_validation(
-                predictions=eval_predictions,
-                indices=eval_indices
-            )
+                lengths=eval_lengths)
         }
+
+        semval = trainer.metrics.semantic_validation(
+            predictions=eval_predictions,
+            indices=eval_indices
+        )
+        for metric_name, value in semval.items():
+            _metrics[f"semval{metric_name}"] = value
+
+        return _metrics
 
     data_loader = trainer.init_dataloader(
         data=test_data,

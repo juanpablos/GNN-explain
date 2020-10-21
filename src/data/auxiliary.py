@@ -3,8 +3,8 @@ import logging
 import random
 from typing import Dict, List, Optional, Sequence, overload
 
+import numpy as np
 import torch
-from torch import Tensor
 
 from src.data.datasets import NetworkDataset
 from src.generate_graphs import graph_object_stream
@@ -55,7 +55,7 @@ class FormulaAppliedDatasetWrapper:
             raise ValueError("datasets cannot be an empty sequence")
 
         self.formulas: List[FOC] = []
-        self.applied: List[Tensor] = []
+        self.applied: List[np.ndarray] = []
 
         for d in datasets:
             assert isinstance(
@@ -78,7 +78,7 @@ class FormulaAppliedDatasetWrapper:
     def __len__(self):
         return self.cumulative_sizes[-1]
 
-    def __getitem__(self, index: int) -> Tensor:
+    def __getitem__(self, index: int) -> np.ndarray:
         dataset_index = bisect.bisect_right(self.cumulative_sizes, index)
         return self.applied[dataset_index]
 
@@ -132,7 +132,7 @@ class FormulaAppliedDatasetWrapper:
             self.applied.append(result)
 
     @overload
-    def run_formula(self, formula: FOC) -> Tensor: ...
+    def run_formula(self, formula: FOC) -> np.ndarray: ...
     @overload
     def run_formula(self, formula: None) -> None: ...
 
@@ -144,9 +144,24 @@ class FormulaAppliedDatasetWrapper:
         for graph in self.graphs:
             res = formula(graph)
 
-            results.append(torch.from_numpy(res))
+            results.append(res)
 
-        return torch.cat(results, dim=0)
+        return np.concatenate(results, axis=0)
+
+    def graph_statistics(self):
+        each_positive = []
+
+        for val in self.applied:
+            pos = val.sum()
+            n_node = val.size
+
+            each_positive.append(pos / n_node)
+
+        return {
+            "formula_positives": each_positive,
+            "formulas": self.formulas,
+            "total": float(sum(each_positive)) / len(each_positive)
+        }
 
 
 class AggregatedNetworkDataset:
