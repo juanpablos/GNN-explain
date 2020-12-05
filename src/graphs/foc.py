@@ -8,7 +8,7 @@ __all__ = ["AND", "FOC", "NEG", "OR", "Exist", "ForAll", "Property", "Role"]
 
 
 class Element(ABC):
-    _valid: bool
+    _is_1d: bool
 
     @abstractmethod
     def __call__(self, **kwargs):
@@ -34,12 +34,13 @@ class Element(ABC):
         return hash(repr(self))
 
     @property
-    def is_valid(self):
-        return self._valid
+    def is_1d(self):
+        return self._is_1d
 
     def validate(self):
-        if not self.is_valid:
-            raise ValueError("Invalid Formula")
+        if not self.is_1d:
+            raise ValueError(
+                "Invalid Formula: All Roles must be inside an Exist")
         return self
 
 
@@ -62,7 +63,7 @@ class Property(Element):
         self.variable = variable if variable is not None else "."
 
         # a property is a valid expression as is
-        self._valid = True
+        self._is_1d = True
 
     def __call__(self, properties, **kwargs):
         """Returns a numpy array with a 1 for nodes that satisfy the property, and 0 to which does not"""
@@ -89,7 +90,7 @@ class Role(Element):
         self.variable2 = variable2 if variable2 is not None else "."
 
         # roles need to be inside an exist expression to be valid
-        self._valid = False
+        self._is_1d = False
 
     def __call__(self, graph, adjacency, **kwargs):
         """Returns an adjacency matrix for a graph"""
@@ -109,7 +110,7 @@ class Operator(Element):
         self.operands = args
 
         # if one is not valid, then the expression as a whole is not valid
-        self._valid = min(val.is_valid for val in args)
+        self._is_1d = min(val.is_1d for val in args)
 
     def __repr__(self):
         args = ",".join([repr(el) for el in self.operands])
@@ -121,7 +122,7 @@ class NEG(Operator):
         super().__init__()
         self.expression = expression
 
-        self._valid = expression._valid
+        self._is_1d = expression.is_1d
 
     def __repr__(self):
         expr = self.expression
@@ -184,9 +185,13 @@ class Exist(Element):
         self.upper = upper
         self.symbol = "∃"
 
-        # Exists makes the expression valid, either the inner expression is a
-        # Property or a Role. If it is a role, then it fixes is
-        self._valid = True
+        # Exists makes the expression valid only if inner expression has a 2d
+        # output. If the output is 1d then the expression is invalid
+        if expression.is_1d:
+            raise ValueError(
+                "The inner expression of Exist must have a 2d output")
+
+        self._is_1d = True
 
     def __repr__(self):
         # ?? Exist(None, 4) should be the same as Exist(0, 4): should we force it?
@@ -223,7 +228,7 @@ class ForAll(Element):
         self.expression = expression
         self.symbol = "∀"
 
-        self._valid = True
+        self._is_1d = True
 
     def __repr__(self):
         return f"{self.__class__.__name__}({self.expression!r})"
@@ -245,10 +250,7 @@ class ForAll(Element):
 
 class FOC:
     def __init__(self, expression: Element):
-        if not expression.is_valid:
-            raise ValueError(
-                "Invalid Formula: All Roles must be inside an Exist")
-        self.expression = expression
+        self.expression = expression.validate()
 
     def __call__(self, graph: nx.Graph) -> np.ndarray:
         adjacency = {"value": None}

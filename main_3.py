@@ -241,7 +241,7 @@ def main(
                 "min_nodes": 10,
                 "max_nodes": 100,
                 "n_graphs": 5,
-                "m": 2
+                "m": 5
             },
         ]
     }
