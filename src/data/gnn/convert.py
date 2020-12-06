@@ -1,4 +1,5 @@
 import networkx as nx
+import torch
 from torch_geometric.utils import from_networkx
 
 
@@ -225,7 +226,8 @@ def convert_gnn(
 
 
 def prepare_gnn(gnn):
-    gnn = gnn.state_dict()
+    if isinstance(gnn, torch.nn.Module):
+        gnn = gnn.state_dict()
 
     gnn_layers = {name_convert(name): value for name,
                   value in gnn.items() if filter_name(name)}
