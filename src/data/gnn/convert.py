@@ -249,8 +249,9 @@ if __name__ == "__main__":
                 os.path.dirname(
                     os.path.dirname(
                         os.path.abspath(__file__))))))
-    from src.models import ACGNN
     from torch_geometric.data import DataLoader
+
+    from src.models import ACGNN
 
     d1 = gnn2data(ACGNN(
         input_dim=6,
