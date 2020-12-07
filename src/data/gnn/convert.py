@@ -58,7 +58,7 @@ def convert_mlp(
         input_nodes = []
         # generate new nodes
         for _ in range(weights[0].size(1)):
-            graph.add_node(node_counter, value=0.)
+            graph.add_node(node_counter, x=0.)
 
             if draw:
                 graph.nodes[node_counter].update({'subset': pos, 'color': 2})
@@ -81,7 +81,7 @@ def convert_mlp(
             local_pos = pos + l + 1
             max_pos = max(max_pos, local_pos)
 
-            graph.add_node(node_counter, value=biases[l][i].item())
+            graph.add_node(node_counter, x=biases[l][i].item())
 
             if draw:
                 graph.nodes[node_counter].update(
@@ -142,7 +142,7 @@ def convert_conv(
     # create new nodes only if no previous output
     if last_output is None:
         first_nodes = [i + len(graph) for i in range(len(input_nodes_all[0]))]
-        graph.add_nodes_from(first_nodes, value=0.)
+        graph.add_nodes_from(first_nodes, x=0.)
 
         if draw:
             for n in first_nodes:
@@ -157,7 +157,7 @@ def convert_conv(
 
     # generate output nodes
     output_nodes = [i + len(graph) for i in range(len(output_nodes_all[0]))]
-    graph.add_nodes_from(output_nodes, value=0.)
+    graph.add_nodes_from(output_nodes, x=0.)
 
     if draw:
         for n in output_nodes:
@@ -196,7 +196,7 @@ def convert_gnn(
                 node_type=5)
 
             output = [n + len(graph) for n in range(len(output_nodes))]
-            graph.add_nodes_from(output, value=0.)
+            graph.add_nodes_from(output, x=0.)
 
             if draw:
                 for n in output:

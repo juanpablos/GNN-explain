@@ -37,7 +37,7 @@ def color_map(node):
 def draw(graph):
     fig, ax = plt.subplots(1, 1, figsize=(20, 10))
     colors = [color_map(graph.nodes[node]) for node in graph.nodes]
-    labels = {node: graph.nodes[node]['value'] for node in graph.nodes}
+    labels = {node: graph.nodes[node]['x'] for node in graph.nodes}
     edge_labels = {(u, v): attrs['weight']
                    for u, v, attrs in graph.edges(data=True)}
 
@@ -53,7 +53,7 @@ def draw_gnn(gnn):
     graph, *_ = convert_gnn(gnn_layers, draw=True)
 
     for node in graph.nodes:
-        graph.nodes[node]['value'] = round(graph.nodes[node]['value'], 3)
+        graph.nodes[node]['x'] = round(graph.nodes[node]['x'], 3)
     for edge in graph.edges:
         graph.edges[edge]['weight'] = round(graph.edges[edge]['weight'], 3)
 
