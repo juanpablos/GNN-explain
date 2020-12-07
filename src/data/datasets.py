@@ -48,10 +48,7 @@ class GraphDataset(NoLabelDataset[T_co]):
     """A Pytorch dataset that takes a (infinite) generator and stores 'limit' elements of it."""
 
     def __init__(self, generator: Iterator[T_co], limit: int):
-        # FIX: here until
-        # https://github.com/microsoft/pylance-release/issues/409
-        dataset = [next(generator) for _ in range(limit)]
-        super().__init__(dataset=dataset)
+        super().__init__(dataset=[next(generator) for _ in range(limit)])
 
 
 class NoLabelSubset(NoLabelDataset[T_co]):

@@ -133,6 +133,7 @@ class Metric:
         return corpus_bleu(references, hypothesis)
 
     def sintaxis_check(self, predictions):
+        # TODO: add the only 20%
         predictions = predictions.tolist()
 
         formulas, correct = self.formula_reconstruction.batch2expression(
@@ -178,6 +179,7 @@ class Metric:
 
     def semantic_validation(self, predictions, indices):
         if self.cached_formulas is None:
+            # TODO: add the only 20%
             formulas, _ = self.formula_reconstruction.batch2expression(
                 predictions)
         else:
