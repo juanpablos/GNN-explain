@@ -95,21 +95,21 @@ def evaluate_text_model(trainer: RecurrentTrainer,
             eval_indices):
 
         _metrics = {
-            "token_acc1": trainer.metrics.token_accuracy2(
+            "token_acc1": trainer.metrics.token_accuracy(
                 scores=eval_scores,
                 targets=eval_targets,
                 k=1,
                 lengths=eval_lengths),
-            "token_acc3": trainer.metrics.token_accuracy2(
+            "token_acc3": trainer.metrics.token_accuracy(
                 scores=eval_scores,
                 targets=eval_targets,
                 k=3,
                 lengths=eval_lengths),
-            "sent_acc": trainer.metrics.sentence_accuracy2(
+            "sent_acc": trainer.metrics.sentence_accuracy(
                 predictions=eval_predictions,
                 targets=eval_targets,
                 lengths=eval_lengths),
-            "bleu4": trainer.metrics.bleu_score2(
+            "bleu4": trainer.metrics.bleu_score(
                 predictions=eval_predictions,
                 targets=eval_targets,
                 lengths=eval_lengths)

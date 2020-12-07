@@ -67,30 +67,6 @@ class Metric:
         # matches: (batch, L)
         matches = torch.any(indices.eq(_expanded), dim=2)
 
-        correct = 0.0
-        total_tokens = 0.0
-        for i, l in enumerate(lengths):
-            correct += matches[i, :l].sum().item()
-            total_tokens += l.item()
-
-        # average over predictions that have the correct index in the topk
-        return correct / total_tokens
-
-    def token_accuracy2(self, scores, targets, k, lengths):
-        # scores: logits (batch, L, vocab) with padding
-        # targets: indices (batch, L) with padding
-        # k: int
-        # lengths: (batch,)
-
-        # (batch, L, k)
-        _, indices = scores.topk(k, dim=2, largest=True, sorted=False)
-        # expand the targets to check if they occur in one of the topk
-        _expanded = targets.unsqueeze(dim=2).expand_as(indices)
-
-        # check if the correct index is in one of the topk
-        # matches: (batch, L)
-        matches = torch.any(indices.eq(_expanded), dim=2)
-
         # flatten, but ignore the padding
         clean_flatten = torch.nn.utils.rnn.pack_padded_sequence(
             matches,
@@ -103,18 +79,7 @@ class Metric:
         # average over predictions that have the correct index in the topk
         return correct / lengths.sum().float().item()
 
-    def sentence_accuracy(self, predictions, targets, lengths):
-        # predictions: indices (batch, L) with padding
-        # targets: indices (batch, L) with padding
-        # lengths: (batch,)
-
-        correct = 0.0
-        for i, l in enumerate(lengths):
-            correct += predictions[i, :l].equal(targets[i, :l])
-
-        return correct / targets.size(0)
-
-    def sentence_accuracy2(self, predictions: torch.Tensor, targets, lengths):
+    def sentence_accuracy(self, predictions: torch.Tensor, targets, lengths):
         # predictions: indices (batch, L) with padding
         # targets: indices (batch, L) with padding
         # lengths: (batch,)
@@ -126,14 +91,13 @@ class Metric:
             batch_first=True,
             enforce_sorted=False)
 
-        padded, _ = torch.nn.utils.rnn.pad_packed_sequence(
-            cleaned, batch_first=True, total_length=predictions.size(1))
-
         # predictions have the same size with targets, but when removing the
         # extra values of prediction and padding again the paddings are of
         # length batch_length, that is not necessarily the max_len of the data
         # so we have to extend with the extra bit that was removed with
         # total_length.
+        padded, _ = torch.nn.utils.rnn.pad_packed_sequence(
+            cleaned, batch_first=True, total_length=predictions.size(1))
 
         # option 2
         # correct_padded = torch.full_like(
@@ -150,19 +114,6 @@ class Metric:
         return padded.eq(targets).all(dim=1).float().mean().item()
 
     def bleu_score(self, predictions, targets, lengths):
-        # use indices instead of string tokens
-        # predictions: indices (batch, L) with padding
-        # targets: indices (batch, L) with padding
-
-        references = []
-        hypothesis = []
-        for i, l in enumerate(lengths):
-            references.append([targets[i, :l].tolist()])
-            hypothesis.append(predictions[i, :l].tolist())
-
-        return corpus_bleu(references, hypothesis)
-
-    def bleu_score2(self, predictions, targets, lengths):
         # use indices instead of string tokens
         # predictions: indices (batch, L) with padding
         # targets: indices (batch, L) with padding
@@ -457,21 +408,21 @@ class RecurrentTrainer(Trainer):
             indices, average_loss = self.run_pass(loader, keep_device=True)
 
         metrics = {
-            "token_acc1": self.metrics.token_accuracy2(
+            "token_acc1": self.metrics.token_accuracy(
                 scores=epoch_scores,
                 targets=epoch_targets,
                 k=1,
                 lengths=epoch_lengths),
-            "token_acc3": self.metrics.token_accuracy2(
+            "token_acc3": self.metrics.token_accuracy(
                 scores=epoch_scores,
                 targets=epoch_targets,
                 k=3,
                 lengths=epoch_lengths),
-            "sent_acc": self.metrics.sentence_accuracy2(
+            "sent_acc": self.metrics.sentence_accuracy(
                 predictions=epoch_predictions,
                 targets=epoch_targets,
                 lengths=epoch_lengths),
-            "bleu4": self.metrics.bleu_score2(
+            "bleu4": self.metrics.bleu_score(
                 predictions=epoch_predictions,
                 targets=epoch_targets,
                 lengths=epoch_lengths),
