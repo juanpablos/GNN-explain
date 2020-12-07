@@ -14,10 +14,15 @@ from src.eval_utils import evaluate_text_model
 from src.run_logic import run, seed_everything
 from src.training.sequence_training import RecurrentTrainer
 from src.typing import LSTMConfig, MinModelConfig, NetworkDataConfig
-from src.utils import write_result_info_text, write_train_data
+from src.utils import (
+    prepare_info_dir,
+    write_result_info_text,
+    write_train_data
+)
 from src.visualization.curve_plot import plot_training
 
 logger = logging.getLogger("src")
+logger_metrics = logging.getLogger('metrics')
 
 
 def get_model_name(hidden_layers, lstm_config, encoder_output):
@@ -128,6 +133,26 @@ def run_experiment(
 
     logger.debug("Running")
     logger.debug(f"Input size is {input_shape[0]}")
+
+    # ready to log metrics
+    # returns a number to put after the file name in case it already exists
+    # "" or " (N)"
+    ext_filename, ext = prepare_info_dir(
+        path=results_path, filename=info_filename)
+
+    fh = logging.FileHandler(
+        os.path.join(
+            results_path,
+            f'{info_filename}{ext}.log'))
+    fh.setFormatter(logging.Formatter('%(asctime)s,%(message)s'))
+
+    # prevents writing to different files at the same
+    # time in case of being called multiple times
+    for handlers in logger_metrics.handlers[:]:
+        logger_metrics.removeHandler(handlers)
+
+    logger_metrics.addHandler(fh)
+
     encoder, decoder = run(
         trainer=trainer,
         iterations=iterations,
@@ -141,11 +166,9 @@ def run_experiment(
         reconstruction=data_reconstruction
     )
 
-    # returns a number to put after the file name in case it already exists
-    # "" or " (N)"
-    ext = write_result_info_text(
+    write_result_info_text(
         path=results_path,
-        filename=info_filename,
+        filename=ext_filename,
         formula_metrics=formula_metrics,
         semantic_eval_data=formula_target.graph_statistics())
 
@@ -308,6 +331,7 @@ def main(
     msg = f"{name}-{mlp}-{lstm}-{train_batch}b-{lr}lr"
 
     results_path = f"./results/testing/{model_hash}"
+
     plot_file = None
     if make_plots:
         plot_file = msg
@@ -354,14 +378,7 @@ if __name__ == "__main__":
     _console_f = logging.Formatter("%(levelname)-8s: %(message)s")
     ch.setFormatter(_console_f)
 
-    # fh = logging.FileHandler("main_2.log")
-    # fh.setLevel(logging.DEBUG)
-    # _file_f = logging.Formatter(
-    #     '%(asctime)s %(filename) %(name)s %(levelname)s "%(message)s"')
-    # fh.setFormatter(_file_f)
-
     logger.addHandler(ch)
-    # logger.addHandler(fh)
 
     __layers = [1024, 1024, 1024]
     main(

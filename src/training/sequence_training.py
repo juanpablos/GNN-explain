@@ -19,6 +19,7 @@ from src.training.check_formulas import FormulaReconstruction
 from . import Trainer
 
 logger = logging.getLogger(__name__)
+logger_metrics = logging.getLogger('metrics')
 
 
 class Collator:
@@ -297,6 +298,8 @@ class RecurrentTrainer(Trainer):
             vocabulary=vocabulary,
             result_mapping=target_apply_mapping)
 
+        logger_metrics.info(",".join(self.metric_logger.keys()))
+
     def activation(self, output, dim=1):
         return torch.log_softmax(output, dim=dim)
 
@@ -499,6 +502,8 @@ class RecurrentTrainer(Trainer):
                 value in metrics.items()}
 
             self.metric_logger.update(test_loss=average_loss, **metrics)
+
+        logger_metrics.info(self.metric_logger.log(tocsv=True))
 
         return return_metrics
 

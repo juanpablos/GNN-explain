@@ -180,6 +180,15 @@ def write_result_info(
     return counter
 
 
+def prepare_info_dir(path: str, filename: str, ext: str = 'txt'):
+    os.makedirs(f"{path}/info/", exist_ok=True)
+    filename, counter = get_next_filename(path=f"{path}/info",
+                                          filename=filename,
+                                          ext=ext)
+
+    return filename, counter
+
+
 def write_result_info_text(
         path: str,
         filename: str,
@@ -187,13 +196,6 @@ def write_result_info_text(
         semantic_eval_data: Dict[str, Any]):
 
     logger.debug("Writing result info")
-
-    os.makedirs(f"{path}/info/", exist_ok=True)
-
-    filename, counter = get_next_filename(path=f"{path}/info",
-                                          filename=filename,
-                                          ext="txt")
-
     # metric_name -> all|formula -> value
 
     with open(f"{path}/info/{filename}.txt", "w", encoding="utf-8") as o:
@@ -213,8 +215,6 @@ def write_result_info_text(
                                   semantic_eval_data['formula_positives']):
             o.write(f"Individual formula positive rate:\n")
             o.write(f"\t{formula}: {rates}\n")
-
-    return counter
 
 
 def write_train_data(metric_history: MetricHistory,

@@ -83,11 +83,11 @@ class MetricLogger:
     def get_history(self, key: str):
         return self.variables[key]
 
-    def log(self):
+    def log(self, **kwargs):
         if self.log_all:
-            msg = self.__full_logger()
+            msg = self.__full_logger(**kwargs)
         else:
-            msg = self.__select_logger()
+            msg = self.__select_logger(**kwargs)
 
         return msg
 
@@ -98,14 +98,18 @@ class MetricLogger:
         else:
             return self._selection
 
-    def __full_logger(self):
+    def __full_logger(self, tocsv: bool = False, **kwargs):
         metrics: List[str] = []
         for name, values in self.variables.items():
             last_value = values[-1]
             metrics.append(f"{name} {last_value:<10.6f}")
-        return "".join(metrics)
 
-    def __select_logger(self):
+        if tocsv:
+            return ",".join(metrics)
+        else:
+            return "".join(metrics)
+
+    def __select_logger(self, tocsv: bool = False, **kwargs):
         metrics: List[str] = []
         for name in self.selection:
             try:
@@ -122,4 +126,7 @@ class MetricLogger:
                         stacklevel=2)
                     self.warned = True
 
-        return "".join(metrics)
+        if tocsv:
+            return ",".join(metrics)
+        else:
+            return "".join(metrics)
