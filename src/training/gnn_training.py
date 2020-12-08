@@ -54,9 +54,10 @@ class GNNTrainer(Trainer):
     ]
 
     def __init__(self,
+                 seed: int = None,
                  logging_variables: Union[Literal["all"],
                                           List[str]] = "all"):
-        super().__init__(logging_variables=logging_variables)
+        super().__init__(seed=seed, logging_variables=logging_variables)
 
     def init_model(self,
                    *,

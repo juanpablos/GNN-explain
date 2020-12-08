@@ -137,6 +137,7 @@ class MLPTrainer(Trainer):
     ]
 
     def __init__(self,
+                 seed: int = None,
                  logging_variables: Union[Literal["all"], List[str]] = "all",
                  n_classes: int = 2,
                  metrics_average: str = "macro",
@@ -145,7 +146,7 @@ class MLPTrainer(Trainer):
         if multilabel:
             self.available_metrics.extend(self.multilabel_metrics)
 
-        super().__init__(logging_variables=logging_variables)
+        super().__init__(seed=seed, logging_variables=logging_variables)
         self.n_classes = n_classes
         self.multilabel = multilabel
         self.metrics = Metric(average=metrics_average, multilabel=multilabel)

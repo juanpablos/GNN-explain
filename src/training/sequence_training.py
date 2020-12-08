@@ -1,7 +1,7 @@
 import logging
 from itertools import chain
 from multiprocessing import Pool
-from typing import List, Literal, Union
+from typing import List, Literal, Optional, Tuple, Union, overload
 
 import numpy as np
 import torch
@@ -13,6 +13,7 @@ from torch.utils.data import DataLoader
 
 from src.data.auxiliary import FormulaAppliedDatasetWrapper
 from src.data.vocabulary import Vocabulary
+from src.graphs.foc import FOC
 from src.models import MLP, LSTMCellDecoder, LSTMDecoder
 from src.training.check_formulas import FormulaReconstruction
 
@@ -45,12 +46,18 @@ class Metric:
     def __init__(
             self,
             vocabulary: Vocabulary,
-            result_mapping: FormulaAppliedDatasetWrapper):
+            result_mapping: FormulaAppliedDatasetWrapper,
+            seed: int = None,
+            subset_size: float = 0.2):
         self.vocabulary = vocabulary
         self.formula_reconstruction = FormulaReconstruction(vocabulary)
         self.formula_mapping = result_mapping
 
+        self.seed = seed
+        self.subset_size = subset_size
+
         self.cached_formulas = None
+        self.cached_indices = None
 
     def token_accuracy(self, scores, targets, k, lengths):
         # scores: logits (batch, L, vocab) with padding
@@ -132,19 +139,58 @@ class Metric:
 
         return corpus_bleu(references, hypothesis)
 
-    def sintaxis_check(self, predictions):
+    def get_random_indices(self, data_size):
+        local_rand = np.random.default_rng(self.seed)
+        size = int(data_size * self.subset_size)
+        subset_indices = local_rand.choice(
+            data_size, size, replace=False)
+        return subset_indices
+
+    @overload
+    def syntax_check(
+        self,
+        predictions,
+        run_all: bool = ...,
+        return_formulas: Literal[False] = ...) -> float: ...
+
+    @overload
+    def syntax_check(
+        self,
+        predictions,
+        run_all: bool = ...,
+        return_formulas: Literal[True] = ...
+    ) -> Tuple[float, List[Optional[FOC]]]: ...
+
+    def syntax_check(
+            self,
+            predictions,
+            run_all: bool = False,
+            return_formulas: bool = False):
         # predictions: indices (batch, L) with padding
 
-        # TODO: add the only 20%
-        predictions = predictions.tolist()
+        logger.debug("Running syntax check")
+        # ! run_all does not save in cache
+
+        subset_indices = self.get_random_indices(predictions.size(0))
+
+        if run_all:
+            predictions = predictions.tolist()
+        else:
+            predictions = predictions[subset_indices].tolist()
 
         # compile the formula into a FOC object
         formulas, correct = self.formula_reconstruction.batch2expression(
             predictions)
 
-        self.cached_formulas = formulas
+        if not run_all:
+            self.cached_formulas = formulas
+            self.cached_indices = subset_indices
 
-        return float(correct) / len(predictions)
+        valid_syntax = float(correct) / len(predictions)
+
+        if return_formulas:
+            return valid_syntax, formulas
+        return valid_syntax
 
     def _single_validation(self, index, formula):
         correct = self.formula_mapping[index]
@@ -176,6 +222,7 @@ class Metric:
             tp = tp_sum
             tn = correct.shape[0] - tp - fp - fn
 
+        # metric for valid formulas. Invalid formulas are not considered
         return tp, tn, fp, fn
 
     @staticmethod
@@ -185,18 +232,27 @@ class Metric:
         except ZeroDivisionError:
             return 0.
 
-    def semantic_validation(self, predictions, indices):
+    def semantic_validation(self,
+                            predictions,
+                            indices,
+                            formulas: List[Optional[FOC]] = None):
         # predictions: indices (batch, L) with padding
 
-        if self.cached_formulas is None:
-            # TODO: add the only 20%
-            formulas, _ = self.formula_reconstruction.batch2expression(
-                predictions)
-        else:
-            formulas = self.cached_formulas
+        logger.debug("Running syntax validation")
 
-        # total_nodes = self.formula_mapping.n_nodes
-        # n_formulas = len(predictions)
+        if formulas is None:
+            if self.cached_formulas is None:
+                subset_indices = self.get_random_indices(predictions.size(0))
+                predictions = predictions[subset_indices].tolist()
+
+                formulas, _ = self.formula_reconstruction.batch2expression(
+                    predictions)
+                indices = indices[subset_indices]
+            else:
+                formulas = self.cached_formulas
+                indices = indices[self.cached_indices]
+
+        indices = indices.tolist()
 
         with Pool(4) as p:
             indicators = p.starmap(self._single_validation, zip(
@@ -253,11 +309,15 @@ class RecurrentTrainer(Trainer):
     def __init__(self,
                  vocabulary: Vocabulary,
                  target_apply_mapping: FormulaAppliedDatasetWrapper,
+                 seed: int = None,
+                 subset_size: float = 0.2,
                  logging_variables: Union[Literal["all"], List[str]] = "all"):
 
-        super().__init__(logging_variables=logging_variables)
+        super().__init__(seed=seed, logging_variables=logging_variables)
         self.vocabulary = vocabulary
         self.metrics = Metric(
+            seed=seed,
+            subset_size=subset_size,
             vocabulary=vocabulary,
             result_mapping=target_apply_mapping)
 
@@ -417,7 +477,7 @@ class RecurrentTrainer(Trainer):
 
         epoch_scores, epoch_predictions, \
             epoch_targets, epoch_lengths, \
-            indices, average_loss = self.run_pass(loader, keep_device=True)
+            epoch_indices, average_loss = self.run_pass(loader, keep_device=True)
 
         metrics = {
             "token_acc1": self.metrics.token_accuracy(
@@ -438,15 +498,12 @@ class RecurrentTrainer(Trainer):
                 predictions=epoch_predictions,
                 targets=epoch_targets,
                 lengths=epoch_lengths),
-            "valid": self.metrics.sintaxis_check(
-                predictions=epoch_predictions
-            )
-
+            "valid": self.metrics.syntax_check(predictions=epoch_predictions)
         }
 
         semval = self.metrics.semantic_validation(
             predictions=epoch_predictions,
-            indices=indices
+            indices=epoch_indices
         )
         for metric_name, value in semval.items():
             metrics[f"semval{metric_name}"] = value
@@ -579,6 +636,7 @@ class RecurrentTrainer(Trainer):
             max_variable=max_sequence)
         # no need to pad this one, it is a 1D tensor
         epoch_lengths = torch.cat(lengths, dim=0)
+        epoch_indices = torch.tensor(indices)
 
         if not keep_device:
             epoch_scores = epoch_scores.cpu()
@@ -586,7 +644,7 @@ class RecurrentTrainer(Trainer):
             epoch_targets = epoch_targets.cpu()
             epoch_lengths = epoch_lengths.cpu()
 
-        return epoch_scores, epoch_predictions, epoch_targets, epoch_lengths, indices, average_loss
+        return epoch_scores, epoch_predictions, epoch_targets, epoch_lengths, epoch_indices, average_loss
 
     def concat0_tensors(self,
                         tensor_list: List[torch.Tensor],

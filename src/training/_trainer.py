@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List, Literal, Union
+from typing import Any, Dict, List, Literal, Optional, Union
 
 import torch
 import torch.nn as nn
@@ -9,20 +9,26 @@ from src.training.utils import MetricLogger
 
 class Trainer(ABC):
     device: torch.device
+    seed: Optional[int]
 
     available_metrics: List[str]
     metric_logger: MetricLogger
 
     def __init__(self,
+                 seed: int = None,
                  logging_variables: Union[Literal["all"],
                                           List[str]] = "all"):
+
+        self.seed = seed
 
         if logging_variables != "all" and not all(
                 var in self.available_metrics for var in logging_variables):
             raise ValueError(
                 "Encountered not supported metric. "
                 f"Supported are: {self.available_metrics}")
-        self.metric_logger = MetricLogger(logging_variables)
+        if logging_variables == "all":
+            logging_variables = self.available_metrics
+        self.metric_logger = MetricLogger(logging_variables)  # type: ignore
 
     def set_device(self, device: torch.device):
         self.device = device

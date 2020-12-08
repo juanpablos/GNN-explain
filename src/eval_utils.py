@@ -115,9 +115,16 @@ def evaluate_text_model(trainer: RecurrentTrainer,
                 lengths=eval_lengths)
         }
 
+        valid_metric, formulas = trainer.metrics.syntax_check(
+            predictions=eval_predictions,
+            run_all=True,
+            return_formulas=True)
+        _metrics["valid"] = valid_metric
+
         semval = trainer.metrics.semantic_validation(
             predictions=eval_predictions,
-            indices=eval_indices
+            indices=eval_indices,
+            formulas=formulas
         )
         for metric_name, value in semval.items():
             _metrics[f"semval{metric_name}"] = value
@@ -171,7 +178,7 @@ def evaluate_text_model(trainer: RecurrentTrainer,
         _predictions = torch.stack(metrics["predictions"])
         _targets = torch.stack(metrics["targets"])
         _lengths = torch.tensor(metrics["lengths"])
-        _indices = metrics["indices"]
+        _indices = torch.tensor(metrics["indices"])
 
         single_metrics = get_metrics(
             _scores, _predictions, _targets, _lengths, _indices)
