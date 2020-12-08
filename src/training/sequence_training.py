@@ -262,7 +262,7 @@ class Metric:
 
         with Pool(4) as p:
             indicators = p.starmap(self._single_validation, zip(
-                indices, formulas), chunksize=len(predictions) // 4)
+                indices, formulas), chunksize=len(formulas) // 4)
 
         tp: float = 0.
         tn: float = 0.
