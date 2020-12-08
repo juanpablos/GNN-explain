@@ -97,22 +97,33 @@ class MetricLogger:
         return self.variables.keys()
 
     def __full_logger(self, tocsv: bool = False, **kwargs):
-        metrics: List[str] = []
+        metric_names: List[str] = []
+        metric_values = []
         for name, values in self.variables.items():
             last_value = values[-1]
-            metrics.append(f"{name} {last_value:<10.6f}")
+
+            metric_names.append(name)
+            metric_values.append(last_value)
 
         if tocsv:
-            return ",".join(metrics)
+            return ",".join([f"{value:.6f}" for value in metric_values])
         else:
-            return "".join(metrics)
+            msg = [
+                f"{name} {value:<10.6f}" for name, value in zip(
+                    metric_names,
+                    metric_values)
+            ]
+            return "".join(msg)
 
     def __select_logger(self, tocsv: bool = False, **kwargs):
-        metrics: List[str] = []
+        metric_names: List[str] = []
+        metric_values = []
         for name in self.selection:
             try:
                 last_value = self.variables[name][-1]
-                metrics.append(f"{name} {last_value:<10.6f}")
+
+                metric_names.append(name)
+                metric_values.append(last_value)
             except KeyError as e:
                 if not self.warned:
                     key = e.args[0]
@@ -125,6 +136,11 @@ class MetricLogger:
                     self.warned = True
 
         if tocsv:
-            return ",".join(metrics)
+            return ",".join([f"{value:.6f}" for value in metric_values])
         else:
-            return "".join(metrics)
+            msg = [
+                f"{name} {value:<10.6f}" for name, value in zip(
+                    metric_names,
+                    metric_values)
+            ]
+            return "".join(msg)

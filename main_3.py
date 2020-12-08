@@ -118,7 +118,7 @@ def run_experiment(
     # --- metrics logger
     fh = logging.FileHandler(
         os.path.join(
-            results_path,
+            results_path, 'info',
             f'{info_filename}{ext}.log'),
         mode='w')
     fh.setLevel(logging.INFO)
@@ -133,7 +133,7 @@ def run_experiment(
 
     trainer = RecurrentTrainer(
         seed=seed,
-        subset_size=1.0,
+        subset_size=0.2,
         logging_variables="all",
         vocabulary=vocabulary,
         target_apply_mapping=formula_target)

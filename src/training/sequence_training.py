@@ -49,6 +49,9 @@ class Metric:
             result_mapping: FormulaAppliedDatasetWrapper,
             seed: int = None,
             subset_size: float = 0.2):
+
+        assert 0 < subset_size <= 1, 'subset_size must be between 0 and 1'
+
         self.vocabulary = vocabulary
         self.formula_reconstruction = FormulaReconstruction(vocabulary)
         self.formula_mapping = result_mapping
@@ -254,6 +257,9 @@ class Metric:
 
         indices = indices.tolist()
 
+        assert len(formulas) == len(
+            indices), 'formulas and indices dont have the same length'
+
         with Pool(4) as p:
             indicators = p.starmap(self._single_validation, zip(
                 indices, formulas), chunksize=len(predictions) // 4)
@@ -288,6 +294,7 @@ class RecurrentTrainer(Trainer):
     test_loader: DataLoader
 
     available_metrics = [
+        "train_loss",
         "train_token_acc1",
         "train_token_acc3",
         "train_sent_acc",
@@ -296,6 +303,7 @@ class RecurrentTrainer(Trainer):
         "train_semvalPRE",
         "train_semvalREC",
         "train_semvalACC",
+        "test_loss",
         "test_token_acc1",
         "test_token_acc3",
         "test_sent_acc",
@@ -522,8 +530,6 @@ class RecurrentTrainer(Trainer):
                 value in metrics.items()}
 
             self.metric_logger.update(test_loss=average_loss, **metrics)
-
-        logger_metrics.info(self.metric_logger.log(tocsv=True))
 
         return return_metrics
 

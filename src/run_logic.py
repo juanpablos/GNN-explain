@@ -10,6 +10,7 @@ from src.training.utils import StopTraining
 from src.typing import StopFormat
 
 logger = logging.getLogger(__name__)
+logger_metrics = logging.getLogger('metrics')
 
 
 def seed_everything(seed):
@@ -61,6 +62,7 @@ def run(
 
         if stop(**trainer.metric_logger):
             break
+        logger_metrics.info(trainer.metric_logger.log(tocsv=True))
         logger.debug(f"{it: 03d} {trainer.log()}")
 
     logger.info(f"{it: 03d} {trainer.log()}")
