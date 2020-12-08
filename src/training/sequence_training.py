@@ -133,9 +133,12 @@ class Metric:
         return corpus_bleu(references, hypothesis)
 
     def sintaxis_check(self, predictions):
+        # predictions: indices (batch, L) with padding
+
         # TODO: add the only 20%
         predictions = predictions.tolist()
 
+        # compile the formula into a FOC object
         formulas, correct = self.formula_reconstruction.batch2expression(
             predictions)
 
@@ -152,16 +155,21 @@ class Metric:
         fn: float = 0.
 
         if formula is not None:
+            # run the formula over the predefined set of graphs
             # ! this takes ~0.01 sec per formula
             pred = self.formula_mapping.run_formula(formula)
 
+            # get the matching indices
             matching = correct == pred
             matching_select = correct[matching]
 
+            # positive matching
             tp_sum = (matching_select == 1).sum()
 
-            pred_sum = (correct == 1).sum()
-            true_sum = (pred == 1).sum()
+            # positives
+            true_sum = (correct == 1).sum()
+            # predicted positives
+            pred_sum = (pred == 1).sum()
 
             fp = pred_sum - tp_sum
             fn = true_sum - tp_sum
@@ -178,6 +186,8 @@ class Metric:
             return 0.
 
     def semantic_validation(self, predictions, indices):
+        # predictions: indices (batch, L) with padding
+
         if self.cached_formulas is None:
             # TODO: add the only 20%
             formulas, _ = self.formula_reconstruction.batch2expression(
