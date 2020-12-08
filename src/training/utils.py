@@ -50,16 +50,17 @@ class StopTraining:
 
 class MetricLogger:
     def __init__(self,
-                 variables: Union[Literal["all"],
+                 variables: Union[Literal["any"],
                                   List[str],
-                                  None] = "all"):
+                                  None] = "any"):
         if variables is None:
             variables = []
         self.variables: Dict[str, List[float]] = defaultdict(list)
 
-        self.log_all = variables == "all"
+        self.log_any = variables == "any"
         if isinstance(variables, list):
-            self._selection = variables
+            for var in variables:
+                self.variables[var] = []
 
         self.warned = False
 
@@ -84,7 +85,7 @@ class MetricLogger:
         return self.variables[key]
 
     def log(self, **kwargs):
-        if self.log_all:
+        if self.log_any:
             msg = self.__full_logger(**kwargs)
         else:
             msg = self.__select_logger(**kwargs)
@@ -93,10 +94,7 @@ class MetricLogger:
 
     @property
     def selection(self):
-        if self.log_all:
-            return self.variables.keys()
-        else:
-            return self._selection
+        return self.variables.keys()
 
     def __full_logger(self, tocsv: bool = False, **kwargs):
         metrics: List[str] = []

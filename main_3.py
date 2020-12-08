@@ -109,9 +109,34 @@ def run_experiment(
     encoder_config["input_dim"] = input_shape[0]
     decoder_config["vocab_size"] = vocab_size
 
-    trainer = RecurrentTrainer(logging_variables="all",
-                               vocabulary=vocabulary,
-                               target_apply_mapping=formula_target)
+    # ready to log metrics
+    # returns a number to put after the file name in case it already exists
+    # "" or " (N)"
+    ext_filename, ext = prepare_info_dir(
+        path=results_path, filename=info_filename)
+
+    # --- metrics logger
+    fh = logging.FileHandler(
+        os.path.join(
+            results_path,
+            f'{info_filename}{ext}.log'),
+        mode='w')
+    fh.setLevel(logging.INFO)
+    fh.setFormatter(logging.Formatter('%(asctime)s,%(message)s'))
+
+    # prevents writing to different files at the same
+    # time in case of being called multiple times
+    for handlers in logger_metrics.handlers[:]:
+        logger_metrics.removeHandler(handlers)
+    logger_metrics.addHandler(fh)
+    # /--- metrics logger
+
+    trainer = RecurrentTrainer(
+        seed=seed,
+        subset_size=1.0,
+        logging_variables="all",
+        vocabulary=vocabulary,
+        target_apply_mapping=formula_target)
 
     trainer.init_dataloader(
         train_data,
@@ -133,25 +158,6 @@ def run_experiment(
 
     logger.debug("Running")
     logger.debug(f"Input size is {input_shape[0]}")
-
-    # ready to log metrics
-    # returns a number to put after the file name in case it already exists
-    # "" or " (N)"
-    ext_filename, ext = prepare_info_dir(
-        path=results_path, filename=info_filename)
-
-    fh = logging.FileHandler(
-        os.path.join(
-            results_path,
-            f'{info_filename}{ext}.log'))
-    fh.setFormatter(logging.Formatter('%(asctime)s,%(message)s'))
-
-    # prevents writing to different files at the same
-    # time in case of being called multiple times
-    for handlers in logger_metrics.handlers[:]:
-        logger_metrics.removeHandler(handlers)
-
-    logger_metrics.addHandler(fh)
 
     encoder, decoder = run(
         trainer=trainer,
@@ -372,6 +378,9 @@ def main(
 if __name__ == "__main__":
     logger.setLevel(logging.DEBUG)
     logger.propagate = False
+
+    logger_metrics.setLevel(logging.INFO)
+    logger_metrics.propagate = False
 
     ch = logging.StreamHandler()
     ch.setLevel(logging.DEBUG)
