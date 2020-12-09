@@ -209,12 +209,12 @@ def write_result_info_text(
 
         # write the sematic graph evaluation data
         o.write(
-            f"\nTotal Semantic Evaluation Average: {semantic_eval_data['total']}\n\n")
+            f"\nTotal Semantic Evaluation Graph Positive Average: {semantic_eval_data['total']}\n\n")
 
         for formula, rates in zip(semantic_eval_data['formulas'],
                                   semantic_eval_data['formula_positives']):
             o.write(f"Individual formula positive rate:\n")
-            o.write(f"\t{formula}: {rates}\n")
+            o.write(f"\t{formula!r}: {rates}\n")
 
 
 def write_train_data(metric_history: MetricHistory,
