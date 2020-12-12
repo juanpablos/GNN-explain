@@ -5,6 +5,7 @@ from typing import Dict, List, Optional, Sequence, overload
 
 import numpy as np
 import torch
+from torch_geometric.data import InMemoryDataset
 
 from src.data.datasets import NetworkDataset
 from src.generate_graphs import graph_object_stream
@@ -178,8 +179,22 @@ class AggregatedNetworkDataset:
         logger.debug("Loading formulas")
         self.formulas = torch.load(file_path)
 
+        if isinstance(next(iter(self.formulas.values())), tuple):
+            self.transform2graph_data()
+
     def __getitem__(self, formula: str) -> torch.Tensor:
         return self.formulas[formula]["data"]
 
     def available_formulas(self) -> Dict[str, str]:
         return {k: v["file"] for k, v in self.formulas.items()}
+
+    def transform2graph_data(self):
+        for k, v in self.formulas.items():
+            self.formulas[k] = GNNGraphDataset(*v)
+
+
+class GNNGraphDataset(InMemoryDataset):
+    def __init__(self, data, slices):
+        super(GNNGraphDataset, self).__init__()
+        self.data = data
+        self.slices = slices

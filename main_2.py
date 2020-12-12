@@ -267,7 +267,8 @@ def main(
         "labeler": labeler,
         "formula_mapping": FormulaMapping("./data/formulas.json"),
         "test_selector": test_selector,
-        "load_aggregated": "aggregated.pt"
+        "load_aggregated": "aggregated.pt",
+        "as_graph_data": False
     }
 
     iterations = 10

@@ -314,6 +314,7 @@ def main(
     # * labelers
     label_logic = TextSequenceLabeler()
     labeler = SequenceLabelerApply(labeler=label_logic)
+
     # * /labelers
     data_config: NetworkDataConfig = {
         "root": "data/gnns",
@@ -322,7 +323,8 @@ def main(
         "labeler": labeler,
         "formula_mapping": FormulaMapping("./data/formulas.json"),
         "test_selector": test_selector,
-        "load_aggregated": "aggregated.pt"
+        "load_aggregated": "aggregated.pt",
+        "as_graph_data": False
     }
 
     iterations = 20
@@ -331,10 +333,10 @@ def main(
     if name is None:
         name = f"{selector}-{labeler}-{test_selector}"
 
-    mlp, lstm = get_model_name(hidden_layers=mlp_hidden_layers,
-                               lstm_config=lstm_config, encoder_output=encoder_output)
+    encoder, decoder = get_model_name(
+        hidden_layers=mlp_hidden_layers, lstm_config=lstm_config, encoder_output=encoder_output)
 
-    msg = f"{name}-{mlp}-{lstm}-{train_batch}b-{lr}lr"
+    msg = f"{name}-{encoder}-{decoder}-{train_batch}b-{lr}lr"
 
     results_path = f"./results/testing/{model_hash}"
 

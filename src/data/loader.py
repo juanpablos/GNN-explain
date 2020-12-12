@@ -35,11 +35,16 @@ def __load_formulas(
     selector: Filter,
     formula_mapping: FormulaMapping,
     test_selector: Filter,
-    load_aggregated: str = None
+    load_aggregated: str = None,
+    as_graph_data: bool = False
 ):
     if model_hash not in os.listdir(root):
         raise FileExistsError(
             f"No directory for the current model hash: {root}/{model_hash}")
+
+    if load_aggregated is None and as_graph_data:
+        raise ValueError(
+            "GNNs as graphs cannot be loaded on demand, they must be preloaded using `stack_gnn_graphs`")
 
     model_path = os.path.join(root, model_hash)
 
@@ -81,6 +86,7 @@ def categorical_loader(
     formula_mapping: FormulaMapping,
     test_selector: Filter,
     load_aggregated: str = None,
+    as_graph_data: bool = False,
     _legacy_load_without_batch: bool = False
 ):
 
@@ -92,7 +98,8 @@ def categorical_loader(
             selector=selector,
             formula_mapping=formula_mapping,
             test_selector=test_selector,
-            load_aggregated=load_aggregated
+            load_aggregated=load_aggregated,
+            as_graph_data=as_graph_data
         )
 
     logger.debug(f"Running formula labeler {labeler}")
@@ -186,6 +193,7 @@ def text_sequence_loader(
     test_selector: Filter,
     graph_config: Dict[str, Any],
     load_aggregated: str = None,
+    as_graph_data: bool = False,
     _legacy_load_without_batch: bool = False
 ):
 
@@ -197,7 +205,8 @@ def text_sequence_loader(
             selector=selector,
             formula_mapping=formula_mapping,
             test_selector=test_selector,
-            load_aggregated=load_aggregated
+            load_aggregated=load_aggregated,
+            as_graph_data=as_graph_data
         )
 
     logger.debug(f"Running formula labeler {labeler}")

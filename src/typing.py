@@ -31,6 +31,7 @@ class NetworkDataConfig(TypedDict):
     formula_mapping: FormulaMapping
     test_selector: Filter
     load_aggregated: Optional[str]
+    as_graph_data: bool
 
 
 class StopFormat(TypedDict):
