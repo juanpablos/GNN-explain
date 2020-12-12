@@ -12,6 +12,7 @@ from src.data.datasets import (
     TextSequenceDataset
 )
 from src.graphs.foc import Element
+from src.training.gnn_sequence import GraphSequenceTrainer
 from src.training.mlp_training import MLPTrainer
 from src.training.sequence_training import RecurrentTrainer
 from src.typing import S, T
@@ -82,7 +83,7 @@ def evaluate_model(model: torch.nn.Module,
     return y_true, y_pred, mistakes, formula_count
 
 
-def evaluate_text_model(trainer: RecurrentTrainer,
+def evaluate_text_model(trainer: Union[RecurrentTrainer, GraphSequenceTrainer],
                         test_data: Union[TextSequenceDataset[T],
                                          LabeledSubset[T, torch.Tensor]],
                         reconstruction: NetworkDatasetCollectionWrapper):
