@@ -78,3 +78,46 @@ class ACConv(MessagePassing):
         self.V.reset_parameters()
         self.A.reset_parameters()
         self.combine.reset_parameters()
+
+
+class NetworkConv(MessagePassing):
+    def __init__(
+            self,
+            input_dim: int,
+            output_dim: int,
+            mlp_layers: int,
+            **kwargs):
+
+        super(NetworkConv, self).__init__(aggr='add', **kwargs)
+
+        _args = {
+            "num_layers": mlp_layers,
+            "input_dim": input_dim,
+            "hidden_dim": output_dim,
+            "output_dim": output_dim,
+            "use_batch_norm": True
+        }
+
+        self.V = MLP(**_args)
+        self.A = MLP(**_args)
+
+    def forward(self, h, edge_index, edge_weight):
+        # assumes the input is 2d
+        # h: (N, 1)
+        # edge_index: (E, 2)
+        # edge_weight: (E, 1)
+        return self.propagate(
+            edge_index=edge_index,
+            h=h,
+            edge_weight=edge_weight
+        )
+
+    def message(self, h_j, edge_weight):
+        return h_j * edge_weight
+
+    def update(self, aggr, h):
+        return self.V(h) + self.A(aggr)
+
+    def reset_parameters(self):
+        self.V.reset_parameters()
+        self.A.reset_parameters()

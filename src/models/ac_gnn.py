@@ -2,8 +2,9 @@ from typing import Tuple
 
 import torch
 import torch.nn as nn
+import torch_geometric.nn as geom_nn
 
-from src.models.layers import ACConv
+from src.models.layers import ACConv, NetworkConv
 from src.models.utils import reset
 
 
@@ -101,3 +102,60 @@ class ACGNN(torch.nn.Module):
         reset(self.convs)
         reset(self.batch_norms)
         reset(self.linear_prediction)
+
+
+class NetworkACGNN(torch.nn.Module):
+
+    def __init__(
+            self,
+            hidden_dim: int,
+            output_dim: int,
+            mlp_layers: int,
+            **kwargs
+    ):
+        super(NetworkACGNN, self).__init__()
+
+        self.num_layers = 4
+
+        self.padding = nn.ConstantPad1d((0, hidden_dim - 1), value=0)
+
+        self.activation = nn.ReLU()
+        self.readout = geom_nn.global_mean_pool
+
+        # add the convolutions
+        self.convs = torch.nn.ModuleList()
+        self.batch_norms = torch.nn.ModuleList()
+        for _ in range(self.num_layers):
+            self.convs.append(NetworkConv(input_dim=hidden_dim,
+                                          output_dim=hidden_dim,
+                                          mlp_layers=mlp_layers))
+            self.batch_norms.append(nn.BatchNorm1d(hidden_dim))
+
+        self.linear_prediction = nn.Linear(
+            hidden_dim * self.num_layers, output_dim)
+
+    def forward(self, x, edge_index, edge_weight, batch):
+
+        h = self.padding(x.view(-1, 1))
+        weight = edge_weight.view(-1, 1)
+
+        layers = []
+
+        for conv, norm in zip(self.convs, self.batch_norms):
+            h = conv(
+                h=h,
+                edge_index=edge_index,
+                edge_weight=weight)
+            h = self.activation(h)
+            h = norm(h)
+
+            # readout for each layer output
+            layers.append(self.readout(h, batch=batch))
+
+        # concat residuals
+        cat_h = torch.cat(layers, dim=1)
+        return self.linear_prediction(cat_h)
+
+    def reset_parameters(self):
+        reset(self.convs)
+        reset(self.batch_norms)
