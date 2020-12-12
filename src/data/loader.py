@@ -57,7 +57,7 @@ def __load_formulas(
     else:
         logging.info("Loading batch formulas")
         preloaded = AggregatedNetworkDataset(
-            file_path=os.path.join(model_path, load_aggregated))
+            file_path=os.path.join(model_path, "processed", load_aggregated))
 
         available_formulas = preloaded.available_formulas()
 

@@ -63,7 +63,7 @@ def aggregate_formulas(
             "data": dataset
         }
 
-    save_file = os.path.join(model_path, filename)
+    save_file = os.path.join(model_path, "processed", filename)
     print(f"Saving whole dataset")
     torch.save(big_dataset, save_file)
 
@@ -106,7 +106,7 @@ def stack_gnn_graphs(
             "data": (dataset, slices)
         }
 
-    save_file = os.path.join(model_path, filename)
+    save_file = os.path.join(model_path, "processed", filename)
     print(f"Saving whole dataset")
     torch.save(big_dataset, save_file)
 
