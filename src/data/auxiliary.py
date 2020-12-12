@@ -179,7 +179,7 @@ class AggregatedNetworkDataset:
         logger.debug("Loading formulas")
         self.formulas = torch.load(file_path)
 
-        if isinstance(next(iter(self.formulas.values())), tuple):
+        if isinstance(next(iter(self.formulas.values()))['data'], tuple):
             self.transform2graph_data()
 
     def __getitem__(self, formula: str) -> torch.Tensor:
@@ -189,8 +189,9 @@ class AggregatedNetworkDataset:
         return {k: v["file"] for k, v in self.formulas.items()}
 
     def transform2graph_data(self):
+        logger.debug("Converting GNN to graph")
         for k, v in self.formulas.items():
-            self.formulas[k] = GNNGraphDataset(*v)
+            self.formulas[k]['data'] = GNNGraphDataset(*v['data'])
 
 
 class GNNGraphDataset(InMemoryDataset):
