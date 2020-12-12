@@ -22,20 +22,11 @@ from src.data.formulas.labeler import (
     MultiLabelCategoricalLabeler,
     SequenceLabelerApply
 )
+from src.data.gnn.utils import prepare_files
 from src.data.utils import label_idx2tensor
 from src.typing import S, T
 
 logger = logging.getLogger(__name__)
-
-
-def __prepare_files(path: str):
-    files: Dict[str, str] = {}
-    # reproducibility, always sorted files
-    for file in sorted(os.listdir(path)):
-        if file.endswith(".pt"):
-            _hash = file.split(".")[0].split("-")[-1]
-            files[_hash] = file
-    return files
 
 
 def __load_formulas(
@@ -44,8 +35,7 @@ def __load_formulas(
     selector: Filter,
     formula_mapping: FormulaMapping,
     test_selector: Filter,
-    load_aggregated: str = None,
-
+    load_aggregated: str = None
 ):
     if model_hash not in os.listdir(root):
         raise FileExistsError(
@@ -57,7 +47,7 @@ def __load_formulas(
     if load_aggregated is None:
         # select all formulas available in directory
         # formula_hash -> file_path
-        available_formulas = __prepare_files(model_path)
+        available_formulas = prepare_files(model_path)
 
     else:
         logging.info("Loading batch formulas")

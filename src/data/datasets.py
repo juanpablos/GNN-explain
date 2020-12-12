@@ -17,6 +17,7 @@ from typing import (
 import torch
 from torch.utils.data import Dataset
 
+from src.data.gnn.utils import clean_state
 from src.data.vocabulary import Vocabulary
 from src.graphs.foc import Element
 from src.typing import DatasetLike, Indexable, IndexableIterable, S, S_co, T_co
@@ -417,7 +418,7 @@ class NetworkDataset(Dataset, Generic[S]):
 
             # legacy
             if no_batch:
-                weights = self.clean_state(weights)
+                weights = clean_state(weights)
             # /legacy
 
             concat_weights = torch.cat([w.flatten() for w in weights.values()])
@@ -427,11 +428,6 @@ class NetworkDataset(Dataset, Generic[S]):
                 break
 
         return dataset
-
-    @staticmethod
-    def clean_state(model_dict):
-        """Removes the weights associated with batchnorm"""
-        return {k: v for k, v in model_dict.items() if "batch" not in k}
 
 
 class TextSequenceDataset(
