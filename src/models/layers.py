@@ -1,3 +1,4 @@
+import torch
 from torch_geometric.nn.conv import MessagePassing
 
 from src.models.mlp import MLP
@@ -101,11 +102,18 @@ class NetworkConv(MessagePassing):
         self.V = MLP(**_args)
         self.A = MLP(**_args)
 
+        self.C = MLP(num_layers=1,
+                     input_dim=output_dim,
+                     hidden_dim=output_dim,
+                     output_dim=output_dim,
+                     use_batch_norm=True)
+
     def forward(self, h, edge_index, edge_weight):
         # assumes the input is 2d
-        # h: (N, 1)
+        # h: (N, H)
         # edge_index: (E, 2)
         # edge_weight: (E, 1)
+
         return self.propagate(
             edge_index=edge_index,
             h=h,
@@ -116,7 +124,7 @@ class NetworkConv(MessagePassing):
         return h_j * edge_weight
 
     def update(self, aggr, h):
-        return self.V(h) + self.A(aggr)
+        return self.C(torch.relu(self.V(h) + self.A(aggr)))
 
     def reset_parameters(self):
         self.V.reset_parameters()
