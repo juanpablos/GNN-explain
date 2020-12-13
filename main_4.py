@@ -213,9 +213,10 @@ def main(
     seed_everything(seed)
 
     hidden = 128
+    n_layers = 2
     encoder_output = 1024
     encoder_config: MinModelConfig = {
-        "num_layers": 1,
+        "num_layers": n_layers,
         "input_dim": None,
         "hidden_dim": hidden,
         "hidden_layers": None,
@@ -304,6 +305,8 @@ def main(
     label_logic = TextSequenceLabeler()
     labeler = SequenceLabelerApply(labeler=label_logic)
 
+    undirected = True
+
     # * /labelers
     data_config: NetworkDataConfig = {
         "root": "data/gnns",
@@ -312,8 +315,8 @@ def main(
         "labeler": labeler,
         "formula_mapping": FormulaMapping("./data/formulas.json"),
         "test_selector": test_selector,
-        "load_aggregated": "graph_gnns.pt",
-        "as_graph_data": True
+        "load_aggregated": f"graph_gnns{'_undirected' if undirected else ''}.pt",
+        "as_graph_data": True,
     }
 
     iterations = 20
@@ -322,7 +325,7 @@ def main(
     if name is None:
         name = f"{selector}-{labeler}-{test_selector}"
 
-    encoder = f"GraphNN-h{hidden}"
+    encoder = f"UND{undirected}-GraphNN-h{hidden}-L{n_layers}"
     decoder = get_model_name(encoder_output, lstm_config)
 
     msg = f"{name}-{encoder}-{decoder}-{train_batch}b-{lr}lr"

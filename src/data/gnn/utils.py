@@ -72,7 +72,8 @@ def stack_gnn_graphs(
         root: str,
         model_hash: str,
         filename: str,
-        nobatch: bool):
+        nobatch: bool,
+        as_undirected: bool = False):
 
     if model_hash not in os.listdir(root):
         raise FileExistsError(
@@ -95,7 +96,7 @@ def stack_gnn_graphs(
                 network = clean_state(network)
             # /legacy
 
-            data_list.append(gnn2data(network))
+            data_list.append(gnn2data(network, undirected=as_undirected))
 
         print(f"Collating formula/network {formula_hash}")
 
@@ -122,6 +123,7 @@ if __name__ == "__main__":
     stack_gnn_graphs(
         root="../../../data/gnns",
         model_hash="f4034364ea-batch",
-        filename="graph_gnns.pt",
-        nobatch=True
+        filename="graph_gnns_undirected.pt",
+        nobatch=True,
+        as_undirected=True
     )

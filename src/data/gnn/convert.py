@@ -235,9 +235,13 @@ def prepare_gnn(gnn):
     return gnn_layers
 
 
-def gnn2data(gnn):
+def gnn2data(gnn, undirected=False):
     gnn_layers = prepare_gnn(gnn)
     graph, *_ = convert_gnn(gnn_layers, draw=False)
+
+    if undirected:
+        graph = graph.to_undirected()
+
     return from_networkx(graph)
 
 
@@ -264,7 +268,7 @@ if __name__ == "__main__":
         num_layers=3,
         combine_layers=-1,
         mlp_layers=3,
-        task='node'))
+        task='node'), undirected=True)
 
     dd = [d1, d1]
     ddd = DataLoader(dd, batch_size=2)
