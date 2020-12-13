@@ -1,4 +1,5 @@
 import logging
+from collections import Counter
 from itertools import chain
 from multiprocessing import Pool
 from typing import List, Literal, Optional, Tuple, Union, overload
@@ -211,6 +212,13 @@ class Metric:
         formulas, correct = self.formula_reconstruction.batch2expression(
             predictions)
 
+        with open('acc.txt', 'a') as f:
+            import json
+            _formulas = Counter(formulas)
+            json.dump({repr(k): v for k,
+                       v in _formulas.items()}, f, indent=2)
+            f.write('\n')
+
         if not run_all:
             self.cached_formulas = formulas
             self.cached_indices = subset_indices
@@ -258,7 +266,7 @@ class Metric:
     def _div(a: float, b: float):
         try:
             return a / b
-        except ZeroDivisionError:
+        except BaseException:
             return 0.
 
     def semantic_validation(self,

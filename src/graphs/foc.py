@@ -274,3 +274,11 @@ class FOC:
 
     def __repr__(self):
         return repr(self.expression)
+
+    def __eq__(self, other):
+        if self.__class__ == other.__class__:
+            return repr(self.expression) == repr(other.expression)
+        return False
+
+    def __hash__(self):
+        return hash(repr(self.expression))
