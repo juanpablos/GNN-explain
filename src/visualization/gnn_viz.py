@@ -64,12 +64,12 @@ if __name__ == "__main__":
     from src.models.ac_gnn import ACGNN
 
     draw_gnn(ACGNN(
-        input_dim=6,
-        hidden_dim=4,
-        output_dim=3,
+        input_dim=4,
+        hidden_dim=8,
+        output_dim=2,
         aggregate_type='add',
         combine_type='identity',
-        num_layers=3,
+        num_layers=2,
         combine_layers=-1,
-        mlp_layers=3,
+        mlp_layers=1,
         task='node'))
