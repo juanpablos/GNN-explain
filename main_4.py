@@ -305,7 +305,7 @@ def main(
     label_logic = TextSequenceLabeler()
     labeler = SequenceLabelerApply(labeler=label_logic)
 
-    undirected = True
+    undirected = False
 
     # * /labelers
     data_config: NetworkDataConfig = {
@@ -386,7 +386,7 @@ if __name__ == "__main__":
     main(
         seed=0,
         train_batch=512,
-        lr=0.005,
+        lr=0.001,
         save_model=True,
         make_plots=True
     )

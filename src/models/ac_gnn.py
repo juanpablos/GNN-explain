@@ -115,12 +115,11 @@ class NetworkACGNN(torch.nn.Module):
     ):
         super(NetworkACGNN, self).__init__()
 
-        self.num_layers = 4
+        self.num_layers = 8
 
         self.padding = nn.ConstantPad1d((0, hidden_dim - 1), value=0)
 
         self.activation = nn.ReLU()
-        self.readout = geom_nn.global_mean_pool
 
         # add the convolutions
         self.convs = torch.nn.ModuleList()
@@ -131,11 +130,21 @@ class NetworkACGNN(torch.nn.Module):
                                           mlp_layers=mlp_layers))
             self.batch_norms.append(nn.BatchNorm1d(hidden_dim))
 
-        self.linear_prediction = nn.Linear(
-            hidden_dim * self.num_layers, output_dim)
+        # self.readout = geom_nn.global_mean_pool
+        _gate = nn.Linear(hidden_dim, 1)
+        _nn = nn.Linear(hidden_dim, hidden_dim)
+        self.readout = geom_nn.GlobalAttention(_gate, _nn)
+
+        self.linear_prediction = nn.Sequential(
+            nn.Linear(hidden_dim * self.num_layers, output_dim),
+            nn.ReLU(),
+            nn.Linear(output_dim, output_dim)
+        )
+        # self.linear_prediction = nn.Linear(hidden_dim * self.num_layers, output_dim)
 
     def forward(self, x, edge_index, edge_weight, batch):
 
+        # (N, H)
         h = self.padding(x.view(-1, 1))
         weight = edge_weight.view(-1, 1)
 
@@ -151,10 +160,12 @@ class NetworkACGNN(torch.nn.Module):
 
             # readout for each layer output
             layers.append(self.readout(h, batch=batch))
+            # layers.append(h)
 
         # concat residuals
         cat_h = torch.cat(layers, dim=1)
         return self.linear_prediction(cat_h)
+        # return self.readout(cat_h, batch=batch)
 
     def reset_parameters(self):
         reset(self.convs)
