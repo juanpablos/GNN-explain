@@ -5,9 +5,9 @@ import torch
 from torch_geometric.data import InMemoryDataset
 
 try:
-    from .convert import gnn2data
+    from .convert import gnn2graph
 except ImportError:
-    from convert import gnn2data  # type: ignore
+    from convert import gnn2graph  # type: ignore
 
 
 def prepare_files(path: str):
@@ -96,7 +96,7 @@ def stack_gnn_graphs(
                 network = clean_state(network)
             # /legacy
 
-            data_list.append(gnn2data(network, undirected=as_undirected))
+            data_list.append(gnn2graph(network, undirected=as_undirected))
 
         print(f"Collating formula/network {formula_hash}")
 
