@@ -268,7 +268,7 @@ def main(
         "formula_mapping": FormulaMapping("./data/formulas.json"),
         "test_selector": test_selector,
         "load_aggregated": "aggregated.pt",
-        "as_graph_data": False
+        "force_preaggregated": False
     }
 
     iterations = 10

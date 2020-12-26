@@ -316,7 +316,7 @@ def main(
         "formula_mapping": FormulaMapping("./data/formulas.json"),
         "test_selector": test_selector,
         "load_aggregated": f"graph_gnns{'_undirected' if undirected else ''}.pt",
-        "as_graph_data": True,
+        "force_preaggregated": True,
     }
 
     iterations = 20

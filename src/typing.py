@@ -31,7 +31,7 @@ class NetworkDataConfig(TypedDict):
     formula_mapping: FormulaMapping
     test_selector: Filter
     load_aggregated: Optional[str]
-    as_graph_data: bool
+    force_preaggregated: bool
 
 
 class StopFormat(TypedDict):
@@ -47,6 +47,16 @@ class MinModelConfig(TypedDict):
     output_dim: Optional[int]
     hidden_layers: Optional[List[int]]
     use_batch_norm: bool
+
+
+class GNNEncoderModelConfig(TypedDict):
+    layer_input_dim: Optional[int]
+    output_input_dim: Optional[int]
+    encoder_num_layers: int
+    encoder_hidden_dim: int
+    layer_embedding_dim: int
+    merge_strategy: Literal['cat', 'sum', 'prod']
+    output_dim: int
 
 
 class GNNModelConfig(MinModelConfig):
