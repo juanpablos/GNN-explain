@@ -57,8 +57,8 @@ def network_loader_generator(
         file_path = os.path.join(model_path, formula_file)
         print(f"Loading formula {formula_hash}")
 
-        yield (torch.load(file_path), formula_hash)
-        data = yield  # type: ignore
+        yield  # type: ignore
+        data = yield (torch.load(file_path), formula_hash)
 
         big_dataset[formula_hash] = {
             "file": formula_file,
