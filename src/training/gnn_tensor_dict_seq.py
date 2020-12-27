@@ -355,7 +355,7 @@ class TensorDictSequenceTrainer(Trainer):
                     fill_value=self.vocabulary.pad_token_id)
 
                 # (batch, L, vocab_dim), L is max seq
-                batch_scores = A.x.new_full(
+                batch_scores = A.new_full(
                     (y.size(0), y.size(1), self.decoder.vocab_dim),
                     fill_value=self.vocabulary.pad_token_id)
 
