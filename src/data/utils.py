@@ -87,3 +87,11 @@ def label_idx2tensor(label: List[Any], n_labels: int):
 
 def label_tensor2idx(label: torch.Tensor) -> List[int]:
     return label.nonzero().view(-1).tolist()
+
+
+def get_tensor_dict_input_layer_dim(data):
+    return data[0][0]['A'].size(-1)
+
+
+def get_tensor_dict_output_layer_dim(data):
+    return data[0][0]['output'].size(-1)

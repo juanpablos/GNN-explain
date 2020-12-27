@@ -215,3 +215,9 @@ class GNNTensorDictDataset:
 
     def __getitem__(self, index):
         return {k: value[index] for k, value in self.data.items()}
+
+    def __len__(self):
+        for values in self.data.values():
+            return values.size(0)
+        else:
+            raise RuntimeError("No elements in the dataset")
