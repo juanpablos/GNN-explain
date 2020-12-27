@@ -47,7 +47,7 @@ class Collator:
         return x, y_pad, y_lens, inds
 
 
-class GraphSequenceTrainer(Trainer):
+class TensorDictSequenceTrainer(Trainer):
     loss: nn.Module
     encoder: GNNEncoder
     decoder: Union[LSTMDecoder, LSTMCellDecoder]

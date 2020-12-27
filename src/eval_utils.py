@@ -13,6 +13,7 @@ from src.data.datasets import (
 )
 from src.graphs.foc import Element
 from src.training.gnn_sequence import GraphSequenceTrainer
+from src.training.gnn_tensor_dict_seq import TensorDictSequenceTrainer
 from src.training.mlp_training import MLPTrainer
 from src.training.sequence_training import RecurrentTrainer
 from src.typing import S, T
@@ -83,10 +84,13 @@ def evaluate_model(model: torch.nn.Module,
     return y_true, y_pred, mistakes, formula_count
 
 
-def evaluate_text_model(trainer: Union[RecurrentTrainer, GraphSequenceTrainer],
-                        test_data: Union[TextSequenceDataset[T],
-                                         LabeledSubset[T, torch.Tensor]],
-                        reconstruction: NetworkDatasetCollectionWrapper):
+def evaluate_text_model(trainer: Union[
+        RecurrentTrainer,
+        GraphSequenceTrainer,
+        TensorDictSequenceTrainer],
+        test_data: Union[TextSequenceDataset[T],
+                         LabeledSubset[T, torch.Tensor]],
+        reconstruction: NetworkDatasetCollectionWrapper):
 
     def get_metrics(
             eval_scores,
