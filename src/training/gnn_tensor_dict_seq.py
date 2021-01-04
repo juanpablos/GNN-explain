@@ -14,7 +14,7 @@ from torch.utils.data._utils.collate import default_collate
 from src.data.auxiliary import FormulaAppliedDatasetWrapper
 from src.data.vocabulary import Vocabulary
 from src.models import LSTMCellDecoder, LSTMDecoder
-from src.models.gnn_encoder import GNNEncoder
+from src.models.gnn_encoder import GNNEncoderVariableLayers
 from src.training.metrics import SequenceMetrics
 
 from . import Trainer
@@ -49,7 +49,7 @@ class Collator:
 
 class TensorDictSequenceTrainer(Trainer):
     loss: nn.Module
-    encoder: GNNEncoder
+    encoder: GNNEncoderVariableLayers
     decoder: Union[LSTMDecoder, LSTMCellDecoder]
     optim: torch.optim.Optimizer
     train_loader: DataLoader
@@ -110,7 +110,7 @@ class TensorDictSequenceTrainer(Trainer):
                      merge_strategy: Literal['cat', 'sum', 'prod'],
                      output_dim: int,
                      **kwargs):
-        self.encoder = GNNEncoder(
+        self.encoder = GNNEncoderVariableLayers(
             layer_input_dim=layer_input_dim,
             output_input_dim=output_input_dim,
             encoder_num_layers=encoder_num_layers,

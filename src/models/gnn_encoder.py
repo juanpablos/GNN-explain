@@ -169,7 +169,7 @@ class GNNLayerVariableEncoder(nn.Module):
         return encoded_layer_back
 
 
-class GNNEncoderSimple(nn.Module):
+class GNNEncoderVariableLayers(nn.Module):
     def __init__(
         self,
         layer_input_dim: int,
@@ -180,7 +180,7 @@ class GNNEncoderSimple(nn.Module):
         merge_strategy: Literal['cat', 'sum', 'prod'],
         output_dim: int
     ):
-        super(GNNEncoderSimple, self).__init__()
+        super(GNNEncoderVariableLayers, self).__init__()
 
         # (Batch, GNN layers, *, parameters1) -> (Batch, GNN layers, H1)
         self.A_consumer = GNNLayerSimpleSingleEncoder(
@@ -275,7 +275,7 @@ class GNNEncoderSimple(nn.Module):
         return self.output_layer(final)
 
 
-class GNNEncoderVariable(nn.Module):
+class GNNEncoderFullVariable(nn.Module):
     def __init__(
         self,
         gnn_input_layer_dim: int,
@@ -288,7 +288,7 @@ class GNNEncoderVariable(nn.Module):
         merge_strategy: Literal['cat', 'sum', 'prod'],
         input_layer_present: bool = True,
     ):
-        super(GNNEncoderVariable, self).__init__()
+        super(GNNEncoderFullVariable, self).__init__()
 
         self.input_layer = input_layer_present
 
