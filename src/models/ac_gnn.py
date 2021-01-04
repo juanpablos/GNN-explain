@@ -25,7 +25,7 @@ class ACGNNNoInput(torch.nn.Module):
             truncated_fn: Tuple[int, int] = None,
             **kwargs
     ):
-        super(ACGNN, self).__init__()
+        super(ACGNNNoInput, self).__init__()
 
         self.num_layers = num_layers
 

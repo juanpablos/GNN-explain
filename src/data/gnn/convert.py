@@ -6,12 +6,12 @@ from torch_geometric.utils import from_networkx
 
 
 def filter_name(layer_name):
-    return 'linear' in layer_name
+    return 'linear' in layer_name or "input_embedding" in layer_name
 
 
 def name_convert(layer_name):
     name = layer_name.split('.')
-    if 'linear_prediction' in name:
+    if 'linear_prediction' in name or 'input_embedding' in name:
         return tuple(name)
     return tuple(name[1:3] + name[4:])
 
@@ -21,6 +21,8 @@ def group_layers(layers):
     for layer_name, value in layers.items():
         if 'linear_prediction' in layer_name:
             grouped.setdefault('output', {})[layer_name[1]] = value
+        elif 'input_embedding' in layer_name:
+            grouped.setdefault('input', {})[layer_name[1]] = value
         else:
             gnn_layer, mlp, mlp_layer, param_type = layer_name
             grouped.setdefault(
@@ -250,6 +252,10 @@ class _ConvertToGraph:
 
     def gnn2data(self, gnn, undirected=False):
         gnn_layers = prepare_gnn(gnn)
+        if "input" in gnn_layers:
+            raise NotImplementedError(
+                "Cannot use graph when input layer exists"
+            )
         graph, *_ = self.convert_gnn(gnn_layers, draw=False)
 
         if undirected:
@@ -313,12 +319,14 @@ class _ConvertToTensorDict:
                 A: {MLP layers},
                 V: {MLP layers}
             },
-            output: linear
+            input: linear,
+            output: linear,
         }
         """
         gnn_dict = {
             'A': [],  # collection of MLPs (L_gnn, L_mlp, N)
             'V': [],
+            'input': None,  # single MLP (N_out,)
             'output': None  # single MLP (N_out,)
         }
 
@@ -331,18 +339,28 @@ class _ConvertToTensorDict:
                 gnn_dict['A'].append(A)
                 gnn_dict['V'].append(V)
             except KeyError:
-                layer = state_dict['output']
-                output = self.convert_mlp({'0': layer})
+                pass
 
-                assert output.size(0) == 1
-                gnn_dict['output'] = output[0]
+        output = self.convert_mlp({'0': state_dict['output']})
+        assert output.size(0) == 1
+        gnn_dict['output'] = output[0]
+        try:
+            _input = self.convert_mlp({'0': state_dict['input']})
+            assert _input.size(0) == 1
+            gnn_dict['input'] = _input[0]
+        except:
+            pass
 
         gnn_dict['A'] = torch.stack(gnn_dict['A'], dim=0)
         gnn_dict['V'] = torch.stack(gnn_dict['V'], dim=0)
 
         assert torch.is_tensor(gnn_dict['A'])
         assert torch.is_tensor(gnn_dict['V'])
+        assert torch.is_tensor(gnn_dict['input']) or gnn_dict['input'] is None
         assert torch.is_tensor(gnn_dict['output'])
+
+        if gnn_dict['input'] is None:
+            gnn_dict.pop('input')
 
         return gnn_dict
 
@@ -377,7 +395,7 @@ if __name__ == "__main__":
                         os.path.abspath(__file__))))))
     from torch.utils.data import DataLoader
 
-    from src.models import ACGNN
+    from src.models.ac_gnn import ACGNN
 
     d1 = gnn2tensordict(ACGNN(
         input_dim=4,
@@ -397,4 +415,9 @@ if __name__ == "__main__":
     for dd in loader:
         print('A', dd['A'].size())
         print('V', dd['V'].size())
+        try:
+            print('input', dd['input'].size())
+        except BaseException:
+            pass
         print('output', dd['output'].size())
+        print()
