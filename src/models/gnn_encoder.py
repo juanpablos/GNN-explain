@@ -385,6 +385,14 @@ class GNNEncoderFullVariable(nn.Module):
         A_emb = self.A_consumer(A)
         V_emb = self.V_consumer(V)
 
+        # (Batch * GNN layers, H2)
+        layer_merge_emb = torch.nn.utils.rnn.PackedSequence(
+            self.merge(A_emb.data, V_emb.data),
+            batch_sizes=A_emb.batch_sizes,
+            sorted_indices=A_emb.sorted_indices,
+            unsorted_indices=A_emb.unsorted_indices
+        )
+
         # (Batch, H)
         output_emb = self.output_consumer(output_params)
 
@@ -393,14 +401,6 @@ class GNNEncoderFullVariable(nn.Module):
             input_emb = self.input_consumer(input_params)
         else:
             input_emb = output_emb
-
-        # (Batch * GNN layers, H2)
-        layer_merge_emb = torch.nn.utils.rnn.PackedSequence(
-            self.merge(A_emb.data, V_emb.data),
-            batch_sizes=A_emb.batch_sizes,
-            sorted_indices=A_emb.sorted_indices,
-            unsorted_indices=A_emb.unsorted_indices
-        )
 
         # (Batch, H3)
         state = self.init_hidden_state(input_emb)
