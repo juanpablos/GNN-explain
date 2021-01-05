@@ -1,4 +1,5 @@
-from typing import Dict
+from collections import defaultdict
+from typing import Dict, Union
 
 import networkx as nx
 import torch
@@ -265,7 +266,15 @@ class _ConvertToGraph:
 
 
 class _ConvertToTensorDict:
-    def convert_linear(self, state_dict):
+    def stack_dict(self, *dicts):
+        temp = defaultdict(list)
+        for d in dicts:
+            for k, v in d.items():
+                temp[k].append(v)
+
+        return {k: torch.stack(v) for k, v in temp.items()}
+
+    def convert_linear(self, state_dict, combine=False):
         """
         {
             weight: data,
@@ -275,10 +284,14 @@ class _ConvertToTensorDict:
         weight = state_dict['weight'].flatten()
         bias = state_dict['bias'].flatten()
 
-        # (N,)
-        return torch.cat([weight, bias])
+        if combine:
+            # (N,)
+            return torch.cat([weight, bias])
+        else:
+            # {k: (N,)}
+            return {'weight': weight, 'bias': bias}
 
-    def convert_mlp(self, state_dict):
+    def convert_mlp(self, state_dict, combine=False):
         """
         {
             mlp_layer: {
@@ -289,14 +302,21 @@ class _ConvertToTensorDict:
         """
         mlp_layers = []
         for mlp_layer in range(len(state_dict)):
-            linear = self.convert_linear(state_dict[str(mlp_layer)])
+            linear = self.convert_linear(
+                state_dict[str(mlp_layer)],
+                combine=combine
+            )
             mlp_layers.append(linear)
 
-        mlp_tensor = torch.stack(mlp_layers)
-        # (L, N)
-        return mlp_tensor
+        if combine:
+            mlp_tensor = torch.stack(mlp_layers)
+            # (L, N)
+            return mlp_tensor
+        else:
+            # {k: (L, N)}
+            return self.stack_dict(*mlp_layers)
 
-    def convert_conv(self, state_dict):
+    def convert_conv(self, state_dict, combine=False):
         """
         {
             V: {MLP layers},
@@ -304,15 +324,18 @@ class _ConvertToTensorDict:
         }
         """
 
-        A_layers = self.convert_mlp(state_dict['A'])
-        V_layers = self.convert_mlp(state_dict['V'])
-
-        assert torch.is_tensor(A_layers)
-        assert torch.is_tensor(V_layers)
+        A_layers = self.convert_mlp(state_dict['A'], combine=combine)
+        V_layers = self.convert_mlp(state_dict['V'], combine=combine)
 
         return A_layers, V_layers
 
-    def convert_gnn(self, state_dict) -> Dict[str, torch.Tensor]:
+    def convert_gnn(self,
+                    state_dict,
+                    combine=False) -> Dict[str,
+                                           Union[torch.Tensor,
+                                                 Dict[str, torch.Tensor]
+                                                 ]
+                                           ]:
         """
         {
             gnn_layer: {
@@ -326,7 +349,7 @@ class _ConvertToTensorDict:
         gnn_dict = {
             'A': [],  # collection of MLPs (L_gnn, L_mlp, N)
             'V': [],
-            'input': None,  # single MLP (N_out,)
+            # 'input': None,  # single MLP (N_out,)
             'output': None  # single MLP (N_out,)
         }
 
@@ -335,38 +358,40 @@ class _ConvertToTensorDict:
                 layer_name = str(gnn_layer)
                 layer = state_dict[layer_name]
 
-                A, V = self.convert_conv(layer)
+                A, V = self.convert_conv(layer, combine=combine)
                 gnn_dict['A'].append(A)
                 gnn_dict['V'].append(V)
             except KeyError:
                 pass
 
-        output = self.convert_mlp({'0': state_dict['output']})
-        assert output.size(0) == 1
-        gnn_dict['output'] = output[0]
+        output = self.convert_mlp({'0': state_dict['output']}, combine=combine)
+        if combine:
+            gnn_dict['output'] = output[0]
+        else:
+            gnn_dict['output'] = output
         try:
-            _input = self.convert_mlp({'0': state_dict['input']})
-            assert _input.size(0) == 1
-            gnn_dict['input'] = _input[0]
-        except:
+            _input = self.convert_mlp(
+                {'0': state_dict['input']}, combine=combine)
+
+            if combine:
+                gnn_dict['input'] = _input[0]
+            else:
+                gnn_dict['input'] = _input
+        except KeyError:
             pass
 
-        gnn_dict['A'] = torch.stack(gnn_dict['A'], dim=0)
-        gnn_dict['V'] = torch.stack(gnn_dict['V'], dim=0)
-
-        assert torch.is_tensor(gnn_dict['A'])
-        assert torch.is_tensor(gnn_dict['V'])
-        assert torch.is_tensor(gnn_dict['input']) or gnn_dict['input'] is None
-        assert torch.is_tensor(gnn_dict['output'])
-
-        if gnn_dict['input'] is None:
-            gnn_dict.pop('input')
+        if combine:
+            gnn_dict['A'] = torch.stack(gnn_dict['A'], dim=0)
+            gnn_dict['V'] = torch.stack(gnn_dict['V'], dim=0)
+        else:
+            gnn_dict['A'] = self.stack_dict(*gnn_dict['A'])
+            gnn_dict['V'] = self.stack_dict(*gnn_dict['V'])
 
         return gnn_dict
 
-    def gnn2data(self, gnn):
+    def gnn2data(self, gnn, combine=False):
         gnn_layers = prepare_gnn(gnn)
-        tensor_dict = self.convert_gnn(gnn_layers)
+        tensor_dict = self.convert_gnn(gnn_layers, combine=combine)
 
         return tensor_dict
 
@@ -408,16 +433,22 @@ if __name__ == "__main__":
         mlp_layers=1,
         task='node'))
 
-    d = [d1, d1, d1]
+    d = [d1, d1, d1, d1, d1, d1, d1, d1, d1]
 
-    loader = iter(DataLoader(d, batch_size=2))
+    loader = iter(DataLoader(d, batch_size=4))
 
     for dd in loader:
-        print('A', dd['A'].size())
-        print('V', dd['V'].size())
-        try:
-            print('input', dd['input'].size())
-        except BaseException:
-            pass
-        print('output', dd['output'].size())
+        #     print('A', dd['A'].size())
+        #     print('V', dd['V'].size())
+        #     try:
+        #         print('input', dd['input'].size())
+        #     except BaseException:
+        #         pass
+        #     print('output', dd['output'].size())
+        #     print()
+
+        for k, v in dd.items():
+            print(k)
+            for kk, vv in v.items():
+                print("\t", kk, vv.size())
         print()
