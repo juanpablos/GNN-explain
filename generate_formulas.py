@@ -215,7 +215,7 @@ def main(use_formula: FOC):
     }
 
     # total graphs to pre-generate
-    total_graphs = 500_000
+    total_graphs = 300_000
     # graphs selected per training session / model
     n_graphs = 5120
     # how many graphs are selected for the testing
