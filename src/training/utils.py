@@ -33,12 +33,13 @@ class StopTraining:
                 raise ValueError(
                     "Not all selected metrics are available "
                     f"from the training: {_conds}. "
-                    f"Available are: {list(kwargs)}")
+                    f"Available are: {list(kwargs)}"
+                )
             self.check = False
 
         current_state = [
-            kwargs[cond] >= value for cond,
-            value in self.conditions.items()]
+            kwargs[cond] >= value for cond, value in self.conditions.items()
+        ]
 
         if self.operation(current_state):
             self.stay -= 1
@@ -49,10 +50,7 @@ class StopTraining:
 
 
 class MetricLogger:
-    def __init__(self,
-                 variables: Union[Literal["any"],
-                                  List[str],
-                                  None] = "any"):
+    def __init__(self, variables: Union[Literal["any"], List[str], None] = "any"):
         if variables is None:
             variables = []
         self.variables: Dict[str, List[float]] = defaultdict(list)
@@ -109,9 +107,8 @@ class MetricLogger:
             return ",".join([f"{value:.6f}" for value in metric_values])
         else:
             msg = [
-                f"{name} {value:<10.6f}" for name, value in zip(
-                    metric_names,
-                    metric_values)
+                f"{name} {value:<10.6f}"
+                for name, value in zip(metric_names, metric_values)
             ]
             return "".join(msg)
 
@@ -132,15 +129,15 @@ class MetricLogger:
                         f"{key} is not present. "
                         f"Available are: {list(self.variables)}",
                         UserWarning,
-                        stacklevel=2)
+                        stacklevel=2,
+                    )
                     self.warned = True
 
         if tocsv:
             return ",".join([f"{value:.6f}" for value in metric_values])
         else:
             msg = [
-                f"{name} {value:<10.6f}" for name, value in zip(
-                    metric_names,
-                    metric_values)
+                f"{name} {value:<10.6f}"
+                for name, value in zip(metric_names, metric_values)
             ]
             return "".join(msg)

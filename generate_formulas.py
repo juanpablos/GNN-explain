@@ -48,7 +48,14 @@ def run_experiment(
             train_data, test_data = data_sampler()
             logger.debug("Finished Subsampling dataset")
 
-            trainer = GNNTrainer(logging_variables="all")
+            trainer = GNNTrainer(
+                logging_variables=[
+                    "train_loss",
+                    "test_loss",
+                    "test_macro",
+                    "test_micro",
+                ]
+            )
 
             trainer.init_dataloader(
                 train_data,
@@ -100,6 +107,7 @@ def run_experiment(
             o.write(f"Problem in file {save_path}/{filename.format('X')}\n")
             o.write(f"Exception encountered: {e.__class__.__name__} {e}\n")
             o.write(f"Only {len(models)} models were written\n")
+        raise
     finally:
         logger.info(f"Saving computed models...")
 
@@ -187,7 +195,7 @@ def main(use_formula: FOC):
     }
 
     # total graphs to pre-generate
-    total_graphs = 500_000
+    total_graphs = 10_000
     # graphs selected per training session / model
     n_graphs = 5120
     # how many graphs are selected for the testing
@@ -245,7 +253,7 @@ def main(use_formula: FOC):
         batch_size=batch_size,
         iterations=iterations,
         gpu_num=0,
-        data_workers=2,
+        data_workers=0,
         lr=0.01,
         stop_when=stop_when,
     )
