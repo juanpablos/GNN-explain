@@ -5,6 +5,7 @@ import os
 import random
 from collections import defaultdict
 from timeit import default_timer as timer
+from typing import Any, Dict
 
 import torch
 
@@ -26,7 +27,9 @@ def run_experiment(
     save_path: str,
     filename: str,
     model_config: GNNModelConfig,
-    data_sampler: SubsetSampler,
+    data_config: Dict[str, Any],
+    n_graphs: int,
+    total_graphs: int,
     test_size: int,
     batch_size: int = 64,
     iterations: int = 100,
@@ -34,7 +37,25 @@ def run_experiment(
     data_workers: int = 2,
     lr: float = 0.01,
     stop_when: StopFormat = None,
+    unique_test: bool = True,
 ):
+
+    logger.debug("Initializing graph stream")
+    stream = graph_data_stream(**data_config)
+
+    logger.info(f"Pre-generating database of {total_graphs} graphs")
+    data_pool = GraphDataset(stream, limit=total_graphs)
+    logger.info("Finished pre-generating")
+
+    seed = data_config.get("seed", None)
+    logger.debug("Initializing subsampler")
+    data_sampler = SubsetSampler(
+        dataset=data_pool,
+        n_elements=n_graphs,
+        test_size=test_size,
+        seed=seed,
+        unique_test=unique_test,
+    )
 
     models = []
     stats = {"macro": defaultdict(int), "micro": defaultdict(int)}
@@ -107,7 +128,6 @@ def run_experiment(
             o.write(f"Problem in file {save_path}/{filename.format('X')}\n")
             o.write(f"Exception encountered: {e.__class__.__name__} {e}\n")
             o.write(f"Only {len(models)} models were written\n")
-        raise
     finally:
         logger.info(f"Saving computed models...")
 
@@ -195,7 +215,7 @@ def main(use_formula: FOC):
     }
 
     # total graphs to pre-generate
-    total_graphs = 10_000
+    total_graphs = 500_000
     # graphs selected per training session / model
     n_graphs = 5120
     # how many graphs are selected for the testing
@@ -225,37 +245,23 @@ def main(use_formula: FOC):
 
     data_config["formula"] = formula
 
-    logger.debug("Initializing graph stream")
-    stream = graph_data_stream(**data_config)
-
-    logger.info(f"Pre-generating database of {total_graphs} graphs")
-    data_pool = GraphDataset(stream, limit=total_graphs)
-    logger.info("Finished pre-generating")
-
-    seed = data_config.get("seed", None)
-    logger.debug("Initializing subsampler")
-    data_sampler = SubsetSampler(
-        dataset=data_pool,
-        n_elements=n_graphs,
-        test_size=test_size,
-        seed=seed,
-        unique_test=unique_test,
-    )
-
     start = timer()
     run_experiment(
         n_models=n_models,
         save_path=save_path,
         filename=filename,
         model_config=model_config,
-        data_sampler=data_sampler,
+        data_config=data_config,
+        n_graphs=n_graphs,
+        total_graphs=total_graphs,
         test_size=test_size,
         batch_size=batch_size,
         iterations=iterations,
         gpu_num=0,
-        data_workers=0,
+        data_workers=2,
         lr=0.01,
         stop_when=stop_when,
+        unique_test=unique_test,
     )
     end = timer()
     time_elapsed = end - start
