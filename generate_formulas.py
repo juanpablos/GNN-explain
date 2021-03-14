@@ -149,7 +149,7 @@ def main(use_formula: FOC):
         "mlp_layers": 1,  # the number of layers in A and V
         "combine_layers": 2,  # layers in the combine MLP if combine_type=mlp
         "task": "node",
-        "use_batch_norm": True,
+        "use_batch_norm": False,
     }
     model_config_hash = hashlib.md5(
         json.dumps(model_config, sort_keys=True).encode()
@@ -179,7 +179,7 @@ def main(use_formula: FOC):
     # * model_name - number of models - model hash - formula hash
     filename = f"{model_name}-" + "n{}" + f"-{model_config_hash}-{formula_hash}.pt"
 
-    iterations = 20
+    iterations = 30
     stop_when: StopFormat = {
         "operation": "and",  # and or or
         "conditions": {"test_micro": 0.999, "test_macro": 0.999},
