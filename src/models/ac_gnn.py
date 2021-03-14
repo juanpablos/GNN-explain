@@ -8,65 +8,70 @@ from src.models.layers import ACConv, NetworkConv
 from src.models.utils import reset
 
 
-class ACGNNNoInput(torch.nn.Module):
-
+class ACGNNNoInput(nn.Module):
     def __init__(
-            self,
-            input_dim: int,
-            hidden_dim: int,
-            output_dim: int,
-            aggregate_type: str,
-            combine_type: str,
-            num_layers: int,
-            combine_layers: int,
-            mlp_layers: int,
-            task: str,
-            use_batch_norm: bool = True,
-            truncated_fn: Tuple[int, int] = None,
-            **kwargs
+        self,
+        input_dim: int,
+        hidden_dim: int,
+        output_dim: int,
+        aggregate_type: str,
+        combine_type: str,
+        num_layers: int,
+        combine_layers: int,
+        mlp_layers: int,
+        task: str,
+        use_batch_norm: bool = True,
+        truncated_fn: Tuple[int, int] = None,
+        **kwargs
     ):
         super(ACGNNNoInput, self).__init__()
 
         self.num_layers = num_layers
 
         if task != "node":
-            raise NotImplementedError(
-                "No support for task other than `node` yet")
+            raise NotImplementedError("No support for task other than `node` yet")
         self.task = task
 
         self.bigger_input = input_dim > hidden_dim
         self.weighted_combine = combine_type != "identity"
 
         if not self.bigger_input:
-            self.padding = nn.ConstantPad1d(
-                (0, hidden_dim - input_dim), value=0)
+            self.padding = nn.ConstantPad1d((0, hidden_dim - input_dim), value=0)
 
         if truncated_fn is not None:
             self.activation = nn.Hardtanh(
-                min_val=truncated_fn[0],
-                max_val=truncated_fn[1])
+                min_val=truncated_fn[0], max_val=truncated_fn[1]
+            )
         else:
             self.activation = nn.ReLU()
 
         # add the convolutions
-        self.convs = torch.nn.ModuleList()
+        self.convs = nn.ModuleList()
         for layer in range(self.num_layers):
             if layer == 0 and self.bigger_input:
-                self.convs.append(ACConv(input_dim=input_dim,
-                                         output_dim=hidden_dim,
-                                         aggregate_type=aggregate_type,
-                                         combine_type=combine_type,
-                                         combine_layers=combine_layers,
-                                         mlp_layers=mlp_layers))
+                self.convs.append(
+                    ACConv(
+                        input_dim=input_dim,
+                        output_dim=hidden_dim,
+                        aggregate_type=aggregate_type,
+                        combine_type=combine_type,
+                        combine_layers=combine_layers,
+                        mlp_layers=mlp_layers,
+                    )
+                )
             else:
-                self.convs.append(ACConv(input_dim=hidden_dim,
-                                         output_dim=hidden_dim,
-                                         aggregate_type=aggregate_type,
-                                         combine_type=combine_type,
-                                         combine_layers=combine_layers,
-                                         mlp_layers=mlp_layers))
+                self.convs.append(
+                    ACConv(
+                        input_dim=hidden_dim,
+                        output_dim=hidden_dim,
+                        aggregate_type=aggregate_type,
+                        combine_type=combine_type,
+                        combine_layers=combine_layers,
+                        mlp_layers=mlp_layers,
+                    )
+                )
 
-        self.batch_norms = torch.nn.ModuleList()
+        self.batch_norms = nn.ModuleList()
         # placeholder
         identity = nn.Identity()
         for _ in range(self.num_layers):
@@ -104,30 +109,28 @@ class ACGNNNoInput(torch.nn.Module):
         reset(self.linear_prediction)
 
 
-class ACGNN(torch.nn.Module):
-
+class ACGNN(nn.Module):
     def __init__(
-            self,
-            input_dim: int,
-            hidden_dim: int,
-            output_dim: int,
-            aggregate_type: str,
-            combine_type: str,
-            num_layers: int,
-            combine_layers: int,
-            mlp_layers: int,
-            task: str,
-            use_batch_norm: bool = True,
-            truncated_fn: Tuple[int, int] = None,
-            **kwargs
+        self,
+        input_dim: int,
+        hidden_dim: int,
+        output_dim: int,
+        aggregate_type: str,
+        combine_type: str,
+        num_layers: int,
+        combine_layers: int,
+        mlp_layers: int,
+        task: str,
+        use_batch_norm: bool = True,
+        truncated_fn: Tuple[int, int] = None,
+        **kwargs
     ):
         super(ACGNN, self).__init__()
 
         self.num_layers = num_layers
 
         if task != "node":
-            raise NotImplementedError(
-                "No support for task other than `node` yet")
+            raise NotImplementedError("No support for task other than `node` yet")
         self.task = task
 
         self.input_embedding = nn.Linear(input_dim, hidden_dim)
@@ -136,22 +139,26 @@ class ACGNN(torch.nn.Module):
 
         if truncated_fn is not None:
             self.activation = nn.Hardtanh(
-                min_val=truncated_fn[0],
-                max_val=truncated_fn[1])
+                min_val=truncated_fn[0], max_val=truncated_fn[1]
+            )
         else:
             self.activation = nn.ReLU()
 
         # add the convolutions
-        self.convs = torch.nn.ModuleList()
+        self.convs = nn.ModuleList()
         for _ in range(self.num_layers):
-            self.convs.append(ACConv(input_dim=hidden_dim,
-                                     output_dim=hidden_dim,
-                                     aggregate_type=aggregate_type,
-                                     combine_type=combine_type,
-                                     combine_layers=combine_layers,
-                                     mlp_layers=mlp_layers))
+            self.convs.append(
+                ACConv(
+                    input_dim=hidden_dim,
+                    output_dim=hidden_dim,
+                    aggregate_type=aggregate_type,
+                    combine_type=combine_type,
+                    combine_layers=combine_layers,
+                    mlp_layers=mlp_layers,
+                )
+            )
 
-        self.batch_norms = torch.nn.ModuleList()
+        self.batch_norms = nn.ModuleList()
         # placeholder
         identity = nn.Identity()
         for _ in range(self.num_layers):
@@ -189,15 +196,8 @@ class ACGNN(torch.nn.Module):
         reset(self.linear_prediction)
 
 
-class NetworkACGNN(torch.nn.Module):
-
-    def __init__(
-            self,
-            hidden_dim: int,
-            output_dim: int,
-            mlp_layers: int,
-            **kwargs
-    ):
+class NetworkACGNN(nn.Module):
+    def __init__(self, hidden_dim: int, output_dim: int, mlp_layers: int, **kwargs):
         super(NetworkACGNN, self).__init__()
 
         self.num_layers = 8
@@ -207,12 +207,14 @@ class NetworkACGNN(torch.nn.Module):
         self.activation = nn.ReLU()
 
         # add the convolutions
-        self.convs = torch.nn.ModuleList()
-        self.batch_norms = torch.nn.ModuleList()
+        self.convs = nn.ModuleList()
+        self.batch_norms = nn.ModuleList()
         for _ in range(self.num_layers):
-            self.convs.append(NetworkConv(input_dim=hidden_dim,
-                                          output_dim=hidden_dim,
-                                          mlp_layers=mlp_layers))
+            self.convs.append(
+                NetworkConv(
+                    input_dim=hidden_dim, output_dim=hidden_dim, mlp_layers=mlp_layers
+                )
+            )
             self.batch_norms.append(nn.BatchNorm1d(hidden_dim))
 
         # self.readout = geom_nn.global_mean_pool
@@ -223,7 +225,7 @@ class NetworkACGNN(torch.nn.Module):
         self.linear_prediction = nn.Sequential(
             nn.Linear(hidden_dim * self.num_layers, output_dim),
             nn.ReLU(),
-            nn.Linear(output_dim, output_dim)
+            nn.Linear(output_dim, output_dim),
         )
         # self.linear_prediction = nn.Linear(hidden_dim * self.num_layers, output_dim)
 
@@ -236,10 +238,7 @@ class NetworkACGNN(torch.nn.Module):
         layers = []
 
         for conv, norm in zip(self.convs, self.batch_norms):
-            h = conv(
-                h=h,
-                edge_index=edge_index,
-                edge_weight=weight)
+            h = conv(h=h, edge_index=edge_index, edge_weight=weight)
             h = self.activation(h)
             h = norm(h)
 

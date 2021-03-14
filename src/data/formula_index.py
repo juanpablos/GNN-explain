@@ -13,3 +13,10 @@ class FormulaMapping:
     def __getitem__(self, key: str) -> Element:
         formula: Element = eval(self.mapping[key])
         return formula.validate()
+
+    def __len__(self):
+        return len(self.mapping)
+
+    def __iter__(self):
+        for key in self.mapping.keys():
+            yield key, self[key]
