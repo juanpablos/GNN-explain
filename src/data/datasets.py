@@ -3,16 +3,7 @@ from __future__ import annotations
 import logging
 import warnings
 from abc import ABC
-from typing import (
-    Generic,
-    Iterator,
-    List,
-    Optional,
-    Sequence,
-    Tuple,
-    Type,
-    TypeVar
-)
+from typing import Generic, Iterator, List, Optional, Sequence, Tuple, Type, TypeVar
 
 import torch
 from torch.utils.data import Dataset
@@ -53,15 +44,12 @@ class GraphDataset(NoLabelDataset[T_co]):
 
 
 class NoLabelSubset(NoLabelDataset[T_co]):
-    def __init__(
-            self,
-            dataset: NoLabelDataset[T_co],
-            indices: Sequence[int]):
+    def __init__(self, dataset: NoLabelDataset[T_co], indices: Sequence[int]):
         super().__init__(dataset=dataset)
         self._indices = indices
 
     def __getitem__(self, idx: int):
-        return self.dataset[self.indices[idx]]
+        return self._dataset[self.indices[idx]]
 
     def __len__(self):
         return len(self.indices)
@@ -84,9 +72,8 @@ class NoLabelSubset(NoLabelDataset[T_co]):
 
 class BaseLabeledDataset(ABC, Generic[T_co, S_co]):
     def __init__(
-            self,
-            dataset: IndexableIterable[T_co],
-            labels: IndexableIterable[S_co]):
+        self, dataset: IndexableIterable[T_co], labels: IndexableIterable[S_co]
+    ):
         self._dataset: IndexableIterable[T_co] = dataset
         self._labels: IndexableIterable[S_co] = labels
 
@@ -114,17 +101,20 @@ class BaseLabeledDataset(ABC, Generic[T_co, S_co]):
         if not isinstance(data_element, Indexable):
             raise TypeError(
                 "The elements in the sequence are not "
-                f"indexable: {type(data_element)}")
+                f"indexable: {type(data_element)}"
+            )
         if len(data_element) < 2:
             raise TypeError(
                 "The elements in the sequence have less than 2 items. "
-                f"Not enough elements to unpack: {len(data_element)}")
+                f"Not enough elements to unpack: {len(data_element)}"
+            )
 
     @classmethod
     def from_tuple_sequence(
-            cls: Type[LabeledDatasetType],
-            dataset: IndexableIterable[Tuple[T_co, S_co]],
-            **kwargs) -> LabeledDatasetType:
+        cls: Type[LabeledDatasetType],
+        dataset: IndexableIterable[Tuple[T_co, S_co]],
+        **kwargs,
+    ) -> LabeledDatasetType:
         cls._check_if_element_cond(dataset)
 
         data_elements: List[T_co] = []
@@ -137,9 +127,10 @@ class BaseLabeledDataset(ABC, Generic[T_co, S_co]):
 
     @classmethod
     def from_iterable(
-            cls: Type[LabeledDatasetType],
-            datasets: Sequence[IndexableIterable[Tuple[T_co, S_co]]],
-            **kwargs) -> LabeledDatasetType:
+        cls: Type[LabeledDatasetType],
+        datasets: Sequence[IndexableIterable[Tuple[T_co, S_co]]],
+        **kwargs,
+    ) -> LabeledDatasetType:
 
         dataset: List[T_co] = []
         labels: List[S_co] = []
@@ -153,19 +144,19 @@ class BaseLabeledDataset(ABC, Generic[T_co, S_co]):
         return cls(dataset=dataset, labels=labels, **kwargs)
 
     @classmethod
-    def from_subset(cls: Type[LabeledDatasetType],
-                    subset: LabeledSubset[T_co,
-                                          S_co]) -> LabeledDatasetType:
-        raise NotImplementedError(
-            f"from_iterable is not implemented for {cls}")
+    def from_subset(
+        cls: Type[LabeledDatasetType], subset: LabeledSubset[T_co, S_co]
+    ) -> LabeledDatasetType:
+        raise NotImplementedError(f"from_iterable is not implemented for {cls}")
 
 
 class LabeledDataset(BaseLabeledDataset[T_co, S_co], Dataset):
     def __init__(
-            self,
-            dataset: IndexableIterable[T_co],
-            labels: IndexableIterable[S_co],
-            multilabel: bool):
+        self,
+        dataset: IndexableIterable[T_co],
+        labels: IndexableIterable[S_co],
+        multilabel: bool,
+    ):
         super().__init__(dataset=dataset, labels=labels)
 
         self._multilabel = multilabel
@@ -188,21 +179,19 @@ class LabeledDataset(BaseLabeledDataset[T_co, S_co], Dataset):
 
     @classmethod
     def from_tuple_sequence(
-            cls,
-            dataset: IndexableIterable[Tuple[T_co, S_co]],
-            multilabel: bool):
+        cls, dataset: IndexableIterable[Tuple[T_co, S_co]], multilabel: bool
+    ):
         return super(LabeledDataset, cls).from_tuple_sequence(
-            dataset=dataset,
-            multilabel=multilabel)
+            dataset=dataset, multilabel=multilabel
+        )
 
     @classmethod
     def from_iterable(
-            cls,
-            datasets: Sequence[IndexableIterable[Tuple[T_co, S_co]]],
-            multilabel: bool):
+        cls, datasets: Sequence[IndexableIterable[Tuple[T_co, S_co]]], multilabel: bool
+    ):
         return super(LabeledDataset, cls).from_iterable(
-            datasets=datasets,
-            multilabel=multilabel)
+            datasets=datasets, multilabel=multilabel
+        )
 
     @classmethod
     def from_subset(cls, subset: LabeledSubset[T_co, S_co]):
@@ -214,17 +203,14 @@ class LabeledDataset(BaseLabeledDataset[T_co, S_co], Dataset):
                 labels.append(y)
 
             return cls(
-                dataset=dataset,
-                labels=labels,
-                multilabel=subset._dataset.multilabel)
+                dataset=dataset, labels=labels, multilabel=subset._dataset.multilabel
+            )
         else:
             raise TypeError("The subset is not a LabeledDatset subset")
 
 
 class LabeledSubset(BaseLabeledDataset[T_co, S_co], Dataset):
-    def __init__(self,
-                 dataset: BaseLabeledDataset[T_co, S_co],
-                 indices: Sequence[int]):
+    def __init__(self, dataset: BaseLabeledDataset[T_co, S_co], indices: Sequence[int]):
         self._dataset: BaseLabeledDataset[T_co, S_co] = dataset
         self._indices = indices
 
@@ -248,27 +234,27 @@ class LabeledSubset(BaseLabeledDataset[T_co, S_co], Dataset):
                 "Creating concrete dataset from subset. "
                 "To avoid computation overhead call `apply_subset` "
                 "and store that object",
-                stacklevel=3)
+                stacklevel=3,
+            )
             return getattr(self.apply_subset(), name)
         elif name in ["multilabel"]:
             return getattr(self._dataset, name)
 
         raise AttributeError(
             "Do not call Concrete Dataset methods "
-            f"on {self.__class__}. Call `apply_subset` and then the method.")
+            f"on {self.__class__}. Call `apply_subset` and then the method."
+        )
 
     def apply_subset(self):
         return self._dataset.from_subset(subset=self)
 
     @classmethod
     def from_tuple_sequence(cls, *args, **kwargs):
-        raise NotImplementedError(
-            f"from_tuple_sequence is not implemented for {cls}")
+        raise NotImplementedError(f"from_tuple_sequence is not implemented for {cls}")
 
     @classmethod
     def from_iterable(cls, *args, **kwargs):
-        raise NotImplementedError(
-            f"from_iterable is not implemented for {cls}")
+        raise NotImplementedError(f"from_iterable is not implemented for {cls}")
 
 
 class DummyIterable(Generic[S]):
@@ -293,16 +279,17 @@ class NetworkDataset(Dataset, Generic[S]):
     """
 
     def __init__(
-            self,
-            label: S,
-            formula: Element,
-            file: str = "",
-            limit: int = None,
-            multilabel: bool = False,
-            text: bool = False,
-            vocabulary: Vocabulary = None,
-            preloaded: IndexableIterable[torch.Tensor] = None,
-            _legacy_load_without_batch: bool = False):
+        self,
+        label: S,
+        formula: Element,
+        file: str = "",
+        limit: int = None,
+        multilabel: bool = False,
+        text: bool = False,
+        vocabulary: Vocabulary = None,
+        preloaded: IndexableIterable[torch.Tensor] = None,
+        _legacy_load_without_batch: bool = False,
+    ):
 
         if file == "" and preloaded is None:
             raise ValueError("Cannot have `file` and `preloaded` unset")
@@ -313,22 +300,23 @@ class NetworkDataset(Dataset, Generic[S]):
             dataset = preloaded
 
         self._dataset: IndexableIterable[torch.Tensor] = dataset
-        self._labels: IndexableIterable[S] = DummyIterable(
-            label, length=len(dataset))
+        self._labels: IndexableIterable[S] = DummyIterable(label, length=len(dataset))
         self._multilabel = multilabel
         self._formula = formula
         self._text = text
         self._vocabulary = vocabulary
 
     @classmethod
-    def categorical(cls,
-                    label: S,
-                    formula: Element,
-                    file: str = "",
-                    limit: int = None,
-                    multilabel: bool = False,
-                    preloaded: IndexableIterable[torch.Tensor] = None,
-                    _legacy_load_without_batch: bool = False):
+    def categorical(
+        cls,
+        label: S,
+        formula: Element,
+        file: str = "",
+        limit: int = None,
+        multilabel: bool = False,
+        preloaded: IndexableIterable[torch.Tensor] = None,
+        _legacy_load_without_batch: bool = False,
+    ):
 
         dataset = cls(
             label=label,
@@ -345,14 +333,16 @@ class NetworkDataset(Dataset, Generic[S]):
         return dataset
 
     @classmethod
-    def text_sequence(cls,
-                      label: S,
-                      formula: Element,
-                      file: str = "",
-                      limit: int = None,
-                      vocabulary: Vocabulary = None,
-                      preloaded: IndexableIterable[torch.Tensor] = None,
-                      _legacy_load_without_batch: bool = False):
+    def text_sequence(
+        cls,
+        label: S,
+        formula: Element,
+        file: str = "",
+        limit: int = None,
+        vocabulary: Vocabulary = None,
+        preloaded: IndexableIterable[torch.Tensor] = None,
+        _legacy_load_without_batch: bool = False,
+    ):
 
         dataset = cls(
             label=label,
@@ -411,8 +401,7 @@ class NetworkDataset(Dataset, Generic[S]):
             if not isinstance(limit, int):
                 raise ValueError("Limit must be an integer")
             if len(networks) < limit:
-                raise ValueError(
-                    "Limit is larger than the size of the dataset")
+                raise ValueError("Limit is larger than the size of the dataset")
 
         for i, weights in enumerate(networks, start=1):
 
@@ -430,13 +419,13 @@ class NetworkDataset(Dataset, Generic[S]):
         return dataset
 
 
-class TextSequenceDataset(
-        BaseLabeledDataset[T_co, torch.Tensor], Dataset):
+class TextSequenceDataset(BaseLabeledDataset[T_co, torch.Tensor], Dataset):
     def __init__(
-            self,
-            dataset: IndexableIterable[T_co],
-            labels: IndexableIterable[torch.Tensor],
-            vocabulary: Vocabulary):
+        self,
+        dataset: IndexableIterable[T_co],
+        labels: IndexableIterable[torch.Tensor],
+        vocabulary: Vocabulary,
+    ):
 
         self._dataset: IndexableIterable[T_co] = dataset
         self._labels: IndexableIterable[torch.Tensor] = labels
@@ -467,20 +456,23 @@ class TextSequenceDataset(
 
     @classmethod
     def from_tuple_sequence(
-            cls,
-            dataset: IndexableIterable[Tuple[T_co, torch.Tensor]],
-            vocabulary: Vocabulary):
+        cls,
+        dataset: IndexableIterable[Tuple[T_co, torch.Tensor]],
+        vocabulary: Vocabulary,
+    ):
         return super(TextSequenceDataset, cls).from_tuple_sequence(
-            dataset=dataset, vocabulary=vocabulary)
+            dataset=dataset, vocabulary=vocabulary
+        )
 
     @classmethod
-    def from_iterable(cls,
-                      datasets: Sequence[IndexableIterable[Tuple[
-                          T_co,
-                          torch.Tensor]]],
-                      vocabulary: Vocabulary):
+    def from_iterable(
+        cls,
+        datasets: Sequence[IndexableIterable[Tuple[T_co, torch.Tensor]]],
+        vocabulary: Vocabulary,
+    ):
         return super(TextSequenceDataset, cls).from_iterable(
-            datasets=datasets, vocabulary=vocabulary)
+            datasets=datasets, vocabulary=vocabulary
+        )
 
     @classmethod
     def from_subset(cls, subset: LabeledSubset[T_co, torch.Tensor]):
@@ -492,8 +484,7 @@ class TextSequenceDataset(
                 labels.append(y)
 
             return cls(
-                dataset=dataset,
-                labels=labels,
-                vocabulary=subset._dataset.vocabulary)
+                dataset=dataset, labels=labels, vocabulary=subset._dataset.vocabulary
+            )
         else:
             raise TypeError("The subset is not a TextSequenceDataset subset")
