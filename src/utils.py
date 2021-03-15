@@ -29,6 +29,7 @@ def merge_update(dict1, dict2):
 
 def save_file_exists(root: str, filename: str):
     """Check if the tuple (model type, model config, formula) already exists (ignores the number of models saved)"""
+
     def _create_tuple(s):
         left = s.split(".pt")[0]
         splitted = left.split("-")
@@ -58,14 +59,15 @@ def cleanup(exists, path, file):
 
 
 def write_metadata(
-        file_path: str,
-        model_config: GNNModelConfig,
-        model_config_hash: str,
-        formula: FOC,
-        formula_hash: str,
-        data_config: Dict[str, Any],
-        seed: int,
-        **kwargs: Any):
+    file_path: str,
+    model_config: GNNModelConfig,
+    model_config_hash: str,
+    formula: FOC,
+    formula_hash: str,
+    data_config: Dict[str, Any],
+    seed: int,
+    **kwargs: Any,
+):
 
     logging.debug("Writing metadata")
 
@@ -74,17 +76,19 @@ def write_metadata(
     * formula hash, formula string, model hash, seed,
     *    model config, data config, others
     """
-    with open(file_path, "a", newline='', encoding='utf-8') as f:
+    with open(file_path, "a", newline="", encoding="utf-8") as f:
         writer = csv.writer(f, quotechar="|")
-        writer.writerow([
-            formula_hash,
-            repr(formula),
-            model_config_hash,
-            seed,
-            json.dumps(model_config),
-            json.dumps(data_config),
-            json.dumps(kwargs)
-        ])
+        writer.writerow(
+            [
+                formula_hash,
+                repr(formula),
+                model_config_hash,
+                seed,
+                json.dumps(model_config),
+                json.dumps(data_config),
+                json.dumps(kwargs),
+            ]
+        )
 
 
 def get_next_filename(path: str, filename: str, ext: str):
@@ -102,15 +106,16 @@ def get_next_filename(path: str, filename: str, ext: str):
 
 
 def write_result_info(
-        path: str,
-        filename: str,
-        hash_formula: Dict[str, Element],
-        hash_label: Dict[str, Any],
-        classes: Dict[Any, str],
-        multilabel: bool,
-        mistakes: Dict[Element, Dict[int, int]],
-        formula_count: Dict[Element, int],
-        metrics: Dict):
+    path: str,
+    filename: str,
+    hash_formula: Dict[str, Element],
+    hash_label: Dict[str, Any],
+    classes: Dict[Any, str],
+    multilabel: bool,
+    mistakes: Dict[Element, Dict[int, int]],
+    formula_count: Dict[Element, int],
+    metrics: Dict,
+):
 
     logger.debug("Writing result info")
 
@@ -139,12 +144,11 @@ def write_result_info(
         else:
             groups[label].append(_hash)
 
-    max_formula_len = max(len(str(formula))
-                          for formula in hash_formula.values())
+    max_formula_len = max(len(str(formula)) for formula in hash_formula.values())
 
-    filename, counter = get_next_filename(path=f"{path}/info",
-                                          filename=filename,
-                                          ext="txt")
+    filename, counter = get_next_filename(
+        path=f"{path}/info", filename=filename, ext="txt"
+    )
 
     with open(f"{path}/info/{filename}.txt", "w", encoding="utf-8") as o:
         for metric, values in metrics.items():
@@ -174,26 +178,28 @@ def write_result_info(
                     hash=_hash,
                     formula=str(hash_formula[_hash]),
                     err=f"{n_mistakes}/{count}",
-                    pad=max_formula_len + 4)
+                    pad=max_formula_len + 4,
+                )
                 o.write(line)
 
     return counter
 
 
-def prepare_info_dir(path: str, filename: str, ext: str = 'txt'):
+def prepare_info_dir(path: str, filename: str, ext: str = "txt"):
     os.makedirs(f"{path}/info/", exist_ok=True)
-    filename, counter = get_next_filename(path=f"{path}/info",
-                                          filename=filename,
-                                          ext=ext)
+    filename, counter = get_next_filename(
+        path=f"{path}/info", filename=filename, ext=ext
+    )
 
     return filename, counter
 
 
 def write_result_info_text(
-        path: str,
-        filename: str,
-        formula_metrics: Dict[str, Dict[str, Any]],
-        semantic_eval_data: Dict[str, Any]):
+    path: str,
+    filename: str,
+    formula_metrics: Dict[str, Dict[str, Any]],
+    semantic_eval_data: Dict[str, Any],
+):
 
     logger.debug("Writing result info")
     # metric_name -> all|formula -> value
@@ -209,17 +215,17 @@ def write_result_info_text(
 
         # write the sematic graph evaluation data
         o.write(
-            f"\nTotal Semantic Evaluation Graph Positive Average: {semantic_eval_data['total']}\n\n")
+            f"\nTotal Semantic Evaluation Graph Positive Average: {semantic_eval_data['total']}\n\n"
+        )
 
-        for formula, rates in zip(semantic_eval_data['formulas'],
-                                  semantic_eval_data['formula_positives']):
+        for formula, rates in zip(
+            semantic_eval_data["formulas"], semantic_eval_data["formula_positives"]
+        ):
             o.write(f"Individual formula positive rate:\n")
             o.write(f"\t{formula!r}: {rates}\n")
 
 
-def write_train_data(metric_history: MetricHistory,
-                     save_path: str,
-                     filename: str):
+def write_train_data(metric_history: MetricHistory, save_path: str, filename: str):
 
     header = list(metric_history.keys())
     history = [metric_history.get_history(metric) for metric in header]

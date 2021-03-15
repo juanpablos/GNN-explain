@@ -28,36 +28,33 @@ logger = logging.getLogger("src")
 
 
 def get_formula():
-    f = AND(Property('GREEN'), Exist(
-        AND(Role('EDGE'), Property('BLACK')), None, 4))
+    f = AND(Property("GREEN"), Exist(AND(Role("EDGE"), Property("BLACK")), None, 4))
     return FOC(f)
 
 
 def run_experiment(
-        n_models: int,
-        save_path: str,
-        filename: str,
-        model_config: GNNModelConfig,
-        data_config: Dict[str, Any],
-        train_length: int,
-        test_length: int,
-        iterations: int = 100,
-        gpu_num: int = 0,
-        data_workers: int = 2,
-        batch_size: int = 64,
-        test_batch_size: int = 512,
-        lr: float = 0.01,
-        stop_when: StopFormat = None):
+    n_models: int,
+    save_path: str,
+    filename: str,
+    model_config: GNNModelConfig,
+    data_config: Dict[str, Any],
+    train_length: int,
+    test_length: int,
+    iterations: int = 100,
+    gpu_num: int = 0,
+    data_workers: int = 2,
+    batch_size: int = 64,
+    test_batch_size: int = 512,
+    lr: float = 0.01,
+    stop_when: StopFormat = None,
+):
 
     stream = graph_data_stream(**data_config)
     models = []
 
-    stats = {
-        "macro": defaultdict(int),
-        "micro": defaultdict(int)
-    }
+    stats = {"macro": defaultdict(int), "micro": defaultdict(int)}
 
-    time_graph = 0.
+    time_graph = 0.0
 
     s = timer()
     test_data = GraphDataset(stream, test_length)
@@ -79,23 +76,26 @@ def run_experiment(
                 batch_size=batch_size,
                 pin_memory=False,
                 shuffle=True,
-                num_workers=data_workers)
+                num_workers=data_workers,
+            )
             trainer.init_dataloader(
                 test_data,
                 mode="test",
                 batch_size=test_batch_size,
                 pin_memory=False,
                 shuffle=True,
-                num_workers=data_workers)
+                num_workers=data_workers,
+            )
 
             trainer.init_model(**model_config)
 
-            model, = run(
+            (model,) = run(
                 trainer=trainer,
                 iterations=iterations,
                 gpu_num=gpu_num,
                 lr=lr,
-                stop_when=stop_when)
+                stop_when=stop_when,
+            )
 
             model.cpu()
             weights = model.state_dict()
@@ -171,13 +171,11 @@ def main(use_formula: FOC = None):
         "mlp_layers": 1,  # the number of layers in A and V
         "combine_layers": 2,  # layers in the combine MLP if combine_type=mlp
         "task": "node",
-        "use_batch_norm": True
+        "use_batch_norm": True,
     }
     model_config_hash = hashlib.md5(
-        json.dumps(
-            model_config,
-            sort_keys=True).encode()).hexdigest()[
-        :10]
+        json.dumps(model_config, sort_keys=True).encode()
+    ).hexdigest()[:10]
 
     formula = get_formula() if use_formula is None else use_formula
     formula_hash = hashlib.md5(repr(formula).encode()).hexdigest()[:10]
@@ -194,24 +192,20 @@ def main(use_formula: FOC = None):
         # --- generator config
         "name": "erdos",
         # ! because the generated graph is undirected, the number of average neighbors will be double `m`
-        "m": 4
+        "m": 4,
     }
 
     save_path = f"data/gnns/{model_config_hash}-testing"
     # ! manual operation
     os.makedirs(save_path, exist_ok=True)
     # * model_name - number of models - model hash - formula hash
-    filename = f"{model_name}-" + "n{}" + \
-        f"-{model_config_hash}-{formula_hash}.pt"
+    filename = f"{model_name}-" + "n{}" + f"-{model_config_hash}-{formula_hash}.pt"
 
     iterations = 20
     stop_when: StopFormat = {
         "operation": "and",  # and or or
-        "conditions": {
-            "test_micro": 0.999,
-            "test_macro": 0.999
-        },
-        "stay": 2
+        "conditions": {"test_micro": 0.999, "test_macro": 0.999},
+        "stay": 2,
     }
 
     # I want to be able to retrieve train_batch_length graphs train_batch times
@@ -254,7 +248,7 @@ def main(use_formula: FOC = None):
         batch_size=train_batch_size,
         test_batch_size=test_batch_size,
         lr=0.01,
-        stop_when=stop_when
+        stop_when=stop_when,
     )
     end = timer()
     logger.info(f"Took {end-start} seconds")

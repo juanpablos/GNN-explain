@@ -19,7 +19,7 @@ from src.training.metrics import SequenceMetrics
 from . import Trainer
 
 logger = logging.getLogger(__name__)
-logger_metrics = logging.getLogger('metrics')
+logger_metrics = logging.getLogger("metrics")
 
 # TODO: duplicated code with sequence_training
 # FIX: implement Mixin or utils to add metrics and other functionalities
@@ -39,30 +39,28 @@ class Collator:
         x = self.geometric_collator(x)
 
         y_lens = torch.tensor([target.size(0) for target in y])
-        y_pad = pad_sequence(
-            y,
-            batch_first=True,
-            padding_value=self.pad_token_id)
+        y_pad = pad_sequence(y, batch_first=True, padding_value=self.pad_token_id)
 
         return x, y_pad, y_lens, inds
 
 
 class DataLoader(torch.utils.data.DataLoader):
-    def __init__(self,
-                 dataset,
-                 pad_token_id,
-                 batch_size=1,
-                 shuffle=False,
-                 follow_batch=[],
-                 **kwargs):
+    def __init__(
+        self,
+        dataset,
+        pad_token_id,
+        batch_size=1,
+        shuffle=False,
+        follow_batch=[],
+        **kwargs,
+    ):
         super(DataLoader, self).__init__(
             dataset,
             batch_size,
             shuffle,
-            collate_fn=Collator(
-                pad_token_id=pad_token_id,
-                follow_batch=follow_batch),
-            **kwargs)
+            collate_fn=Collator(pad_token_id=pad_token_id, follow_batch=follow_batch),
+            **kwargs,
+        )
 
 
 class GraphSequenceTrainer(Trainer):
@@ -94,12 +92,14 @@ class GraphSequenceTrainer(Trainer):
         "test_semvalACC",
     ]
 
-    def __init__(self,
-                 vocabulary: Vocabulary,
-                 target_apply_mapping: FormulaAppliedDatasetWrapper,
-                 seed: int = None,
-                 subset_size: float = 0.2,
-                 logging_variables: Union[Literal["all"], List[str]] = "all"):
+    def __init__(
+        self,
+        vocabulary: Vocabulary,
+        target_apply_mapping: FormulaAppliedDatasetWrapper,
+        seed: int = None,
+        subset_size: float = 0.2,
+        logging_variables: Union[Literal["all"], List[str]] = "all",
+    ):
 
         super().__init__(seed=seed, logging_variables=logging_variables)
         self.vocabulary = vocabulary
@@ -107,7 +107,8 @@ class GraphSequenceTrainer(Trainer):
             seed=seed,
             subset_size=subset_size,
             vocabulary=vocabulary,
-            result_mapping=target_apply_mapping)
+            result_mapping=target_apply_mapping,
+        )
 
         logger_metrics.info(",".join(self.metric_logger.keys()))
 
@@ -118,30 +119,31 @@ class GraphSequenceTrainer(Trainer):
         _, y_pred = output.max(dim=dim)
         return y_pred
 
-    def init_encoder(self,
-                     *,
-                     hidden_dim: int,
-                     output_dim: int,
-                     num_layers: int,
-                     **kwargs):
-        self.encoder = NetworkACGNN(hidden_dim=hidden_dim,
-                                    output_dim=output_dim,
-                                    mlp_layers=num_layers,
-                                    **kwargs)
+    def init_encoder(
+        self, *, hidden_dim: int, output_dim: int, num_layers: int, **kwargs
+    ):
+        self.encoder = NetworkACGNN(
+            hidden_dim=hidden_dim,
+            output_dim=output_dim,
+            mlp_layers=num_layers,
+            **kwargs,
+        )
 
         return self.encoder
 
-    def init_decoder(self,
-                     *,
-                     name: str,
-                     encoder_dim: int,
-                     embedding_dim: int,
-                     hidden_dim: int,
-                     vocab_size: int,
-                     init_state_context: bool,
-                     concat_encoder_input: bool,
-                     dropout_prob: float = 0.0,
-                     **kwargs):
+    def init_decoder(
+        self,
+        *,
+        name: str,
+        encoder_dim: int,
+        embedding_dim: int,
+        hidden_dim: int,
+        vocab_size: int,
+        init_state_context: bool,
+        concat_encoder_input: bool,
+        dropout_prob: float = 0.0,
+        **kwargs,
+    ):
 
         pad_token_id = self.vocabulary.pad_token_id
 
@@ -154,7 +156,8 @@ class GraphSequenceTrainer(Trainer):
                 init_state_context=init_state_context,
                 concat_encoder_input=concat_encoder_input,
                 dropout_prob=dropout_prob,
-                pad_token_id=pad_token_id)
+                pad_token_id=pad_token_id,
+            )
         elif name == "lstmcell":
             self.decoder = LSTMCellDecoder(
                 encoder_dim=encoder_dim,
@@ -165,7 +168,8 @@ class GraphSequenceTrainer(Trainer):
                 concat_encoder_input=concat_encoder_input,
                 dropout_prob=dropout_prob,
                 pad_token_id=pad_token_id,
-                **kwargs)
+                **kwargs,
+            )
         else:
             raise ValueError("Only values `lstm` and `lstmcell` are supported")
 
@@ -179,25 +183,20 @@ class GraphSequenceTrainer(Trainer):
 
     def init_loss(self):
         self.loss = nn.CrossEntropyLoss(
-            reduction="mean", ignore_index=self.vocabulary.pad_token_id)
+            reduction="mean", ignore_index=self.vocabulary.pad_token_id
+        )
         return self.loss
 
     def init_optim(self, lr):
         encoder_parameters = self.encoder.parameters()
         decoder_parameters = self.decoder.parameters()
-        self.optim = optim.Adam(
-            chain(encoder_parameters, decoder_parameters),
-            lr=lr)
+        self.optim = optim.Adam(chain(encoder_parameters, decoder_parameters), lr=lr)
         return self.optim
 
-    def init_dataloader(self,
-                        data,
-                        mode: Union[Literal["train"], Literal["test"], None],
-                        **kwargs):
-        loader = DataLoader(
-            data,
-            pad_token_id=self.vocabulary.pad_token_id,
-            **kwargs)
+    def init_dataloader(
+        self, data, mode: Union[Literal["train"], Literal["test"], None], **kwargs
+    ):
+        loader = DataLoader(data, pad_token_id=self.vocabulary.pad_token_id, **kwargs)
         if mode == "train":
             self.train_loader = loader
         elif mode == "test":
@@ -224,7 +223,7 @@ class GraphSequenceTrainer(Trainer):
                 x=data.x,
                 edge_index=data.edge_index,
                 edge_weight=data.weight,
-                batch=data.batch
+                batch=data.batch,
             )
             # output: (batch * L, vocab_dim), L max seq
             # targets: (batch * L,)
@@ -232,9 +231,8 @@ class GraphSequenceTrainer(Trainer):
             # when model is LSTMCell they are sorted by real length
             # when model is LSTM they are sorted by input order
             output, targets = self.decoder(
-                encoder_out=encoder_out,
-                padded_target=y,
-                target_lengths=y_lens)
+                encoder_out=encoder_out, padded_target=y, target_lengths=y_lens
+            )
 
             # the loss ignores padding
             loss = self.loss(output, targets)
@@ -251,9 +249,7 @@ class GraphSequenceTrainer(Trainer):
 
         return average_loss
 
-    def evaluate(self,
-                 use_train_data,
-                 **kwargs):
+    def evaluate(self, use_train_data, **kwargs):
 
         #!########
         self.encoder.eval()
@@ -262,35 +258,37 @@ class GraphSequenceTrainer(Trainer):
 
         loader = self.train_loader if use_train_data else self.test_loader
 
-        epoch_scores, epoch_predictions, \
-            epoch_targets, epoch_lengths, \
-            epoch_indices, average_loss = self.run_pass(loader, keep_device=True)
+        (
+            epoch_scores,
+            epoch_predictions,
+            epoch_targets,
+            epoch_lengths,
+            epoch_indices,
+            average_loss,
+        ) = self.run_pass(loader, keep_device=True)
 
         metrics = {
             "token_acc1": self.metrics.token_accuracy(
-                scores=epoch_scores,
-                targets=epoch_targets,
-                k=1,
-                lengths=epoch_lengths),
+                scores=epoch_scores, targets=epoch_targets, k=1, lengths=epoch_lengths
+            ),
             "token_acc3": self.metrics.token_accuracy(
-                scores=epoch_scores,
-                targets=epoch_targets,
-                k=3,
-                lengths=epoch_lengths),
+                scores=epoch_scores, targets=epoch_targets, k=3, lengths=epoch_lengths
+            ),
             "sent_acc": self.metrics.sentence_accuracy(
                 predictions=epoch_predictions,
                 targets=epoch_targets,
-                lengths=epoch_lengths),
+                lengths=epoch_lengths,
+            ),
             "bleu4": self.metrics.bleu_score(
                 predictions=epoch_predictions,
                 targets=epoch_targets,
-                lengths=epoch_lengths),
-            "valid": self.metrics.syntax_check(predictions=epoch_predictions)
+                lengths=epoch_lengths,
+            ),
+            "valid": self.metrics.syntax_check(predictions=epoch_predictions),
         }
 
         semval = self.metrics.semantic_validation(
-            predictions=epoch_predictions,
-            indices=epoch_indices
+            predictions=epoch_predictions, indices=epoch_indices
         )
         for metric_name, value in semval.items():
             metrics[f"semval{metric_name}"] = value
@@ -298,15 +296,11 @@ class GraphSequenceTrainer(Trainer):
         return_metrics = {"loss": average_loss, **metrics}
 
         if use_train_data:
-            metrics = {
-                f"train_{name}": value for name,
-                value in metrics.items()}
+            metrics = {f"train_{name}": value for name, value in metrics.items()}
 
             self.metric_logger.update(**metrics)
         else:
-            metrics = {
-                f"test_{name}": value for name,
-                value in metrics.items()}
+            metrics = {f"test_{name}": value for name, value in metrics.items()}
 
             self.metric_logger.update(test_loss=average_loss, **metrics)
 
@@ -346,23 +340,24 @@ class GraphSequenceTrainer(Trainer):
                     x=data.x,
                     edge_index=data.edge_index,
                     edge_weight=data.weight,
-                    batch=data.batch
+                    batch=data.batch,
                 )
 
                 # (batch,)
                 input_tokens = y.new_full(
-                    (y.size(0),),
-                    fill_value=self.vocabulary.start_token_id)
+                    (y.size(0),), fill_value=self.vocabulary.start_token_id
+                )
 
                 # (batch, L), L is max seq
                 batch_predictions = y.new_full(
-                    (y.size(0), y.size(1)),
-                    fill_value=self.vocabulary.pad_token_id)
+                    (y.size(0), y.size(1)), fill_value=self.vocabulary.pad_token_id
+                )
 
                 # (batch, L, vocab_dim), L is max seq
                 batch_scores = data.x.new_full(
                     (y.size(0), y.size(1), self.decoder.vocab_dim),
-                    fill_value=self.vocabulary.pad_token_id)
+                    fill_value=self.vocabulary.pad_token_id,
+                )
 
                 total_batch += batch_scores.size(0)
                 max_sequence = max(max_sequence, batch_scores.size(1))
@@ -370,8 +365,7 @@ class GraphSequenceTrainer(Trainer):
                 # tuple
                 # lstm (1, batch, lstm_hidden)
                 # lstmcell (batch, lstm_hidden)
-                states = self.decoder.init_hidden_state(
-                    encoder_out=encoder_out)
+                states = self.decoder.init_hidden_state(encoder_out=encoder_out)
 
                 for t in range(y.size(1)):
                     # batch_pred: (batch, vocab_dim)
@@ -382,7 +376,7 @@ class GraphSequenceTrainer(Trainer):
                         encoder_out=encoder_out,
                         sequence_step=input_tokens,
                         step_state=states,
-                        step=t
+                        step=t,
                     )
 
                     batch_scores[:, t, :] = batch_pred
@@ -406,24 +400,22 @@ class GraphSequenceTrainer(Trainer):
                 # flatten the batch scores to (*, vocab_dim) and the targets to
                 # a vector
                 # the loss will ignore the padding tokens
-                loss = self.loss(batch_scores.view(-1, self.decoder.vocab_dim),
-                                 y.flatten())
+                loss = self.loss(
+                    batch_scores.view(-1, self.decoder.vocab_dim), y.flatten()
+                )
                 accum_loss.append(loss.detach().cpu().numpy())
 
         average_loss = np.mean(accum_loss)
 
         epoch_scores = self.concat0_tensors(
-            scores,
-            batch_total=total_batch,
-            max_variable=max_sequence)
+            scores, batch_total=total_batch, max_variable=max_sequence
+        )
         epoch_predictions = self.concat0_tensors(
-            predictions,
-            batch_total=total_batch,
-            max_variable=max_sequence)
+            predictions, batch_total=total_batch, max_variable=max_sequence
+        )
         epoch_targets = self.concat0_tensors(
-            targets,
-            batch_total=total_batch,
-            max_variable=max_sequence)
+            targets, batch_total=total_batch, max_variable=max_sequence
+        )
         # no need to pad this one, it is a 1D tensor
         epoch_lengths = torch.cat(lengths, dim=0)
         epoch_indices = torch.tensor(indices)
@@ -434,14 +426,23 @@ class GraphSequenceTrainer(Trainer):
             epoch_targets = epoch_targets.cpu()
             epoch_lengths = epoch_lengths.cpu()
 
-        return epoch_scores, epoch_predictions, epoch_targets, epoch_lengths, epoch_indices, average_loss
+        return (
+            epoch_scores,
+            epoch_predictions,
+            epoch_targets,
+            epoch_lengths,
+            epoch_indices,
+            average_loss,
+        )
 
-    def concat0_tensors(self,
-                        tensor_list: List[torch.Tensor],
-                        batch_dim: int = 0,
-                        pad_dim: int = 1,
-                        batch_total: int = None,
-                        max_variable: int = None):
+    def concat0_tensors(
+        self,
+        tensor_list: List[torch.Tensor],
+        batch_dim: int = 0,
+        pad_dim: int = 1,
+        batch_total: int = None,
+        max_variable: int = None,
+    ):
         if batch_total is None:
             batch_total = sum(t.size(batch_dim) for t in tensor_list)
         if max_variable is None:
@@ -452,16 +453,16 @@ class GraphSequenceTrainer(Trainer):
         size[pad_dim] = max_variable
 
         collected_tensor = tensor_list[0].new_full(
-            size,
-            fill_value=self.vocabulary.pad_token_id)
+            size, fill_value=self.vocabulary.pad_token_id
+        )
 
         current0 = 0
         for tensor in tensor_list:
             # if batch_dim=0 and pad_dim=1 then it is the same as
             # collected[current:current+tensor.size(0),:tensor.size(1)] = tensor
-            collected_tensor.narrow(
-                batch_dim, current0, tensor.size(batch_dim)).narrow(
-                pad_dim, 0, tensor.size(pad_dim))[:] = tensor
+            collected_tensor.narrow(batch_dim, current0, tensor.size(batch_dim)).narrow(
+                pad_dim, 0, tensor.size(pad_dim)
+            )[:] = tensor
             current0 += tensor.size(0)
 
         return collected_tensor

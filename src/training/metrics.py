@@ -18,13 +18,14 @@ logger = logging.getLogger(__name__)
 
 class SequenceMetrics:
     def __init__(
-            self,
-            vocabulary: Vocabulary,
-            result_mapping: FormulaAppliedDatasetWrapper,
-            seed: int = None,
-            subset_size: float = 0.2):
+        self,
+        vocabulary: Vocabulary,
+        result_mapping: FormulaAppliedDatasetWrapper,
+        seed: int = None,
+        subset_size: float = 0.2,
+    ):
 
-        assert 0 < subset_size <= 1, 'subset_size must be between 0 and 1'
+        assert 0 < subset_size <= 1, "subset_size must be between 0 and 1"
 
         self.vocabulary = vocabulary
         self.formula_reconstruction = FormulaReconstruction(vocabulary)
@@ -53,10 +54,8 @@ class SequenceMetrics:
 
         # flatten, but ignore the padding
         clean_flatten = torch.nn.utils.rnn.pack_padded_sequence(
-            matches,
-            lengths,
-            batch_first=True,
-            enforce_sorted=False)
+            matches, lengths, batch_first=True, enforce_sorted=False
+        )
         # sum all correct
         correct = clean_flatten.data.sum().float().item()
 
@@ -70,10 +69,8 @@ class SequenceMetrics:
 
         # this deletes the extra predictions and replaces them with padding
         cleaned = torch.nn.utils.rnn.pack_padded_sequence(
-            predictions,
-            lengths,
-            batch_first=True,
-            enforce_sorted=False)
+            predictions, lengths, batch_first=True, enforce_sorted=False
+        )
 
         # predictions have the same size with targets, but when removing the
         # extra values of prediction and padding again the paddings are of
@@ -81,7 +78,8 @@ class SequenceMetrics:
         # so we have to extend with the extra bit that was removed with
         # total_length.
         padded, _ = torch.nn.utils.rnn.pad_packed_sequence(
-            cleaned, batch_first=True, total_length=predictions.size(1))
+            cleaned, batch_first=True, total_length=predictions.size(1)
+        )
 
         # option 2
         # correct_padded = torch.full_like(
@@ -119,30 +117,24 @@ class SequenceMetrics:
     def get_random_indices(self, data_size):
         local_rand = np.random.default_rng(self.seed)
         size = int(data_size * self.subset_size)
-        subset_indices = local_rand.choice(
-            data_size, size, replace=False)
+        subset_indices = local_rand.choice(data_size, size, replace=False)
         return subset_indices
 
     @overload
     def syntax_check(
-        self,
-        predictions,
-        run_all: bool = ...,
-        return_formulas: Literal[False] = ...) -> float: ...
+        self, predictions, run_all: bool = ..., return_formulas: Literal[False] = ...
+    ) -> float:
+        ...
 
     @overload
     def syntax_check(
-        self,
-        predictions,
-        run_all: bool = ...,
-        return_formulas: Literal[True] = ...
-    ) -> Tuple[float, List[Optional[FOC]]]: ...
+        self, predictions, run_all: bool = ..., return_formulas: Literal[True] = ...
+    ) -> Tuple[float, List[Optional[FOC]]]:
+        ...
 
     def syntax_check(
-            self,
-            predictions,
-            run_all: bool = False,
-            return_formulas: bool = False):
+        self, predictions, run_all: bool = False, return_formulas: bool = False
+    ):
         # predictions: indices (batch, L) with padding
 
         logger.debug("Running syntax check")
@@ -156,15 +148,14 @@ class SequenceMetrics:
             predictions = predictions[subset_indices].tolist()
 
         # compile the formula into a FOC object
-        formulas, correct = self.formula_reconstruction.batch2expression(
-            predictions)
+        formulas, correct = self.formula_reconstruction.batch2expression(predictions)
 
-        with open('acc.txt', 'a') as f:
+        with open("acc.txt", "a") as f:
             import json
+
             _formulas = Counter(formulas)
-            json.dump({repr(k): v for k,
-                       v in _formulas.items()}, f, indent=2)
-            f.write('\n')
+            json.dump({repr(k): v for k, v in _formulas.items()}, f, indent=2)
+            f.write("\n")
 
         if not run_all:
             self.cached_formulas = formulas
@@ -179,10 +170,10 @@ class SequenceMetrics:
     def _single_validation(self, index, formula):
         correct = self.formula_mapping[index]
 
-        tp: float = 0.
-        tn: float = 0.
-        fp: float = 0.
-        fn: float = 0.
+        tp: float = 0.0
+        tn: float = 0.0
+        fp: float = 0.0
+        fn: float = 0.0
 
         if formula is not None:
             # run the formula over the predefined set of graphs
@@ -214,12 +205,11 @@ class SequenceMetrics:
         try:
             return a / b
         except BaseException:
-            return 0.
+            return 0.0
 
-    def semantic_validation(self,
-                            predictions,
-                            indices,
-                            formulas: List[Optional[FOC]] = None):
+    def semantic_validation(
+        self, predictions, indices, formulas: List[Optional[FOC]] = None
+    ):
         # predictions: indices (batch, L) with padding
 
         logger.debug("Running syntax validation")
@@ -229,8 +219,7 @@ class SequenceMetrics:
                 subset_indices = self.get_random_indices(predictions.size(0))
                 predictions = predictions[subset_indices].tolist()
 
-                formulas, _ = self.formula_reconstruction.batch2expression(
-                    predictions)
+                formulas, _ = self.formula_reconstruction.batch2expression(predictions)
                 indices = indices[subset_indices]
             else:
                 formulas = self.cached_formulas
@@ -239,16 +228,20 @@ class SequenceMetrics:
         indices = indices.tolist()
 
         assert len(formulas) == len(
-            indices), 'formulas and indices dont have the same length'
+            indices
+        ), "formulas and indices dont have the same length"
 
         with Pool(4) as p:
-            indicators = p.starmap(self._single_validation, zip(
-                indices, formulas), chunksize=len(formulas) // 4)
+            indicators = p.starmap(
+                self._single_validation,
+                zip(indices, formulas),
+                chunksize=len(formulas) // 4,
+            )
 
-        tp: float = 0.
-        tn: float = 0.
-        fp: float = 0.
-        fn: float = 0.
+        tp: float = 0.0
+        tn: float = 0.0
+        fp: float = 0.0
+        fn: float = 0.0
         for _tp, _tn, _fp, _fn in indicators:
             tp += _tp
             tn += _tn
@@ -259,8 +252,4 @@ class SequenceMetrics:
         recall = self._div(tp, tp + fn)
         acc = self._div(tp + tn, tp + tn + fp + fn)
 
-        return {
-            "PRE": precision,
-            "REC": recall,
-            "ACC": acc
-        }
+        return {"PRE": precision, "REC": recall, "ACC": acc}

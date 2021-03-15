@@ -5,7 +5,7 @@ from .filter import (
     NoFilter,
     NullFilter,
     RestrictionFilter,
-    SelectFilter
+    SelectFilter,
 )
 from .labeler import (
     BinaryAtomicLabeler,
@@ -16,5 +16,5 @@ from .labeler import (
     MultilabelRestrictionLabeler,
     SequenceLabelerApply,
     SequentialCategoricalLabeler,
-    TextSequenceLabeler
+    TextSequenceLabeler,
 )

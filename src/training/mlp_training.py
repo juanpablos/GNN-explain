@@ -10,7 +10,7 @@ from sklearn.metrics import (
     accuracy_score,
     hamming_loss,
     jaccard_score,
-    precision_recall_fscore_support
+    precision_recall_fscore_support,
 )
 from torch.utils.data import DataLoader
 
@@ -28,7 +28,8 @@ class Metric:
     def __init__(self, average: str = "macro", multilabel: bool = False):
         if average not in ["binary", "micro", "macro"]:
             raise ValueError(
-                "Argument `average` must be one of `binary`, `micro`, `macro`")
+                "Argument `average` must be one of `binary`, `micro`, `macro`"
+            )
         self.average = average
         self.multilabel = multilabel
 
@@ -38,7 +39,8 @@ class Metric:
 
     def precision_recall_fscore(self) -> Dict[str, Any]:
         precision, recall, f1score, _ = precision_recall_fscore_support(
-            self.y_true, self.y_pred, average=self.average, beta=1.0)
+            self.y_true, self.y_pred, average=self.average, beta=1.0
+        )
 
         return {"precision": precision, "recall": recall, "f1": f1score}
 
@@ -47,11 +49,8 @@ class Metric:
 
     def multilabel_metrics(self):
         return {
-            "jaccard": jaccard_score(
-                self.y_true,
-                self.y_pred,
-                average=self.average),
-            "hamming": hamming_loss(self.y_true, self.y_pred)
+            "jaccard": jaccard_score(self.y_true, self.y_pred, average=self.average),
+            "hamming": hamming_loss(self.y_true, self.y_pred),
         }
 
     def get_all(self):
@@ -65,25 +64,21 @@ class Metric:
     def report(self):
         metrics = {}
 
-        precision_avg, recall_avg, f1score_avg, _ = \
-            precision_recall_fscore_support(
-                self.y_true, self.y_pred, average=self.average, beta=1.0)
-        precision_single, recall_single, f1score_single, _ = \
-            precision_recall_fscore_support(
-                self.y_true, self.y_pred, average=None, beta=1.0)
+        precision_avg, recall_avg, f1score_avg, _ = precision_recall_fscore_support(
+            self.y_true, self.y_pred, average=self.average, beta=1.0
+        )
+        (
+            precision_single,
+            recall_single,
+            f1score_single,
+            _,
+        ) = precision_recall_fscore_support(
+            self.y_true, self.y_pred, average=None, beta=1.0
+        )
 
-        precision = {
-            "average": precision_avg,
-            "single": precision_single
-        }
-        recall = {
-            "average": recall_avg,
-            "single": recall_single
-        }
-        f1 = {
-            "average": f1score_avg,
-            "single": f1score_single
-        }
+        precision = {"average": precision_avg, "single": precision_single}
+        recall = {"average": recall_avg, "single": recall_single}
+        f1 = {"average": f1score_avg, "single": f1score_single}
 
         acc = {"total": accuracy_score(self.y_true, self.y_pred)}
 
@@ -93,15 +88,10 @@ class Metric:
         metrics["acc"] = acc
 
         if self.multilabel:
-            jaccard_avg = jaccard_score(
-                self.y_true, self.y_pred, average=self.average)
-            jaccard_single = jaccard_score(
-                self.y_true, self.y_pred, average=None)
+            jaccard_avg = jaccard_score(self.y_true, self.y_pred, average=self.average)
+            jaccard_single = jaccard_score(self.y_true, self.y_pred, average=None)
 
-            jaccard = {
-                "average": jaccard_avg,
-                "single": jaccard_single
-            }
+            jaccard = {"average": jaccard_avg, "single": jaccard_single}
             hamming = {"total": hamming_loss(self.y_true, self.y_pred)}
 
             metrics["jaccard"] = jaccard
@@ -127,21 +117,23 @@ class MLPTrainer(Trainer):
         "test_precision",
         "test_recall",
         "test_f1",
-        "test_acc"
+        "test_acc",
     ]
     multilabel_metrics = [
         "train_jaccard",
         "test_jaccard",
         "train_hamming",
-        "test_hamming"
+        "test_hamming",
     ]
 
-    def __init__(self,
-                 seed: int = None,
-                 logging_variables: Union[Literal["all"], List[str]] = "all",
-                 n_classes: int = 2,
-                 metrics_average: str = "macro",
-                 multilabel: bool = False):
+    def __init__(
+        self,
+        seed: int = None,
+        logging_variables: Union[Literal["all"], List[str]] = "all",
+        n_classes: int = 2,
+        metrics_average: str = "macro",
+        multilabel: bool = False,
+    ):
 
         if multilabel:
             self.available_metrics.extend(self.multilabel_metrics)
@@ -170,22 +162,26 @@ class MLPTrainer(Trainer):
             _, y_pred = output.max(dim=1)
             return y_pred
 
-    def init_model(self,
-                   *,
-                   num_layers: int,
-                   input_dim: int,
-                   hidden_dim: int,
-                   output_dim: int,
-                   use_batch_norm: bool = True,
-                   hidden_layers: List[int] = None,
-                   **kwargs):
-        self.model = MLP(num_layers=num_layers,
-                         input_dim=input_dim,
-                         hidden_dim=hidden_dim,
-                         output_dim=output_dim,
-                         use_batch_norm=use_batch_norm,
-                         hidden_layers=hidden_layers,
-                         **kwargs)
+    def init_model(
+        self,
+        *,
+        num_layers: int,
+        input_dim: int,
+        hidden_dim: int,
+        output_dim: int,
+        use_batch_norm: bool = True,
+        hidden_layers: List[int] = None,
+        **kwargs,
+    ):
+        self.model = MLP(
+            num_layers=num_layers,
+            input_dim=input_dim,
+            hidden_dim=hidden_dim,
+            output_dim=output_dim,
+            use_batch_norm=use_batch_norm,
+            hidden_layers=hidden_layers,
+            **kwargs,
+        )
 
         return self.model
 
@@ -210,10 +206,9 @@ class MLPTrainer(Trainer):
         self.optim = optim.Adam(self.model.parameters(), lr=lr)
         return self.optim
 
-    def init_dataloader(self,
-                        data,
-                        mode: Union[Literal["train"], Literal["test"]],
-                        **kwargs):
+    def init_dataloader(
+        self, data, mode: Union[Literal["train"], Literal["test"]], **kwargs
+    ):
 
         if mode not in ["train", "test"]:
             raise ValueError("Supported modes are only `train` and `test`")
@@ -253,9 +248,7 @@ class MLPTrainer(Trainer):
 
         return average_loss
 
-    def evaluate(self,
-                 use_train_data,
-                 **kwargs):
+    def evaluate(self, use_train_data, **kwargs):
 
         #!########
         self.model.eval()
@@ -295,15 +288,11 @@ class MLPTrainer(Trainer):
         return_metrics = {"loss": average_loss, **metrics}
 
         if use_train_data:
-            metrics = {
-                f"train_{name}": value for name,
-                value in metrics.items()}
+            metrics = {f"train_{name}": value for name, value in metrics.items()}
 
             self.metric_logger.update(**metrics)
         else:
-            metrics = {
-                f"test_{name}": value for name,
-                value in metrics.items()}
+            metrics = {f"test_{name}": value for name, value in metrics.items()}
 
             self.metric_logger.update(test_loss=average_loss, **metrics)
 

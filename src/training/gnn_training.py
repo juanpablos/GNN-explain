@@ -15,21 +15,18 @@ from . import Trainer
 def _loss_aux(output, loss, data, binary):
     if binary:
         # REV: F.one_hot(output, 2).float().to(device) should do the same
-        labels = torch.zeros_like(output).scatter_(dim=1,
-                                                   index=data.y.unsqueeze(1),
-                                                   value=1.)
+        labels = torch.zeros_like(output).scatter_(
+            dim=1, index=data.y.unsqueeze(1), value=1.0
+        )
     else:
         # TODO: missing option when not just predicting 0/1
-        raise NotImplementedError(
-            "GNN trainig only supports binary classifiction")
+        raise NotImplementedError("GNN trainig only supports binary classifiction")
 
     return loss(output, labels)
 
 
 def _accuracy_aux(node_labels, predicted_labels, batch, device):
-    results = torch.eq(
-        predicted_labels,
-        node_labels).float().to(device)
+    results = torch.eq(predicted_labels, node_labels).float().to(device)
 
     micro = torch.sum(results)
     macro = torch.sum(scatter_mean(results, batch))
@@ -50,30 +47,33 @@ class GNNTrainer(Trainer):
         "train_macro",
         "train_micro",
         "test_macro",
-        "test_micro"
+        "test_micro",
     ]
 
-    def __init__(self,
-                 seed: int = None,
-                 logging_variables: Union[Literal["all"],
-                                          List[str]] = "all"):
+    def __init__(
+        self,
+        seed: int = None,
+        logging_variables: Union[Literal["all"], List[str]] = "all",
+    ):
         super().__init__(seed=seed, logging_variables=logging_variables)
 
-    def init_model(self,
-                   *,
-                   name: str,
-                   input_dim: int,
-                   hidden_dim: int,
-                   output_dim: int,
-                   aggregate_type: str,
-                   combine_type: str,
-                   num_layers: int,
-                   combine_layers: int,
-                   mlp_layers: int,
-                   task: str,
-                   use_batch_norm: bool = True,
-                   truncated_fn: Tuple[int, int] = None,
-                   **kwargs):
+    def init_model(
+        self,
+        *,
+        name: str,
+        input_dim: int,
+        hidden_dim: int,
+        output_dim: int,
+        aggregate_type: str,
+        combine_type: str,
+        num_layers: int,
+        combine_layers: int,
+        mlp_layers: int,
+        task: str,
+        use_batch_norm: bool = True,
+        truncated_fn: Tuple[int, int] = None,
+        **kwargs
+    ):
 
         if name == "acgnn":
             self.model = ACGNN(
@@ -108,10 +108,9 @@ class GNNTrainer(Trainer):
         self.optim = optim.Adam(self.model.parameters(), lr=lr)
         return self.optim
 
-    def init_dataloader(self,
-                        data,
-                        mode: Union[Literal["train"], Literal["test"]],
-                        **kwargs):
+    def init_dataloader(
+        self, data, mode: Union[Literal["train"], Literal["test"]], **kwargs
+    ):
 
         if mode not in ["train", "test"]:
             raise ValueError("Supported modes are only `train` and `test`")
@@ -135,15 +134,10 @@ class GNNTrainer(Trainer):
         for data in self.train_loader:
             data = data.to(self.device)
 
-            output = self.model(x=data.x,
-                                edge_index=data.edge_index,
-                                batch=data.batch)
+            output = self.model(x=data.x, edge_index=data.edge_index, batch=data.batch)
 
             loss = _loss_aux(
-                output=output,
-                loss=self.loss,
-                data=data,
-                binary=binary_prediction
+                output=output, loss=self.loss, data=data, binary=binary_prediction
             )
 
             self.optim.zero_grad()
@@ -158,18 +152,14 @@ class GNNTrainer(Trainer):
 
         return average_loss
 
-    def evaluate(self,
-                 use_train_data: bool,
-                 *,
-                 binary_prediction: bool,
-                 **kwargs):
+    def evaluate(self, use_train_data: bool, *, binary_prediction: bool, **kwargs):
 
         #!########
         self.model.eval()
         #!########
 
-        micro_avg = 0.
-        macro_avg = 0.
+        micro_avg = 0.0
+        macro_avg = 0.0
         n_nodes = 0
         n_graphs = 0
         accum_loss = []
@@ -181,16 +171,11 @@ class GNNTrainer(Trainer):
 
             with torch.no_grad():
                 output = self.model(
-                    x=data.x,
-                    edge_index=data.edge_index,
-                    batch=data.batch
+                    x=data.x, edge_index=data.edge_index, batch=data.batch
                 )
 
             loss = _loss_aux(
-                output=output,
-                loss=self.loss,
-                data=data,
-                binary=binary_prediction
+                output=output, loss=self.loss, data=data, binary=binary_prediction
             )
 
             accum_loss.append(loss.detach().cpu().numpy())
@@ -202,7 +187,7 @@ class GNNTrainer(Trainer):
                 node_labels=data.y,
                 predicted_labels=predicted_labels,
                 batch=data.batch,
-                device=self.device
+                device=self.device,
             )
 
             micro_avg += micro.cpu().numpy()
@@ -216,14 +201,11 @@ class GNNTrainer(Trainer):
         macro_avg = macro_avg / n_graphs
 
         if use_train_data:
-            self.metric_logger.update(
-                train_micro=micro_avg,
-                train_macro=macro_avg)
+            self.metric_logger.update(train_micro=micro_avg, train_macro=macro_avg)
         else:
             self.metric_logger.update(
-                test_loss=average_loss,
-                test_micro=micro_avg,
-                test_macro=macro_avg)
+                test_loss=average_loss, test_micro=micro_avg, test_macro=macro_avg
+            )
 
         return {"loss": average_loss, "micro": micro_avg, "macro": macro_avg}
 

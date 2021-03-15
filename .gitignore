@@ -2,8 +2,9 @@ _test*.py
 notes/
 data/*
 results/*
+delete/*
 
-!/data/formulas.json
+!/data/formulas*.json*
 !**/.gitkeep
 
 # Created by https://www.toptal.com/developers/gitignore/api/python,visualstudiocode

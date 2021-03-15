@@ -35,21 +35,22 @@ def get_formula():
 
 
 def run_experiment(
-        n_models: int,
-        save_path: str,
-        filename: str,
-        model_config: GNNModelConfig,
-        data_config: Dict[str, Any],
-        n_graphs: int,
-        total_graphs: int,
-        test_size: int,
-        batch_size: int = 64,
-        iterations: int = 100,
-        gpu_num: int = 0,
-        data_workers: int = 2,
-        lr: float = 0.01,
-        stop_when: StopFormat = None,
-        unique_test: bool = True):
+    n_models: int,
+    save_path: str,
+    filename: str,
+    model_config: GNNModelConfig,
+    data_config: Dict[str, Any],
+    n_graphs: int,
+    total_graphs: int,
+    test_size: int,
+    batch_size: int = 64,
+    iterations: int = 100,
+    gpu_num: int = 0,
+    data_workers: int = 2,
+    lr: float = 0.01,
+    stop_when: StopFormat = None,
+    unique_test: bool = True,
+):
 
     logger.debug("Initializing graph stream")
     stream = graph_data_stream(**data_config)
@@ -65,13 +66,11 @@ def run_experiment(
         n_elements=n_graphs,
         test_size=test_size,
         seed=seed,
-        unique_test=unique_test)
+        unique_test=unique_test,
+    )
 
     models = []
-    stats = {
-        "macro": defaultdict(int),
-        "micro": defaultdict(int)
-    }
+    stats = {"macro": defaultdict(int), "micro": defaultdict(int)}
 
     try:
         for m in range(1, n_models + 1):
@@ -90,23 +89,26 @@ def run_experiment(
                 batch_size=batch_size,
                 pin_memory=False,
                 shuffle=True,
-                num_workers=data_workers)
+                num_workers=data_workers,
+            )
             trainer.init_dataloader(
                 test_data,
                 mode="test",
                 batch_size=test_size,
                 pin_memory=False,
                 shuffle=True,
-                num_workers=data_workers)
+                num_workers=data_workers,
+            )
 
             trainer.init_model(**model_config)
 
-            model, = run(
+            (model,) = run(
                 trainer=trainer,
                 iterations=iterations,
                 gpu_num=gpu_num,
                 lr=lr,
-                stop_when=stop_when)
+                stop_when=stop_when,
+            )
 
             model.cpu()
             weights = model.state_dict()
@@ -180,13 +182,11 @@ def main(use_formula: FOC = None):
         "mlp_layers": 1,  # the number of layers in A and V
         "combine_layers": 2,  # layers in the combine MLP if combine_type=mlp
         "task": "node",
-        "use_batch_norm": True
+        "use_batch_norm": True,
     }
     model_config_hash = hashlib.md5(
-        json.dumps(
-            model_config,
-            sort_keys=True).encode()).hexdigest()[
-        :10]
+        json.dumps(model_config, sort_keys=True).encode()
+    ).hexdigest()[:10]
 
     formula = get_formula() if use_formula is None else use_formula
     formula_hash = hashlib.md5(repr(formula).encode()).hexdigest()[:10]
@@ -203,7 +203,7 @@ def main(use_formula: FOC = None):
         # --- generator config
         "name": "erdos",
         # ! because the generated graph is undirected, the number of average neighbors will be double `m`
-        "m": 4
+        "m": 4,
     }
 
     save_path = f"data/gnns/{model_config_hash}-savebatch"
@@ -211,17 +211,13 @@ def main(use_formula: FOC = None):
     # ! manual operation
     os.makedirs(save_path, exist_ok=True)
     # * model_name - number of models - model hash - formula hash
-    filename = f"{model_name}-" + "n{}" + \
-        f"-{model_config_hash}-{formula_hash}.pt"
+    filename = f"{model_name}-" + "n{}" + f"-{model_config_hash}-{formula_hash}.pt"
 
     iterations = 20
     stop_when: StopFormat = {
         "operation": "and",  # and or or
-        "conditions": {
-            "test_micro": 0.999,
-            "test_macro": 0.999
-        },
-        "stay": 2
+        "conditions": {"test_micro": 0.999, "test_macro": 0.999},
+        "stay": 2,
     }
 
     # total graphs to pre-generate
@@ -250,7 +246,7 @@ def main(use_formula: FOC = None):
         test_size=test_size,
         seed=seed,
         stop_when=stop_when,
-        unique_test=unique_test
+        unique_test=unique_test,
     )
 
     data_config["formula"] = formula
@@ -271,7 +267,7 @@ def main(use_formula: FOC = None):
         data_workers=2,
         lr=0.01,
         stop_when=stop_when,
-        unique_test=unique_test
+        unique_test=unique_test,
     )
     end = timer()
     time_elapsed = end - start
@@ -301,10 +297,10 @@ if __name__ == "__main__":
     # main()
 
     __formulas = [
-        AND(Property('BLUE'), Exist(AND(Role('EDGE'), Property('GREEN')), None, 3)),
-        AND(Property('GREEN'), Exist(AND(Role('EDGE'), Property('RED')), None, 3)),
-        AND(Property('GREEN'), Exist(AND(Role('EDGE'), Property('GREEN')), None, 4)),
-        AND(Property('GREEN'), Exist(AND(Role('EDGE'), Property('BLACK')), None, 4))
+        AND(Property("BLUE"), Exist(AND(Role("EDGE"), Property("GREEN")), None, 3)),
+        AND(Property("GREEN"), Exist(AND(Role("EDGE"), Property("RED")), None, 3)),
+        AND(Property("GREEN"), Exist(AND(Role("EDGE"), Property("GREEN")), None, 4)),
+        AND(Property("GREEN"), Exist(AND(Role("EDGE"), Property("BLACK")), None, 4)),
     ]
     if __formulas:
         __times = {}
@@ -314,7 +310,8 @@ if __name__ == "__main__":
 
         for _i, __formula in enumerate(__formulas, start=1):
             _cf = logging.Formatter(
-                f"{_i:0{__dig}}/{__n_formulas} %(levelname)-8s: %(message)s")
+                f"{_i:0{__dig}}/{__n_formulas} %(levelname)-8s: %(message)s"
+            )
             ch.setFormatter(_cf)
 
             __elapsed = main(use_formula=FOC(__formula))

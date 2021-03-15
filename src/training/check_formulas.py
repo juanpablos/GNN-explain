@@ -87,13 +87,13 @@ class FormulaReconstruction:
 
         # the next index should be accesable and should be <eos>
         if last + 1 > len(token_ids) - 1:
-            raise ValueError(
-                "Invalid input: the formula does not have end token")
+            raise ValueError("Invalid input: the formula does not have end token")
 
         if token_ids[last + 1] != self.vocabulary.end_token_id:
             raise ValueError(
                 "Invalid input: there are tokens left in the input "
-                "that are not padding")
+                "that are not padding"
+            )
 
         return string
 

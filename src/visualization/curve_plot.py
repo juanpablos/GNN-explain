@@ -11,11 +11,12 @@ logger = logging.getLogger(__name__)
 
 
 def plot_training(
-        metric_history: MetricHistory,
-        save_path: str,
-        use_selected: bool = False,
-        filename: str = None,
-        title: str = None):
+    metric_history: MetricHistory,
+    save_path: str,
+    use_selected: bool = False,
+    filename: str = None,
+    title: str = None,
+):
     fig, ax1 = plt.subplots(figsize=(20, 10))
     ax2 = ax1.twinx()  # type: ignore
 
@@ -53,24 +54,28 @@ def plot_training(
 
     for line, label in zip(mat1, lab1):
         y = line.get_ydata()[-1]
-        ax1.annotate(f"{label} ({y:.2f})",  # type: ignore
-                     xy=(1, y),
-                     xytext=(6, 0),
-                     color=line.get_color(),
-                     xycoords=ax1.get_yaxis_transform(),  # type: ignore
-                     textcoords="offset points",
-                     size=14,
-                     va="center")
+        ax1.annotate(
+            f"{label} ({y:.2f})",  # type: ignore
+            xy=(1, y),
+            xytext=(6, 0),
+            color=line.get_color(),
+            xycoords=ax1.get_yaxis_transform(),  # type: ignore
+            textcoords="offset points",
+            size=14,
+            va="center",
+        )
     for line, label in zip(mat2, lab2):
         y = line.get_ydata()[-1]
-        ax2.annotate(f"{label} ({y:.2f})",  # type: ignore
-                     xy=(1, y),
-                     xytext=(6, 0),
-                     color=line.get_color(),
-                     xycoords=ax2.get_yaxis_transform(),  # type: ignore
-                     textcoords="offset points",
-                     size=14,
-                     va="center")
+        ax2.annotate(
+            f"{label} ({y:.2f})",  # type: ignore
+            xy=(1, y),
+            xytext=(6, 0),
+            color=line.get_color(),
+            xycoords=ax2.get_yaxis_transform(),  # type: ignore
+            textcoords="offset points",
+            size=14,
+            va="center",
+        )
 
     plt.tight_layout()
     os.makedirs(f"{save_path}/train/", exist_ok=True)

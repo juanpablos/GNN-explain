@@ -9,7 +9,7 @@ from typing import (
     TypedDict,
     TypeVar,
     Union,
-    runtime_checkable
+    runtime_checkable,
 )
 
 
@@ -55,7 +55,7 @@ class GNNEncoderModelConfig(TypedDict):
     encoder_num_layers: int
     encoder_hidden_dim: int
     layer_embedding_dim: int
-    merge_strategy: Literal['cat', 'sum', 'prod']
+    merge_strategy: Literal["cat", "sum", "prod"]
     output_dim: int
 
 
@@ -85,31 +85,45 @@ class LSTMConfig(LSTMConfigBase, total=False):
 
 
 class MetricHistory(Protocol):
-    def __getitem__(self, key: str) -> float: ...
-    def keys(self, select: bool = ...) -> Iterator[str]: ...
+    def __getitem__(self, key: str) -> float:
+        ...
 
-    def items(self,
-              select: bool = ...) -> Iterator[Tuple[str,
-                                                    List[float]]]: ...
+    def keys(self, select: bool = ...) -> Iterator[str]:
+        ...
 
-    def log(self) -> str: ...
-    def update(self, **kwargs: float) -> None: ...
-    def get_history(self, key: str) -> List[float]: ...
+    def items(self, select: bool = ...) -> Iterator[Tuple[str, List[float]]]:
+        ...
+
+    def log(self) -> str:
+        ...
+
+    def update(self, **kwargs: float) -> None:
+        ...
+
+    def get_history(self, key: str) -> List[float]:
+        ...
 
 
 @runtime_checkable
 class Indexable(Protocol[T_co]):
-    def __getitem__(self, index: int) -> T_co: ...
-    def __len__(self) -> int: ...
+    def __getitem__(self, index: int) -> T_co:
+        ...
+
+    def __len__(self) -> int:
+        ...
 
 
 class IndexableIterable(Indexable[T_co], Protocol[T_co]):
-    def __iter__(self) -> Iterator[T_co]: ...
+    def __iter__(self) -> Iterator[T_co]:
+        ...
 
 
 @runtime_checkable
 class DatasetLike(Protocol):
     @property
-    def dataset(self): ...
+    def dataset(self):
+        ...
+
     @property
-    def labels(self): ...
+    def labels(self):
+        ...

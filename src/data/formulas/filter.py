@@ -11,8 +11,7 @@ _available = ["RED", "BLUE", "GREEN", "BLACK"]
 def _check_atomic(atomic):
     if not all(at in _available for at in atomic):
         _not = [at for at in atomic if at not in _available]
-        raise ValueError(
-            f"Not all selected atomic formulas are available. {_not}")
+        raise ValueError(f"Not all selected atomic formulas are available. {_not}")
 
 
 class Filterer(Visitor[bool]):
@@ -53,10 +52,7 @@ class AtomicOnlyFilter(Filterer):
 
 
 class AtomicFilter(Filterer):
-    def __init__(self,
-                 atomic: Union[Literal["all"],
-                               Iterable[str]],
-                 hop: int = None):
+    def __init__(self, atomic: Union[Literal["all"], Iterable[str]], hop: int = None):
         super().__init__()
         if atomic == "all":
             self.selected = _available
@@ -76,8 +72,9 @@ class AtomicFilter(Filterer):
         self.current_hop -= 1
 
     def _visit_Property(self, node: Property):
-        if node.name in self.selected and \
-                (self.target_hop == -1 or self.current_hop == self.target_hop):
+        if node.name in self.selected and (
+            self.target_hop == -1 or self.current_hop == self.target_hop
+        ):
             self.result = True
 
     def reset(self):
@@ -89,17 +86,19 @@ class AtomicFilter(Filterer):
 
 
 class RestrictionFilter(Filterer):
-    def __init__(self,
-                 lower: Union[None, Literal[-1], int] = -1,
-                 upper: Union[None, Literal[-1], int] = -1):
+    def __init__(
+        self,
+        lower: Union[None, Literal[-1], int] = -1,
+        upper: Union[None, Literal[-1], int] = -1,
+    ):
         super().__init__()
         # * None: Open interval
         # * -1: any value
         # * other: the set value
         if lower is None and upper is None:
             raise ValueError(
-                "Can't have both open intervals. "
-                "If you want any value use `-1`")
+                "Can't have both open intervals. " "If you want any value use `-1`"
+            )
         if lower is not None and upper is not None:
             if lower < -1 or upper < -1:
                 raise ValueError("`lower` and `upper` must be greater than -1")
@@ -125,16 +124,20 @@ class RestrictionFilter(Filterer):
 
 class Filter(ABC):
     @abstractmethod
-    def __call__(self, formulas: Dict[str, Element]) -> Dict[str, Element]: ...
+    def __call__(self, formulas: Dict[str, Element]) -> Dict[str, Element]:
+        ...
+
     @abstractmethod
-    def __str__(self) -> str: ...
+    def __str__(self) -> str:
+        ...
 
 
 class FilterApply(Filter):
-    def __init__(self,
-                 filters: List[Filterer] = None,
-                 condition: Union[Literal["and"],
-                                  Literal["or"]] = "and"):
+    def __init__(
+        self,
+        filters: List[Filterer] = None,
+        condition: Union[Literal["and"], Literal["or"]] = "and",
+    ):
         if filters is None:
             self.filters: List[Filterer] = []
         else:
@@ -150,15 +153,16 @@ class FilterApply(Filter):
 
     def __call__(self, formulas: Dict[str, Element]):
         if not self.filters:
-            raise ValueError(
-                "There must be at least 1 filter set to be applied")
-        return {_hash: formula for _hash, formula
-                in formulas.items() if self._apply(formula)}
+            raise ValueError("There must be at least 1 filter set to be applied")
+        return {
+            _hash: formula
+            for _hash, formula in formulas.items()
+            if self._apply(formula)
+        }
 
     def __str__(self):
         if not self.filters:
-            raise ValueError(
-                "There must be at least 1 filter set to be applied")
+            raise ValueError("There must be at least 1 filter set to be applied")
 
         if len(self.filters) == 1:
             return f"{self.filters[0]}"

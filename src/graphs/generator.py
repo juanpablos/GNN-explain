@@ -8,12 +8,13 @@ import networkx as nx
 
 
 def __generate_random_graph(
-        n_nodes: int,
-        p: float = None,
-        m: int = None,
-        seed: Any = None,
-        name="erdos",
-        **kwargs) -> nx.Graph:
+    n_nodes: int,
+    p: float = None,
+    m: int = None,
+    seed: Any = None,
+    name="erdos",
+    **kwargs,
+) -> nx.Graph:
     """
     Args:
         n_nodes (int): number of nodes
@@ -35,8 +36,7 @@ def __generate_random_graph(
         elif p is not None:
             return nx.fast_gnp_random_graph(n=n_nodes, p=p, seed=seed)
         else:
-            raise ValueError(
-                "`erdos` generator needs either arguments `m` or `p`")
+            raise ValueError("`erdos` generator needs either arguments `m` or `p`")
 
     elif name == "barabasi":
         if m is None:
@@ -44,15 +44,12 @@ def __generate_random_graph(
         return nx.barabasi_albert_graph(n=n_nodes, m=m, seed=seed)
 
     else:
-        raise ValueError(
-            f"Invalid generator value, not `erdos` or `barabasi`: {name}")
+        raise ValueError(f"Invalid generator value, not `erdos` or `barabasi`: {name}")
 
 
-def graph_generator(generator_fn: str,
-                    min_nodes: int,
-                    max_nodes: int,
-                    seed: int = None,
-                    **kwargs) -> Iterator[nx.Graph]:
+def graph_generator(
+    generator_fn: str, min_nodes: int, max_nodes: int, seed: int = None, **kwargs
+) -> Iterator[nx.Graph]:
     """
     Generator that creates an unlimited amount of random graphs given a generator function
 

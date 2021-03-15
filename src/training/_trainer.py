@@ -14,18 +14,21 @@ class Trainer(ABC):
     available_metrics: List[str]
     metric_logger: MetricLogger
 
-    def __init__(self,
-                 seed: int = None,
-                 logging_variables: Union[Literal["all"],
-                                          List[str]] = "all"):
+    def __init__(
+        self,
+        seed: int = None,
+        logging_variables: Union[Literal["all"], List[str]] = "all",
+    ):
 
         self.seed = seed
 
         if logging_variables != "all" and not all(
-                var in self.available_metrics for var in logging_variables):
+            var in self.available_metrics for var in logging_variables
+        ):
             raise ValueError(
                 "Encountered not supported metric. "
-                f"Supported are: {self.available_metrics}")
+                f"Supported are: {self.available_metrics}"
+            )
         if logging_variables == "all":
             logging_variables = self.available_metrics
         self.metric_logger = MetricLogger(logging_variables)  # type: ignore
@@ -34,18 +37,21 @@ class Trainer(ABC):
         self.device = device
 
     @abstractmethod
-    def get_models(self) -> List[nn.Module]: ...
+    def get_models(self) -> List[nn.Module]:
+        ...
 
     @abstractmethod
-    def init_trainer(self, **optim_params) -> None: ...
+    def init_trainer(self, **optim_params) -> None:
+        ...
 
     @abstractmethod
-    def train(self, **kwargs) -> float: ...
+    def train(self, **kwargs) -> float:
+        ...
 
     @abstractmethod
-    def evaluate(self,
-                 use_train_data: bool,
-                 **kwargs) -> Dict[str, Any]: ...
+    def evaluate(self, use_train_data: bool, **kwargs) -> Dict[str, Any]:
+        ...
 
     @abstractmethod
-    def log(self) -> str: ...
+    def log(self) -> str:
+        ...

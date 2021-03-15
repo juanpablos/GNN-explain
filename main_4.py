@@ -14,20 +14,16 @@ from src.eval_utils import evaluate_text_model
 from src.run_logic import run, seed_everything
 from src.training.gnn_sequence import GraphSequenceTrainer
 from src.typing import LSTMConfig, MinModelConfig, NetworkDataConfig
-from src.utils import (
-    prepare_info_dir,
-    write_result_info_text,
-    write_train_data
-)
+from src.utils import prepare_info_dir, write_result_info_text, write_train_data
 from src.visualization.curve_plot import plot_training
 
 logger = logging.getLogger("src")
-logger_metrics = logging.getLogger('metrics')
+logger_metrics = logging.getLogger("metrics")
 
 
 def get_model_name(encoder_output, lstm_config):
     embedding = f"emb{lstm_config['embedding_dim']}"
-    name = lstm_config['name']
+    name = lstm_config["name"]
     lstm_input = f"IN{encoder_output}"
     lstm_hidden = f"lstmH{lstm_config['hidden_dim']}"
     use_init = f"lstmH{lstm_config['hidden_dim']}"
@@ -46,26 +42,26 @@ def get_model_name(encoder_output, lstm_config):
 
 
 def run_experiment(
-        encoder_config: MinModelConfig,
-        decoder_config: LSTMConfig,
-        data_config: NetworkDataConfig,
-        graph_config: Dict[str, Any],
-        iterations: int = 100,
-        gpu_num: int = 0,
-        seed: int = 10,
-        test_size: float = 0.25,
-        data_workers: int = 2,
-        batch_size: int = 64,
-        test_batch_size: int = 512,
-        lr: float = 0.01,
-        run_train_test: bool = False,
-        results_path: str = "./results",
-        model_name: str = None,
-        plot_filename: str = None,
-        plot_title: str = None,
-        train_file: str = None,
-        info_filename: str = "info",
-        _legacy_load_without_batch: bool = False
+    encoder_config: MinModelConfig,
+    decoder_config: LSTMConfig,
+    data_config: NetworkDataConfig,
+    graph_config: Dict[str, Any],
+    iterations: int = 100,
+    gpu_num: int = 0,
+    seed: int = 10,
+    test_size: float = 0.25,
+    data_workers: int = 2,
+    batch_size: int = 64,
+    test_batch_size: int = 512,
+    lr: float = 0.01,
+    run_train_test: bool = False,
+    results_path: str = "./results",
+    model_name: str = None,
+    plot_filename: str = None,
+    plot_title: str = None,
+    train_file: str = None,
+    info_filename: str = "info",
+    _legacy_load_without_batch: bool = False,
 ):
 
     logger.info("Loading Files")
@@ -75,12 +71,18 @@ def run_experiment(
     #   single label: formula_hash -> label_id
     #   multilabel: formula_hash -> List[label_id]
     # data_reconstruction: point_index -> formula_object
-    (datasets, vocabulary, hash_formula, hash_label,
-     data_reconstruction,
-     formula_target) = text_sequence_loader(
+    (
+        datasets,
+        vocabulary,
+        hash_formula,
+        hash_label,
+        data_reconstruction,
+        formula_target,
+    ) = text_sequence_loader(
         **data_config,
         graph_config=graph_config,
-        _legacy_load_without_batch=_legacy_load_without_batch)
+        _legacy_load_without_batch=_legacy_load_without_batch,
+    )
 
     if isinstance(datasets, tuple):
         logger.debug("Using selected data as test")
@@ -88,34 +90,34 @@ def run_experiment(
         train_data, test_data = datasets
     else:
         logger.debug("Splitting data")
-        train_data, test_data = train_test_dataset(dataset=datasets,
-                                                   test_size=test_size,
-                                                   random_state=seed,
-                                                   shuffle=True,
-                                                   stratify=False)
+        train_data, test_data = train_test_dataset(
+            dataset=datasets,
+            test_size=test_size,
+            random_state=seed,
+            shuffle=True,
+            stratify=False,
+        )
 
     vocab_size = len(vocabulary)
     logger.debug(f"vocab size of {vocab_size} detected")
 
     logger.debug(
-        f"Semantic Evaluation information: {formula_target.graph_statistics()['total']} positives")
+        f"Semantic Evaluation information: {formula_target.graph_statistics()['total']} positives"
+    )
 
     decoder_config["vocab_size"] = vocab_size
 
     # ready to log metrics
     # returns a number to put after the file name in case it already exists
     # "" or " (N)"
-    ext_filename, ext = prepare_info_dir(
-        path=results_path, filename=info_filename)
+    ext_filename, ext = prepare_info_dir(path=results_path, filename=info_filename)
 
     # --- metrics logger
     fh = logging.FileHandler(
-        os.path.join(
-            results_path, 'info',
-            f'{info_filename}{ext}.log'),
-        mode='w')
+        os.path.join(results_path, "info", f"{info_filename}{ext}.log"), mode="w"
+    )
     fh.setLevel(logging.INFO)
-    fh.setFormatter(logging.Formatter('%(asctime)s,%(message)s'))
+    fh.setFormatter(logging.Formatter("%(asctime)s,%(message)s"))
 
     # prevents writing to different files at the same
     # time in case of being called multiple times
@@ -129,7 +131,8 @@ def run_experiment(
         subset_size=0.2,
         logging_variables="all",
         vocabulary=vocabulary,
-        target_apply_mapping=formula_target)
+        target_apply_mapping=formula_target,
+    )
 
     trainer.init_dataloader(
         train_data,
@@ -137,14 +140,16 @@ def run_experiment(
         batch_size=batch_size,
         pin_memory=False,
         shuffle=True,
-        num_workers=data_workers)
+        num_workers=data_workers,
+    )
     trainer.init_dataloader(
         test_data,
         mode="test",
         batch_size=test_batch_size,
         pin_memory=False,
         shuffle=True,
-        num_workers=data_workers)
+        num_workers=data_workers,
+    )
 
     trainer.init_encoder(**encoder_config)
     trainer.init_decoder(**decoder_config)
@@ -156,19 +161,19 @@ def run_experiment(
         iterations=iterations,
         gpu_num=gpu_num,
         lr=lr,
-        run_train_test=run_train_test)
+        run_train_test=run_train_test,
+    )
 
     formula_metrics = evaluate_text_model(
-        trainer=trainer,
-        test_data=test_data,
-        reconstruction=data_reconstruction
+        trainer=trainer, test_data=test_data, reconstruction=data_reconstruction
     )
 
     write_result_info_text(
         path=results_path,
         filename=ext_filename,
         formula_metrics=formula_metrics,
-        semantic_eval_data=formula_target.graph_statistics())
+        semantic_eval_data=formula_target.graph_statistics(),
+    )
 
     if model_name is not None:
         logger.debug("Writing model")
@@ -178,16 +183,15 @@ def run_experiment(
         obj = {
             "encoder": encoder.state_dict(),
             "decoder": decoder.state_dict(),
-            "vocabulary": vocabulary
+            "vocabulary": vocabulary,
         }
         torch.save(obj, f"{results_path}/models/{model_name}{ext}.pt")
 
     metrics = trainer.metric_logger
     if train_file is not None:
         write_train_data(
-            metric_history=metrics,
-            save_path=results_path,
-            filename=train_file + ext)
+            metric_history=metrics, save_path=results_path, filename=train_file + ext
+        )
 
     if plot_filename is not None:
         metrics = trainer.metric_logger
@@ -196,17 +200,19 @@ def run_experiment(
             save_path=results_path,
             filename=plot_filename + ext,
             title=plot_title,
-            use_selected=False)
+            use_selected=False,
+        )
 
 
 def main(
-        name: str = None,
-        seed: int = None,
-        train_batch: int = 32,
-        lr: float = 0.001,
-        save_model: bool = True,
-        write_train_data: bool = True,
-        make_plots: bool = True):
+    name: str = None,
+    seed: int = None,
+    train_batch: int = 32,
+    lr: float = 0.001,
+    save_model: bool = True,
+    write_train_data: bool = True,
+    make_plots: bool = True,
+):
 
     if seed is None:
         seed = random.randint(1, 1 << 30)
@@ -221,7 +227,7 @@ def main(
         "hidden_dim": hidden,
         "hidden_layers": None,
         "output_dim": encoder_output,
-        "use_batch_norm": True
+        "use_batch_norm": True,
     }
     lstm_config: LSTMConfig = {
         "name": "lstmcell",
@@ -237,32 +243,17 @@ def main(
         "concat_encoder_input": True,
         # * works best without
         "compose_encoder_state": False,
-        "compose_dim": 256
+        "compose_dim": 256,
     }
 
     graph_config = {
         "n_properties": 4,
         "seed": seed,
         "configs": [
-            {
-                "min_nodes": 10,
-                "max_nodes": 60,
-                "n_graphs": 5,
-                "m": 4
-            },
-            {
-                "min_nodes": 50,
-                "max_nodes": 100,
-                "n_graphs": 5,
-                "m": 5
-            },
-            {
-                "min_nodes": 10,
-                "max_nodes": 100,
-                "n_graphs": 5,
-                "m": 5
-            },
-        ]
+            {"min_nodes": 10, "max_nodes": 60, "n_graphs": 5, "m": 4},
+            {"min_nodes": 50, "max_nodes": 100, "n_graphs": 5, "m": 5},
+            {"min_nodes": 10, "max_nodes": 100, "n_graphs": 5, "m": 5},
+        ],
     }
 
     model_hash = "f4034364ea-batch"
@@ -284,20 +275,22 @@ def main(
     # test_selector = FilterApply(condition="or")
     # test_selector.add(AtomicOnlyFilter(atomic="all"))
     # test_selector.add(RestrictionFilter(lower=4, upper=None))
-    test_selector = SelectFilter(hashes=[
-        "4805042859",
-        "aae49a2efc",
-        "ac4932d9e6",
-        "2baa2ed86c",
-        "4056021fb9",
-        "548c9f191e",
-        "c37cb98a75",
-        "b628ede2fc",
-        "f38520e138",
-        "65597e2291",
-        "5e65a2eaac",
-        "838d8aecad"
-    ])
+    test_selector = SelectFilter(
+        hashes=[
+            "4805042859",
+            "aae49a2efc",
+            "ac4932d9e6",
+            "2baa2ed86c",
+            "4056021fb9",
+            "548c9f191e",
+            "c37cb98a75",
+            "b628ede2fc",
+            "f38520e138",
+            "65597e2291",
+            "5e65a2eaac",
+            "838d8aecad",
+        ]
+    )
     # test_selector = NullFilter()
     # * /test_filters
 
@@ -363,7 +356,7 @@ def main(
         plot_title=msg,  # ? maybe a better message
         train_file=train_file,
         info_filename=msg,
-        _legacy_load_without_batch=True  # ! remove eventually
+        _legacy_load_without_batch=True,  # ! remove eventually
     )
     end = timer()
     logger.info(f"Took {end-start} seconds")
@@ -383,10 +376,4 @@ if __name__ == "__main__":
 
     logger.addHandler(ch)
 
-    main(
-        seed=0,
-        train_batch=512,
-        lr=0.001,
-        save_model=True,
-        make_plots=True
-    )
+    main(seed=0, train_batch=512, lr=0.001, save_model=True, make_plots=True)

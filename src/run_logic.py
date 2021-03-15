@@ -10,14 +10,14 @@ from src.training.utils import StopTraining
 from src.typing import StopFormat
 
 logger = logging.getLogger(__name__)
-logger_metrics = logging.getLogger('metrics')
+logger_metrics = logging.getLogger("metrics")
 
 
 def seed_everything(seed):
     random.seed(seed)
     np.random.seed(seed)  # type: ignore
     torch.manual_seed(seed)
-    os.environ['PYTHONHASHSEED'] = str(seed)
+    os.environ["PYTHONHASHSEED"] = str(seed)
 
     if torch.cuda.is_available():
         torch.cuda.manual_seed(seed)  # type: ignore
@@ -32,7 +32,7 @@ def run(
     gpu_num: int,
     lr: float = 0.01,
     stop_when: StopFormat = None,
-    run_train_test: bool = False
+    run_train_test: bool = False,
 ):
 
     if torch.cuda.is_available():

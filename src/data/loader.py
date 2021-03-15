@@ -7,20 +7,20 @@ import torch
 from src.data.auxiliary import (
     AggregatedNetworkDataset,
     FormulaAppliedDatasetWrapper,
-    NetworkDatasetCollectionWrapper
+    NetworkDatasetCollectionWrapper,
 )
 from src.data.datasets import (
     LabeledDataset,
     LabeledSubset,
     NetworkDataset,
-    TextSequenceDataset
+    TextSequenceDataset,
 )
 from src.data.formula_index import FormulaMapping
 from src.data.formulas.filter import Filter
 from src.data.formulas.labeler import (
     LabelerApply,
     MultiLabelCategoricalLabeler,
-    SequenceLabelerApply
+    SequenceLabelerApply,
 )
 from src.data.gnn.utils import prepare_files
 from src.data.utils import label_idx2tensor
@@ -36,15 +36,17 @@ def __load_formulas(
     formula_mapping: FormulaMapping,
     test_selector: Filter,
     load_aggregated: str = None,
-    force_preaggregated: bool = False
+    force_preaggregated: bool = False,
 ):
     if model_hash not in os.listdir(root):
         raise FileExistsError(
-            f"No directory for the current model hash: {root}/{model_hash}")
+            f"No directory for the current model hash: {root}/{model_hash}"
+        )
 
     if load_aggregated is None and force_preaggregated:
         raise ValueError(
-            "GNNs as graphs cannot be loaded on demand, they must be preloaded using `stack_gnn_graphs`")
+            "GNNs as graphs cannot be loaded on demand, they must be preloaded using `stack_gnn_graphs`"
+        )
 
     model_path = os.path.join(root, model_hash)
 
@@ -57,14 +59,14 @@ def __load_formulas(
     else:
         logging.info("Loading batch formulas")
         preloaded = AggregatedNetworkDataset(
-            file_path=os.path.join(model_path, "processed", load_aggregated))
+            file_path=os.path.join(model_path, "processed", load_aggregated)
+        )
 
         available_formulas = preloaded.available_formulas()
 
     logger.debug("Creating formula objects")
     # mapping from formula_hash -> formula object
-    hash_formula = {_hash: formula_mapping[_hash]
-                    for _hash in available_formulas}
+    hash_formula = {_hash: formula_mapping[_hash] for _hash in available_formulas}
 
     logger.debug(f"Running formula selector {selector}")
     # mapping from the selected formula_hash -> formula object
@@ -75,7 +77,13 @@ def __load_formulas(
         logger.debug("Adding exclusive testing formulas")
         selected_formulas.update(testing_selected_formulas)
 
-    return model_path, selected_formulas, testing_selected_formulas, available_formulas, preloaded
+    return (
+        model_path,
+        selected_formulas,
+        testing_selected_formulas,
+        available_formulas,
+        preloaded,
+    )
 
 
 def categorical_loader(
@@ -87,20 +95,24 @@ def categorical_loader(
     test_selector: Filter,
     load_aggregated: str = None,
     force_preaggregated: bool = False,
-    _legacy_load_without_batch: bool = False
+    _legacy_load_without_batch: bool = False,
 ):
 
-    model_path, selected_formulas, \
-        testing_selected_formulas, \
-        available_formulas, preloaded = __load_formulas(
-            root=root,
-            model_hash=model_hash,
-            selector=selector,
-            formula_mapping=formula_mapping,
-            test_selector=test_selector,
-            load_aggregated=load_aggregated,
-            force_preaggregated=force_preaggregated
-        )
+    (
+        model_path,
+        selected_formulas,
+        testing_selected_formulas,
+        available_formulas,
+        preloaded,
+    ) = __load_formulas(
+        root=root,
+        model_hash=model_hash,
+        selector=selector,
+        formula_mapping=formula_mapping,
+        test_selector=test_selector,
+        load_aggregated=load_aggregated,
+        force_preaggregated=force_preaggregated,
+    )
 
     logger.debug(f"Running formula labeler {labeler}")
     # mapping from the selected
@@ -144,15 +156,16 @@ def categorical_loader(
                 formula=formula_object,
                 file=file_path,
                 multilabel=is_multilabel,
-                _legacy_load_without_batch=_legacy_load_without_batch)
+                _legacy_load_without_batch=_legacy_load_without_batch,
+            )
         else:
-            logger.info(
-                f"\tLabeling {formula_hash}: {formula_object}: {label}")
+            logger.info(f"\tLabeling {formula_hash}: {formula_object}: {label}")
             dataset = NetworkDataset.categorical(
                 label=label,
                 formula=formula_object,
                 preloaded=preloaded[formula_hash],
-                multilabel=is_multilabel)
+                multilabel=is_multilabel,
+            )
 
         if testing_selected_formulas:
             current_indices = [i + total_samples for i in range(len(dataset))]
@@ -165,23 +178,24 @@ def categorical_loader(
         datasets.append(dataset)
         total_samples += len(dataset)
 
-    dataset_all = LabeledDataset.from_iterable(
-        datasets, multilabel=is_multilabel)
+    dataset_all = LabeledDataset.from_iterable(datasets, multilabel=is_multilabel)
 
     if testing_selected_formulas:
         assert len(test_dataset) > 0, "test_dataset is empty"
         return_dataset = (
             LabeledSubset(dataset=dataset_all, indices=train_dataset),
-            LabeledSubset(dataset=dataset_all, indices=test_dataset)
+            LabeledSubset(dataset=dataset_all, indices=test_dataset),
         )
     else:
         return_dataset = dataset_all
 
-    return (return_dataset,
-            classes,
-            selected_formulas,
-            selected_labels,
-            NetworkDatasetCollectionWrapper(datasets))
+    return (
+        return_dataset,
+        classes,
+        selected_formulas,
+        selected_labels,
+        NetworkDatasetCollectionWrapper(datasets),
+    )
 
 
 def text_sequence_loader(
@@ -194,20 +208,24 @@ def text_sequence_loader(
     graph_config: Dict[str, Any],
     load_aggregated: str = None,
     force_preaggregated: bool = False,
-    _legacy_load_without_batch: bool = False
+    _legacy_load_without_batch: bool = False,
 ):
 
-    model_path, selected_formulas, \
-        testing_selected_formulas, \
-        available_formulas, preloaded = __load_formulas(
-            root=root,
-            model_hash=model_hash,
-            selector=selector,
-            formula_mapping=formula_mapping,
-            test_selector=test_selector,
-            load_aggregated=load_aggregated,
-            force_preaggregated=force_preaggregated
-        )
+    (
+        model_path,
+        selected_formulas,
+        testing_selected_formulas,
+        available_formulas,
+        preloaded,
+    ) = __load_formulas(
+        root=root,
+        model_hash=model_hash,
+        selector=selector,
+        formula_mapping=formula_mapping,
+        test_selector=test_selector,
+        load_aggregated=load_aggregated,
+        force_preaggregated=force_preaggregated,
+    )
 
     logger.debug(f"Running formula labeler {labeler}")
     # mapping from the selected
@@ -240,15 +258,16 @@ def text_sequence_loader(
                 formula=formula_object,
                 file=file_path,
                 vocabulary=vocabulary,
-                _legacy_load_without_batch=_legacy_load_without_batch)
+                _legacy_load_without_batch=_legacy_load_without_batch,
+            )
         else:
-            logger.info(
-                f"\tLabeling {formula_hash}: {formula_object}: {label}")
+            logger.info(f"\tLabeling {formula_hash}: {formula_object}: {label}")
             dataset = NetworkDataset.text_sequence(
                 label=label,
                 formula=formula_object,
                 preloaded=preloaded[formula_hash],
-                vocabulary=vocabulary)
+                vocabulary=vocabulary,
+            )
 
         if testing_selected_formulas:
             current_indices = [i + total_samples for i in range(len(dataset))]
@@ -261,21 +280,22 @@ def text_sequence_loader(
         datasets.append(dataset)
         total_samples += len(dataset)
 
-    dataset_all = TextSequenceDataset.from_iterable(datasets,
-                                                    vocabulary=vocabulary)
+    dataset_all = TextSequenceDataset.from_iterable(datasets, vocabulary=vocabulary)
 
     if testing_selected_formulas:
         assert len(test_dataset) > 0, "test_dataset is empty"
         return_dataset = (
             LabeledSubset(dataset=dataset_all, indices=train_dataset),
-            LabeledSubset(dataset=dataset_all, indices=test_dataset)
+            LabeledSubset(dataset=dataset_all, indices=test_dataset),
         )
     else:
         return_dataset = dataset_all
 
-    return (return_dataset,
-            vocabulary,
-            selected_formulas,
-            selected_labels,
-            NetworkDatasetCollectionWrapper(datasets),
-            FormulaAppliedDatasetWrapper(datasets, **graph_config))
+    return (
+        return_dataset,
+        vocabulary,
+        selected_formulas,
+        selected_labels,
+        NetworkDatasetCollectionWrapper(datasets),
+        FormulaAppliedDatasetWrapper(datasets, **graph_config),
+    )

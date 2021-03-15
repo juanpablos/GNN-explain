@@ -10,7 +10,7 @@ from src.data.datasets import (
     LabeledDataset,
     LabeledSubset,
     NoLabelDataset,
-    NoLabelSubset
+    NoLabelSubset,
 )
 from src.typing import Indexable, S, T
 
@@ -18,38 +18,40 @@ logger = logging.getLogger(__name__)
 
 
 def train_test_dataset(
-        dataset: Union[BaseLabeledDataset[T, S], NoLabelDataset[T]],
-        test_size: float = 0.25,
-        random_state: int = None,
-        shuffle: bool = True,
-        stratify: bool = True,
-        multilabel: bool = False):
+    dataset: Union[BaseLabeledDataset[T, S], NoLabelDataset[T]],
+    test_size: float = 0.25,
+    random_state: int = None,
+    shuffle: bool = True,
+    stratify: bool = True,
+    multilabel: bool = False,
+):
 
     classes = None
     if stratify:
         if multilabel:
             warnings.warn(
-                "Cannot use stratified data splitting with multilabels. "
-                "Ignoring...", UserWarning, stacklevel=2)
+                "Cannot use stratified data splitting with multilabels. " "Ignoring...",
+                UserWarning,
+                stacklevel=2,
+            )
         else:
             if not isinstance(dataset, LabeledDataset):
                 raise ValueError("`dataset` is not a labeled dataset")
 
             classes = dataset.labels
 
-    train_idx, test_idx = sk_split(list(range(len(dataset))),
-                                   test_size=test_size,
-                                   random_state=random_state,
-                                   shuffle=shuffle,
-                                   stratify=classes)
+    train_idx, test_idx = sk_split(
+        list(range(len(dataset))),
+        test_size=test_size,
+        random_state=random_state,
+        shuffle=shuffle,
+        stratify=classes,
+    )
 
     if isinstance(dataset, BaseLabeledDataset):
-        return LabeledSubset(dataset, train_idx),\
-            LabeledSubset(dataset, test_idx)
+        return LabeledSubset(dataset, train_idx), LabeledSubset(dataset, test_idx)
     else:
-        return NoLabelSubset(
-            dataset, train_idx), NoLabelSubset(
-            dataset, test_idx)
+        return NoLabelSubset(dataset, train_idx), NoLabelSubset(dataset, test_idx)
 
 
 def get_input_dim(data):
@@ -65,8 +67,7 @@ def get_input_dim(data):
     return x.shape
 
 
-def get_label_distribution(dataset: Union[LabeledDataset[T, S],
-                                          LabeledSubset[T, S]]):
+def get_label_distribution(dataset: Union[LabeledDataset[T, S], LabeledSubset[T, S]]):
     label_info: Counter[S] = Counter()
 
     if dataset.multilabel:
@@ -77,12 +78,11 @@ def get_label_distribution(dataset: Union[LabeledDataset[T, S],
 
     n_elements = len(dataset)
 
-    return label_info, {k: float(v) /
-                        n_elements for k, v in label_info.items()}
+    return label_info, {k: float(v) / n_elements for k, v in label_info.items()}
 
 
 def label_idx2tensor(label: List[Any], n_labels: int):
-    return torch.zeros(n_labels).index_fill_(0, torch.tensor(label), 1.)
+    return torch.zeros(n_labels).index_fill_(0, torch.tensor(label), 1.0)
 
 
 def label_tensor2idx(label: torch.Tensor) -> List[int]:
@@ -90,8 +90,8 @@ def label_tensor2idx(label: torch.Tensor) -> List[int]:
 
 
 def get_tensor_dict_input_layer_dim(data):
-    return data[0][0]['A'].size(-1)
+    return data[0][0]["A"].size(-1)
 
 
 def get_tensor_dict_output_layer_dim(data):
-    return data[0][0]['output'].size(-1)
+    return data[0][0]["output"].size(-1)

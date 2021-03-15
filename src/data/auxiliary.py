@@ -31,8 +31,7 @@ class NetworkDatasetCollectionWrapper:
 
         self.formulas: List[Element] = []
         for d in datasets:
-            assert isinstance(
-                d, NetworkDataset), "elements should be NetworkDatasets"
+            assert isinstance(d, NetworkDataset), "elements should be NetworkDatasets"
             self.formulas.append(d.formula)
 
         self.cumulative_sizes = cumsum(datasets)
@@ -47,11 +46,12 @@ class NetworkDatasetCollectionWrapper:
 
 class FormulaAppliedDatasetWrapper:
     def __init__(
-            self,
-            datasets: Sequence[NetworkDataset],
-            configs: List[Dict[str, int]],
-            n_properties: int = 4,
-            seed: int = 0):
+        self,
+        datasets: Sequence[NetworkDataset],
+        configs: List[Dict[str, int]],
+        n_properties: int = 4,
+        seed: int = 0,
+    ):
         if len(datasets) < 1:
             raise ValueError("datasets cannot be an empty sequence")
 
@@ -59,17 +59,13 @@ class FormulaAppliedDatasetWrapper:
         self.applied: List[np.ndarray] = []
 
         for d in datasets:
-            assert isinstance(
-                d, NetworkDataset), "elements should be NetworkDatasets"
+            assert isinstance(d, NetworkDataset), "elements should be NetworkDatasets"
             self.formulas.append(FOC(d.formula))
 
         self.cumulative_sizes = cumsum(datasets)
 
         self.graphs = []
-        self._create_graphs(
-            configs=configs,
-            n_properties=n_properties,
-            seed=seed)
+        self._create_graphs(configs=configs, n_properties=n_properties, seed=seed)
 
         self.n_graphs = len(self.graphs)
         self.n_nodes = sum(len(g) for g in self.graphs)
@@ -84,10 +80,8 @@ class FormulaAppliedDatasetWrapper:
         return self.applied[dataset_index]
 
     def _create_graphs(
-            self,
-            configs: List[Dict[str, int]],
-            n_properties: int,
-            seed: int = 0):
+        self, configs: List[Dict[str, int]], n_properties: int, seed: int = 0
+    ):
 
         logger.debug("Creating graphs")
 
@@ -117,7 +111,8 @@ class FormulaAppliedDatasetWrapper:
                 name="erdos",
                 min_nodes=min_nodes,
                 max_nodes=max_nodes,
-                m=m)
+                m=m,
+            )
 
             for _ in range(n_graphs):
                 self.graphs.append(next(stream))
@@ -133,9 +128,12 @@ class FormulaAppliedDatasetWrapper:
             self.applied.append(result)
 
     @overload
-    def run_formula(self, formula: FOC) -> np.ndarray: ...
+    def run_formula(self, formula: FOC) -> np.ndarray:
+        ...
+
     @overload
-    def run_formula(self, formula: None) -> None: ...
+    def run_formula(self, formula: None) -> None:
+        ...
 
     def run_formula(self, formula: Optional[FOC]):
         if formula is None:
@@ -161,7 +159,7 @@ class FormulaAppliedDatasetWrapper:
         return {
             "formula_positives": each_positive,
             "formulas": self.formulas,
-            "total": float(sum(each_positive)) / len(each_positive)
+            "total": float(sum(each_positive)) / len(each_positive),
         }
 
 
@@ -179,7 +177,7 @@ class AggregatedNetworkDataset:
         logger.debug("Loading formulas")
         self.formulas = torch.load(file_path)
 
-        item = next(iter(self.formulas.values()))['data']
+        item = next(iter(self.formulas.values()))["data"]
         if isinstance(item, tuple):
             self.transform2graph_data()
         elif isinstance(item, dict):
@@ -194,12 +192,12 @@ class AggregatedNetworkDataset:
     def transform2graph_data(self):
         logger.debug("Converting GNN to graph")
         for k, v in self.formulas.items():
-            self.formulas[k]['data'] = GNNGraphDataset(*v['data'])
+            self.formulas[k]["data"] = GNNGraphDataset(*v["data"])
 
     def transform2tensor_dict(self):
         logger.debug("Converting GNN to Tensor Dict")
         for k, v in self.formulas.items():
-            self.formulas[k]['data'] = GNNTensorDictDataset(v['data'])
+            self.formulas[k]["data"] = GNNTensorDictDataset(v["data"])
 
 
 class GNNGraphDataset(InMemoryDataset):

@@ -6,11 +6,7 @@ import torch
 from torch.utils.data import DataLoader
 
 from src.data.auxiliary import NetworkDatasetCollectionWrapper
-from src.data.datasets import (
-    LabeledDataset,
-    LabeledSubset,
-    TextSequenceDataset
-)
+from src.data.datasets import LabeledDataset, LabeledSubset, TextSequenceDataset
 from src.graphs.foc import Element
 from src.training.gnn_sequence import GraphSequenceTrainer
 from src.training.gnn_tensor_dict_seq import TensorDictSequenceTrainer
@@ -21,13 +17,14 @@ from src.typing import S, T
 logger = logging.getLogger(__name__)
 
 
-def evaluate_model(model: torch.nn.Module,
-                   test_data: Union[LabeledSubset[T, S],
-                                    LabeledDataset[T, S]],
-                   reconstruction: NetworkDatasetCollectionWrapper,
-                   trainer: MLPTrainer,
-                   multilabel: bool,
-                   gpu: int = 0):
+def evaluate_model(
+    model: torch.nn.Module,
+    test_data: Union[LabeledSubset[T, S], LabeledDataset[T, S]],
+    reconstruction: NetworkDatasetCollectionWrapper,
+    trainer: MLPTrainer,
+    multilabel: bool,
+    gpu: int = 0,
+):
 
     logger.debug("Evaluating model")
 
@@ -38,11 +35,8 @@ def evaluate_model(model: torch.nn.Module,
         device = torch.device("cpu")
 
     data_loader = DataLoader(
-        test_data,
-        batch_size=1024,
-        pin_memory=False,
-        shuffle=False,
-        num_workers=0)
+        test_data, batch_size=1024, pin_memory=False, shuffle=False, num_workers=0
+    )
 
     y_true = []
     y_pred = []
@@ -63,8 +57,9 @@ def evaluate_model(model: torch.nn.Module,
     else:
         test_indices = list(range(len(test_data)))
 
-    mistakes: DefaultDict[Element, Dict[int, int]] = \
-        DefaultDict(lambda: DefaultDict(int))
+    mistakes: DefaultDict[Element, Dict[int, int]] = DefaultDict(
+        lambda: DefaultDict(int)
+    )
     formula_count: DefaultDict[Element, int] = DefaultDict(int)
 
     for true, pred, index in zip(y_true, y_pred, test_indices):
@@ -84,52 +79,37 @@ def evaluate_model(model: torch.nn.Module,
     return y_true, y_pred, mistakes, formula_count
 
 
-def evaluate_text_model(trainer: Union[
-        RecurrentTrainer,
-        GraphSequenceTrainer,
-        TensorDictSequenceTrainer],
-        test_data: Union[TextSequenceDataset[T],
-                         LabeledSubset[T, torch.Tensor]],
-        reconstruction: NetworkDatasetCollectionWrapper):
-
+def evaluate_text_model(
+    trainer: Union[RecurrentTrainer, GraphSequenceTrainer, TensorDictSequenceTrainer],
+    test_data: Union[TextSequenceDataset[T], LabeledSubset[T, torch.Tensor]],
+    reconstruction: NetworkDatasetCollectionWrapper,
+):
     def get_metrics(
-            eval_scores,
-            eval_predictions,
-            eval_targets,
-            eval_lengths,
-            eval_indices):
+        eval_scores, eval_predictions, eval_targets, eval_lengths, eval_indices
+    ):
 
         _metrics = {
             "token_acc1": trainer.metrics.token_accuracy(
-                scores=eval_scores,
-                targets=eval_targets,
-                k=1,
-                lengths=eval_lengths),
+                scores=eval_scores, targets=eval_targets, k=1, lengths=eval_lengths
+            ),
             "token_acc3": trainer.metrics.token_accuracy(
-                scores=eval_scores,
-                targets=eval_targets,
-                k=3,
-                lengths=eval_lengths),
+                scores=eval_scores, targets=eval_targets, k=3, lengths=eval_lengths
+            ),
             "sent_acc": trainer.metrics.sentence_accuracy(
-                predictions=eval_predictions,
-                targets=eval_targets,
-                lengths=eval_lengths),
+                predictions=eval_predictions, targets=eval_targets, lengths=eval_lengths
+            ),
             "bleu4": trainer.metrics.bleu_score(
-                predictions=eval_predictions,
-                targets=eval_targets,
-                lengths=eval_lengths)
+                predictions=eval_predictions, targets=eval_targets, lengths=eval_lengths
+            ),
         }
 
         valid_metric, formulas = trainer.metrics.syntax_check(
-            predictions=eval_predictions,
-            run_all=True,
-            return_formulas=True)
+            predictions=eval_predictions, run_all=True, return_formulas=True
+        )
         _metrics["valid"] = valid_metric
 
         semval = trainer.metrics.semantic_validation(
-            predictions=eval_predictions,
-            indices=eval_indices,
-            formulas=formulas
+            predictions=eval_predictions, indices=eval_indices, formulas=formulas
         )
         for metric_name, value in semval.items():
             _metrics[f"semval{metric_name}"] = value
@@ -142,11 +122,12 @@ def evaluate_text_model(trainer: Union[
         batch_size=1024,
         pin_memory=False,
         shuffle=False,
-        num_workers=0
+        num_workers=0,
     )
 
     scores, predictions, targets, lengths, indices, _ = trainer.run_pass(
-        data_loader, keep_device=True)
+        data_loader, keep_device=True
+    )
 
     if isinstance(test_data, LabeledSubset):
         test_indices = test_data.indices
@@ -159,7 +140,9 @@ def evaluate_text_model(trainer: Union[
             "scores": [],
             "targets": [],
             "lengths": [],
-            "indices": []})
+            "indices": [],
+        }
+    )
 
     for i, test_ind in enumerate(test_indices):
         formula_col = formula_samples[reconstruction[test_ind]]
@@ -173,8 +156,7 @@ def evaluate_text_model(trainer: Union[
     # metric_name -> all|formula -> value
     formula_metrics: Dict[str, Dict[str, Any]] = {}
 
-    whole_dataset_metrics = get_metrics(
-        scores, predictions, targets, lengths, indices)
+    whole_dataset_metrics = get_metrics(scores, predictions, targets, lengths, indices)
     for metric_name, metric_value in whole_dataset_metrics.items():
         formula_metrics.setdefault(metric_name, {})["all"] = metric_value
 
@@ -186,9 +168,9 @@ def evaluate_text_model(trainer: Union[
         _indices = torch.tensor(metrics["indices"])
 
         single_metrics = get_metrics(
-            _scores, _predictions, _targets, _lengths, _indices)
+            _scores, _predictions, _targets, _lengths, _indices
+        )
         for metric_name, metric_value in single_metrics.items():
-            formula_metrics.setdefault(metric_name,
-                                       {})[repr(formula)] = metric_value
+            formula_metrics.setdefault(metric_name, {})[repr(formula)] = metric_value
 
     return formula_metrics

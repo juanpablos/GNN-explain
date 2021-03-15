@@ -3,13 +3,8 @@ from typing import Dict
 
 class Vocabulary:
     def __init__(self):
-        self.id2token: Dict[int, str] = {
-            0: "<pad>",
-            1: "<sos>",
-            2: "<eos>"
-        }
-        self.token2id: Dict[str, int] = {
-            v: k for k, v in self.id2token.items()}
+        self.id2token: Dict[int, str] = {0: "<pad>", 1: "<sos>", 2: "<eos>"}
+        self.token2id: Dict[str, int] = {v: k for k, v in self.id2token.items()}
 
     def __len__(self):
         return len(self.id2token)

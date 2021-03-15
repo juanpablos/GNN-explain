@@ -8,15 +8,16 @@ from src.models.utils import Waiter
 class LSTMDecoder(nn.Module):
     # * maybe faster, but less flexible
     def __init__(
-            self,
-            encoder_dim: int,
-            embedding_dim: int,
-            hidden_dim: int,
-            vocab_size: int,
-            init_state_context: bool,
-            concat_encoder_input: bool,
-            dropout_prob: float = 0.0,
-            pad_token_id: int = 0):
+        self,
+        encoder_dim: int,
+        embedding_dim: int,
+        hidden_dim: int,
+        vocab_size: int,
+        init_state_context: bool,
+        concat_encoder_input: bool,
+        dropout_prob: float = 0.0,
+        pad_token_id: int = 0,
+    ):
         super().__init__()
 
         self.hidden_dim = hidden_dim
@@ -30,8 +31,8 @@ class LSTMDecoder(nn.Module):
 
         # * targets are padded sequences
         self.embed = nn.Embedding(
-            num_embeddings=vocab_size,
-            embedding_dim=embedding_dim)
+            num_embeddings=vocab_size, embedding_dim=embedding_dim
+        )
 
         if init_state_context:
             self.init_h = nn.Linear(encoder_dim, hidden_dim)
@@ -43,9 +44,8 @@ class LSTMDecoder(nn.Module):
             lstm_input_size = embedding_dim
 
         self.lstm = nn.LSTM(
-            input_size=lstm_input_size,
-            hidden_size=hidden_dim,
-            batch_first=True)
+            input_size=lstm_input_size, hidden_size=hidden_dim, batch_first=True
+        )
 
         self.dropout = nn.Dropout(p=dropout_prob)
 
@@ -63,11 +63,7 @@ class LSTMDecoder(nn.Module):
         # (1, batch, lstm_hidden)
         return h.unsqueeze(0), c.unsqueeze(0)
 
-    def forward(
-            self,
-            encoder_out,
-            padded_target,
-            target_lengths):
+    def forward(self, encoder_out, padded_target, target_lengths):
         """
         input:
             encoder_out (batch, encoder)
@@ -85,8 +81,7 @@ class LSTMDecoder(nn.Module):
             # * we have to repeat each `encoder_out` `seq` times so we can concat them
             # we only have 1 `encoder_out` per batch, but we need `seq` of them
             # (batch, L, encoder)
-            _expanded = encoder_out.unsqueeze(
-                1).expand(-1, emb_targets.size(1), -1)
+            _expanded = encoder_out.unsqueeze(1).expand(-1, emb_targets.size(1), -1)
             # * teacher-forcing
             # (batch, L, encoder+embedding)
             lstm_input = torch.cat([_expanded, emb_targets], dim=2)
@@ -100,16 +95,17 @@ class LSTMDecoder(nn.Module):
             # [<start>, hey]
             lengths=target_lengths - 1,
             batch_first=True,
-            enforce_sorted=False)
+            enforce_sorted=False,
+        )
 
         # (1, batch, lstm_hidden)
         state = self.init_hidden_state(encoder_out)
-        packed_predicted_sequence, _ = self.lstm(
-            packed_input, state)  # type: ignore
+        packed_predicted_sequence, _ = self.lstm(packed_input, state)  # type: ignore
 
         # (batch, L, lstm_hidden)
         padded_predicted_sequence, _ = pad_packed_sequence(
-            packed_predicted_sequence, batch_first=True)  # type: ignore
+            packed_predicted_sequence, batch_first=True
+        )  # type: ignore
 
         # (*, lstm_hidden)
         flattened_seq = padded_predicted_sequence.view(-1, self.hidden_dim)
@@ -125,12 +121,7 @@ class LSTMDecoder(nn.Module):
         # (*, vocab_dim), (*)
         return prediction, target_predictions.flatten()
 
-    def single_step(
-            self,
-            encoder_out,
-            sequence_step,
-            step_state,
-            **kwargs):
+    def single_step(self, encoder_out, sequence_step, step_state, **kwargs):
         """
         input:
             encoder_out (batch, encoder)
@@ -173,17 +164,18 @@ class LSTMDecoder(nn.Module):
 
 class LSTMCellDecoder(nn.Module):
     def __init__(
-            self,
-            encoder_dim: int,
-            embedding_dim: int,
-            hidden_dim: int,
-            vocab_size: int,
-            init_state_context: bool,
-            compose_encoder_state: bool,
-            concat_encoder_input: bool,
-            compose_dim: int = 0,
-            dropout_prob: float = 0.0,
-            pad_token_id: int = 0):
+        self,
+        encoder_dim: int,
+        embedding_dim: int,
+        hidden_dim: int,
+        vocab_size: int,
+        init_state_context: bool,
+        compose_encoder_state: bool,
+        concat_encoder_input: bool,
+        compose_dim: int = 0,
+        dropout_prob: float = 0.0,
+        pad_token_id: int = 0,
+    ):
         super().__init__()
 
         self.hidden_dim = hidden_dim
@@ -198,8 +190,8 @@ class LSTMCellDecoder(nn.Module):
 
         # * targets are padded sequences
         self.embed = nn.Embedding(
-            num_embeddings=vocab_size,
-            embedding_dim=embedding_dim)
+            num_embeddings=vocab_size, embedding_dim=embedding_dim
+        )
 
         if self.init_state_encoder:
             self.encoder2hidden = nn.Linear(encoder_dim, hidden_dim)
@@ -219,9 +211,7 @@ class LSTMCellDecoder(nn.Module):
         else:
             lstm_input_size = embedding_dim
 
-        self.lstm = nn.LSTMCell(
-            input_size=lstm_input_size,
-            hidden_size=hidden_dim)
+        self.lstm = nn.LSTMCell(input_size=lstm_input_size, hidden_size=hidden_dim)
 
         self.dropout = nn.Dropout(p=dropout_prob)
 
@@ -272,20 +262,19 @@ class LSTMCellDecoder(nn.Module):
             hidden_state,
             self.encoder2hiddentemp,
             self.hidden2temp,
-            self.temp2hidden)
+            self.temp2hidden,
+        )
         composed_cell = self.compose(
             encoder_out,
             cell_state,
             self.encoder2celltemp,
             self.cell2temp,
-            self.temp2cell)
+            self.temp2cell,
+        )
 
         return composed_hidden, composed_cell
 
-    def forward(self,
-                encoder_out,
-                padded_target,
-                target_lengths):
+    def forward(self, encoder_out, padded_target, target_lengths):
         """
         input:
             encoder_out (batch, encoder)
@@ -296,8 +285,7 @@ class LSTMCellDecoder(nn.Module):
             targets (batch * L)
         """
 
-        _, sorted_indices = target_lengths.sort(
-            descending=True)
+        _, sorted_indices = target_lengths.sort(descending=True)
 
         encoder_out = encoder_out[sorted_indices]
         padded_target = padded_target[sorted_indices]
@@ -319,8 +307,8 @@ class LSTMCellDecoder(nn.Module):
 
         # (batch, L, vocab_dim)
         prediction = encoder_out.new_full(
-            (encoder_out.size(0), max_len, self.vocab_dim),
-            fill_value=self.pad_token_id)
+            (encoder_out.size(0), max_len, self.vocab_dim), fill_value=self.pad_token_id
+        )
 
         for t in torch.arange(max_len):
             # T
@@ -365,11 +353,7 @@ class LSTMCellDecoder(nn.Module):
         # (*, vocab_dim), (*)
         return output_predictions, target_predictions.flatten()
 
-    def single_step(self,
-                    encoder_out,
-                    sequence_step,
-                    step_state,
-                    step: int = 0):
+    def single_step(self, encoder_out, sequence_step, step_state, step: int = 0):
         """
         input:
             encoder_out (batch, encoder)

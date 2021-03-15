@@ -1,4 +1,3 @@
-
 from typing import Any, Generic
 
 import numpy as np
@@ -30,18 +29,20 @@ class SubsetSampler(Generic[T]):
     """
 
     def __init__(
-            self,
-            dataset: NoLabelDataset[T],
-            n_elements: int,
-            test_size: int,
-            seed: Any,
-            unique_test: bool = True):
+        self,
+        dataset: NoLabelDataset[T],
+        n_elements: int,
+        test_size: int,
+        seed: Any,
+        unique_test: bool = True,
+    ):
 
         if len(dataset) < n_elements:
             raise ValueError(
                 "The sample number cannot be smaller than the number of "
                 "elements to sample from: dataset has "
-                f"{len(dataset)} < {n_elements} elements")
+                f"{len(dataset)} < {n_elements} elements"
+            )
 
         self.dataset = dataset
         self.sample = n_elements
@@ -56,11 +57,11 @@ class SubsetSampler(Generic[T]):
             if test_size > n_elements:
                 raise ValueError(
                     "Cannot sample more elements for the test set than "
-                    f"the total sampled elements, {test_size} > {n_elements}")
+                    f"the total sampled elements, {test_size} > {n_elements}"
+                )
 
             # generate the unique test partition
-            self.test_partition = NoLabelSubset(
-                self.dataset, self.indices[:test_size])
+            self.test_partition = NoLabelSubset(self.dataset, self.indices[:test_size])
             # remove the selected indices from the available indices
             self.indices = self.indices[test_size:]
 
@@ -68,14 +69,11 @@ class SubsetSampler(Generic[T]):
             assert len(self.indices) == len(self.dataset) - test_size
 
     def __call__(self):
-        ind = self.rand.choice(
-            self.indices,
-            size=self.sample,
-            replace=False)
+        ind = self.rand.choice(self.indices, size=self.sample, replace=False)
 
         if self.test_partition is None:
-            test_idx = ind[:self.test]
-            train_idx = ind[self.test:]
+            test_idx = ind[: self.test]
+            train_idx = ind[self.test :]
 
             train_set = NoLabelSubset(self.dataset, train_idx)
             test_set = NoLabelSubset(self.dataset, test_idx)

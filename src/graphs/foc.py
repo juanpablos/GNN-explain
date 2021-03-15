@@ -39,20 +39,15 @@ class Element(ABC):
 
     def validate(self):
         if not self.is_1d:
-            raise ValueError(
-                "Invalid Formula: All Roles must be inside an Exist")
+            raise ValueError("Invalid Formula: All Roles must be inside an Exist")
         return self
 
 
 class Property(Element):
     """Returns a 1d vector with the nodes that satisfy the condition"""
+
     # REV: seach for a better way to do this
-    available = {
-        "RED": 0,
-        "BLUE": 1,
-        "GREEN": 2,
-        "BLACK": 3
-    }
+    available = {"RED": 0, "BLUE": 1, "GREEN": 2, "BLACK": 3}
 
     def __init__(self, prop: str, *, variable: str = None):
         if prop not in self.available:
@@ -79,12 +74,7 @@ class Property(Element):
 class Role(Element):
     """Returns a 2d matrix with the relations between nodes that satisfy the condition"""
 
-    def __init__(
-            self,
-            relation: str,
-            *,
-            variable1: str = None,
-            variable2: str = None):
+    def __init__(self, relation: str, *, variable1: str = None, variable2: str = None):
         self.name = relation
         self.variable1 = variable1 if variable1 is not None else "."
         self.variable2 = variable2 if variable2 is not None else "."
@@ -164,19 +154,21 @@ class OR(Operator):
 
 class Exist(Element):
     def __init__(
-            self,
-            expression: Element,
-            lower: int = None,
-            upper: int = None,
-            *,
-            variable: str = None):
+        self,
+        expression: Element,
+        lower: int = None,
+        upper: int = None,
+        *,
+        variable: str = None,
+    ):
         if lower is None and upper is None:
             # ! lower is only forced 1 if upper is also None
             lower = 1
         elif lower is not None and upper is not None:
             if lower < 0 or upper < 0:
                 raise ValueError(
-                    "`lower` and `upper` must be greater than 0 when both set")
+                    "`lower` and `upper` must be greater than 0 when both set"
+                )
 
         self.variable = variable if variable is not None else "."
         self.expression = expression
@@ -188,15 +180,16 @@ class Exist(Element):
         # Exists makes the expression valid only if inner expression has a 2d
         # output. If the output is 1d then the expression is invalid
         if expression.is_1d:
-            raise ValueError(
-                "The inner expression of Exist must have a 2d output")
+            raise ValueError("The inner expression of Exist must have a 2d output")
 
         self._is_1d = True
 
     def __repr__(self):
         # ?? Exist(None, 4) should be the same as Exist(0, 4): should we force it?
-        return (f"{self.__class__.__name__}"
-                f"({self.expression!r},{self.lower},{self.upper})")
+        return (
+            f"{self.__class__.__name__}"
+            f"({self.expression!r},{self.lower},{self.upper})"
+        )
 
     def __str__(self):
         s = self.symbol
@@ -216,7 +209,8 @@ class Exist(Element):
         if res.ndim <= 1:
             raise ValueError(
                 "Cannot have a restriction property with 1d array "
-                "(there must be a relation operation)")
+                "(there must be a relation operation)"
+            )
 
         per_node = np.sum(res, axis=1)
         return (per_node >= lower) & (per_node <= upper)
@@ -240,8 +234,7 @@ class ForAll(Element):
     def __call__(self, **kwargs):
         res = self.expression(**kwargs)
         if res.ndim <= 1:
-            raise ValueError(
-                "Cannot have a restriction property with single values")
+            raise ValueError("Cannot have a restriction property with single values")
 
         # * for all will always come with a 2d array from a relation between nodes. Unless we accept reflexive relationships. EDGE is not reflexive.
         np.fill_diagonal(res, True)
@@ -256,10 +249,7 @@ class FOC:
         adjacency = {"value": None}
         properties = list(nx.get_node_attributes(graph, "properties").values())
         properties = np.array(properties)
-        res = self.expression(
-            graph=graph,
-            adjacency=adjacency,
-            properties=properties)
+        res = self.expression(graph=graph, adjacency=adjacency, properties=properties)
 
         if res.ndim > 1:
             res = np.squeeze(res)

@@ -8,7 +8,7 @@ from typing import (
     OrderedDict,
     Tuple,
     TypeVar,
-    Union
+    Union,
 )
 
 from src.data.formulas.visitor import Visitor
@@ -24,6 +24,7 @@ S_co = TypeVar("S_co", covariant=True)
 class CategoricalLabeler(Visitor[T_co], Generic[T_co, S_co]):
     def __init__(self):
         self.classes: OrderedDict[S_co, str] = OrderedDict()
+
 
 # *----- binary
 
@@ -68,8 +69,9 @@ class BinaryAtomicLabeler(BinaryCategoricalLabeler):
         self.current_hop -= 1
 
     def _visit_Property(self, node: Property):
-        if node.name == self.selected and \
-                (self.target_hop == -1 or self.current_hop == self.target_hop):
+        if node.name == self.selected and (
+            self.target_hop == -1 or self.current_hop == self.target_hop
+        ):
             # if the atomic is seen, then mark as 1
             self.result = 1
 
@@ -117,16 +119,15 @@ class BinaryHopLabeler(BinaryCategoricalLabeler):
 
 class BinaryRestrictionLabeler(BinaryCategoricalLabeler):
     def __init__(
-            self,
-            lower: Optional[int],
-            upper: Optional[int],
-            negate: bool = False):
+        self, lower: Optional[int], upper: Optional[int], negate: bool = False
+    ):
         if lower is None and upper is None:
             raise ValueError("Can't have both open intervals.")
         if lower is not None and upper is not None:
             if lower < 0 or upper < 0:
                 raise ValueError(
-                    "`lower` and `upper` must be greater than 0 when both set")
+                    "`lower` and `upper` must be greater than 0 when both set"
+                )
         super().__init__(negate=negate)
         self.lower = lower
         self.upper = upper
@@ -183,8 +184,7 @@ class MultiLabelCategoricalLabeler(CategoricalLabeler[Tuple[int, ...], int]):
 
     def process(self, formula: Element):
         if not self.current_result:
-            raise ValueError(
-                f"Current formula don't have any label: {formula}")
+            raise ValueError(f"Current formula don't have any label: {formula}")
         # ** we do not care about the order of the output
         self.result = tuple(set(self.current_result))
 
@@ -217,10 +217,9 @@ class MultilabelRestrictionLabeler(MultiLabelCategoricalLabeler):
     RED -> Exist(None)
     """
 
-    def __init__(self,
-                 mode: Union[Literal["lower"],
-                             Literal["upper"],
-                             Literal["both"]] = "both"):
+    def __init__(
+        self, mode: Union[Literal["lower"], Literal["upper"], Literal["both"]] = "both"
+    ):
         super().__init__()
         self.current_hop = 0
         self.max_hop = 0
@@ -239,7 +238,8 @@ class MultilabelRestrictionLabeler(MultiLabelCategoricalLabeler):
         if self.current_hop > 1:
             # TODO: multilabel hop restriction labele
             raise NotImplementedError(
-                "Missing implementation for multihop restriction labeler")
+                "Missing implementation for multihop restriction labeler"
+            )
 
         if "lower" in self.mode and node.lower is not None:
             if (node.lower, None) not in self.pairs:
@@ -279,6 +279,7 @@ class MultilabelRestrictionLabeler(MultiLabelCategoricalLabeler):
 
 
 # *----- text sequential
+
 
 class TextSequenceLabeler(Visitor[List[int]]):
     def __init__(self):
@@ -348,11 +349,13 @@ class TextSequenceLabeler(Visitor[List[int]]):
 
     def process(self, formula: Element):
         if not self.result:
-            raise ValueError(
-                f"Current formula don't have any result: {formula}")
+            raise ValueError(f"Current formula don't have any result: {formula}")
 
-        self.result = [self.vocabulary.start_token_id] + \
-            self.result + [self.vocabulary.end_token_id]
+        self.result = (
+            [self.vocabulary.start_token_id]
+            + self.result
+            + [self.vocabulary.end_token_id]
+        )
 
     def __str__(self):
         return "TextSequenceAtomic()"
@@ -366,8 +369,7 @@ class LabelerApply(Generic[T, S]):
         self.labeler = labeler
 
     def __call__(self, formulas: Mapping[str, Element]):
-        labels = {_hash: self.labeler(formula)
-                  for _hash, formula in formulas.items()}
+        labels = {_hash: self.labeler(formula) for _hash, formula in formulas.items()}
         return labels, self.labeler.classes
 
     def __str__(self):
@@ -379,8 +381,7 @@ class SequenceLabelerApply:
         self.labeler = labeler
 
     def __call__(self, formulas: Mapping[str, Element]):
-        labels = {_hash: self.labeler(formula)
-                  for _hash, formula in formulas.items()}
+        labels = {_hash: self.labeler(formula) for _hash, formula in formulas.items()}
         return labels, self.labeler.vocabulary
 
     def __str__(self):

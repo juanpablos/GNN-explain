@@ -10,7 +10,7 @@ from src.graphs.foc import (
     ForAll,
     Operator,
     Property,
-    Role
+    Role,
 )
 
 T_co = TypeVar("T_co", covariant=True)
@@ -55,10 +55,12 @@ class Visitor(ABC, Generic[T_co]):
         return res
 
     @abstractmethod
-    def reset(self): ...
+    def reset(self):
+        ...
 
     def process(self, formula: Element):
         pass
 
     @abstractmethod
-    def __str__(self): ...
+    def __str__(self):
+        ...

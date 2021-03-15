@@ -5,10 +5,12 @@ import torch
 from torch_geometric.data import Data
 
 
-def stream_transform(graph: nx.Graph,
-                     node_labels: List[List[Any]],
-                     n_node_features: int,
-                     feature_type: str = "categorical") -> Data:
+def stream_transform(
+    graph: nx.Graph,
+    node_labels: List[List[Any]],
+    n_node_features: int,
+    feature_type: str = "categorical",
+) -> Data:
     """
     Generates a stream of torch_geometric:Data objects containing the generated graph and the label associated with each node.
 
@@ -26,23 +28,15 @@ def stream_transform(graph: nx.Graph,
     edges = torch.tensor(list(graph.edges), dtype=torch.long)
     labels = torch.tensor(node_labels, dtype=torch.long)
     features = torch.tensor(
-        list(
-            nx.get_node_attributes(
-                graph,
-                "properties").values()),
-        dtype=torch.long)
+        list(nx.get_node_attributes(graph, "properties").values()), dtype=torch.long
+    )
 
     if feature_type == "categorical":
-        x = torch.nn.functional.one_hot(
-            features, n_node_features).float()
+        x = torch.nn.functional.one_hot(features, n_node_features).float()
     else:
         x = features
 
-    return Data(
-        x=x,
-        edge_index=edges.t().contiguous(),
-        y=labels
-    )
+    return Data(x=x, edge_index=edges.t().contiguous(), y=labels)
 
 
 def graph_file_loader():

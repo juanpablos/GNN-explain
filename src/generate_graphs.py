@@ -4,22 +4,25 @@ from src.data.graph_transform import stream_transform
 from src.graphs import *
 
 
-def graph_object_stream(generator_fn: str,
-                        min_nodes: int,
-                        max_nodes: int,
-                        seed: int = None,
-                        n_properties: int = 10,
-                        property_distribution: str = "uniform",
-                        distribution: List[float] = None,
-                        verbose: int = 0,
-                        **kwargs):
+def graph_object_stream(
+    generator_fn: str,
+    min_nodes: int,
+    max_nodes: int,
+    seed: int = None,
+    n_properties: int = 10,
+    property_distribution: str = "uniform",
+    distribution: List[float] = None,
+    verbose: int = 0,
+    **kwargs
+):
 
     _generator = graph_generator(
         generator_fn=generator_fn,
         min_nodes=min_nodes,
         max_nodes=max_nodes,
         seed=seed,
-        **kwargs)
+        **kwargs
+    )
     _properties = property_generator(
         graph_generator=_generator,
         number_of_graphs=None,
@@ -27,21 +30,24 @@ def graph_object_stream(generator_fn: str,
         property_distribution=property_distribution,
         distribution=distribution,
         seed=seed,
-        verbose=verbose)
+        verbose=verbose,
+    )
 
     return _properties
 
 
-def graph_data_stream(formula: FOC,
-                      generator_fn: str,
-                      min_nodes: int,
-                      max_nodes: int,
-                      seed: int = None,
-                      n_properties: int = 10,
-                      property_distribution: str = "uniform",
-                      distribution: List[float] = None,
-                      verbose: int = 0,
-                      **kwargs):
+def graph_data_stream(
+    formula: FOC,
+    generator_fn: str,
+    min_nodes: int,
+    max_nodes: int,
+    seed: int = None,
+    n_properties: int = 10,
+    property_distribution: str = "uniform",
+    distribution: List[float] = None,
+    verbose: int = 0,
+    **kwargs
+):
     """
 
     Args:
@@ -68,11 +74,14 @@ def graph_data_stream(formula: FOC,
         property_distribution=property_distribution,
         distribution=distribution,
         verbose=verbose,
-        **kwargs)
+        **kwargs
+    )
 
     for graph in graphs:
         labels = formula(graph)
-        yield stream_transform(graph=graph,
-                               node_labels=labels,
-                               n_node_features=n_properties,
-                               feature_type="categorical")
+        yield stream_transform(
+            graph=graph,
+            node_labels=labels,
+            n_node_features=n_properties,
+            feature_type="categorical",
+        )

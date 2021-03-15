@@ -8,14 +8,15 @@ from src.models.utils import reset
 
 class MLP(nn.Module):
     def __init__(
-            self,
-            num_layers: int,
-            input_dim: int,
-            hidden_dim: int,
-            output_dim: int,
-            use_batch_norm: bool = True,
-            hidden_layers: Optional[List[int]] = None,
-            **kwargs):
+        self,
+        num_layers: int,
+        input_dim: int,
+        hidden_dim: int,
+        output_dim: int,
+        use_batch_norm: bool = True,
+        hidden_layers: Optional[List[int]] = None,
+        **kwargs
+    ):
         """
         A simple MLP class with batchnorm.
 

@@ -40,13 +40,13 @@ def stack_dict_tensors(tensor_dict_list):
 
 
 def network_loader_generator(
-        root: str,
-        model_hash: str,
-        filename: str) -> Generator[Tuple[List[torch.Tensor], str], Any, None]:
+    root: str, model_hash: str, filename: str
+) -> Generator[Tuple[List[torch.Tensor], str], Any, None]:
 
     if model_hash not in os.listdir(root):
         raise FileExistsError(
-            f"No directory for the current model hash: {root}/{model_hash}")
+            f"No directory for the current model hash: {root}/{model_hash}"
+        )
 
     model_path = os.path.join(root, model_hash)
     available_formulas = prepare_files(model_path)
@@ -60,26 +60,18 @@ def network_loader_generator(
         yield  # type: ignore
         data = yield (torch.load(file_path), formula_hash)
 
-        big_dataset[formula_hash] = {
-            "file": formula_file,
-            "data": data
-        }
+        big_dataset[formula_hash] = {"file": formula_file, "data": data}
 
     save_file = os.path.join(model_path, "processed", filename)
     print(f"Saving whole dataset")
     torch.save(big_dataset, save_file)
 
 
-def aggregate_formulas(
-        root: str,
-        model_hash: str,
-        filename: str,
-        nobatch: bool):
+def aggregate_formulas(root: str, model_hash: str, filename: str, nobatch: bool):
 
     network_loader = network_loader_generator(
-        root=root,
-        model_hash=model_hash,
-        filename=filename)
+        root=root, model_hash=model_hash, filename=filename
+    )
     network_loader.send(None)
 
     try:
@@ -91,8 +83,7 @@ def aggregate_formulas(
                     network = clean_state(network)
                 # /legacy
 
-                concat_weights = torch.cat(
-                    [w.flatten() for w in network.values()])
+                concat_weights = torch.cat([w.flatten() for w in network.values()])
                 dataset.append(concat_weights)
 
             print(f"Stacking formula {formula_hash}")
@@ -104,16 +95,16 @@ def aggregate_formulas(
 
 
 def stack_gnn_graphs(
-        root: str,
-        model_hash: str,
-        filename: str,
-        nobatch: bool,
-        as_undirected: bool = False):
+    root: str,
+    model_hash: str,
+    filename: str,
+    nobatch: bool,
+    as_undirected: bool = False,
+):
 
     network_loader = network_loader_generator(
-        root=root,
-        model_hash=model_hash,
-        filename=filename)
+        root=root, model_hash=model_hash, filename=filename
+    )
     network_loader.send(None)
 
     try:
@@ -135,16 +126,11 @@ def stack_gnn_graphs(
         print("Finished processing")
 
 
-def tensor_dict_gnn(
-        root: str,
-        model_hash: str,
-        filename: str,
-        nobatch: bool):
+def tensor_dict_gnn(root: str, model_hash: str, filename: str, nobatch: bool):
 
     network_loader = network_loader_generator(
-        root=root,
-        model_hash=model_hash,
-        filename=filename)
+        root=root, model_hash=model_hash, filename=filename
+    )
     network_loader.send(None)
 
     try:

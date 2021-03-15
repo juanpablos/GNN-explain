@@ -7,21 +7,22 @@ import matplotlib.pyplot as plt
 from sklearn.metrics import (
     ConfusionMatrixDisplay,
     confusion_matrix,
-    multilabel_confusion_matrix
+    multilabel_confusion_matrix,
 )
 
 logger = logging.getLogger(__name__)
 
 
 def plot_confusion_matrix(
-        y,
-        y_pred,
-        save_path: str,
-        labels: List[str],
-        filename: str = None,
-        title: str = None,
-        *,
-        normalize_cm: bool = True):
+    y,
+    y_pred,
+    save_path: str,
+    labels: List[str],
+    filename: str = None,
+    title: str = None,
+    *,
+    normalize_cm: bool = True,
+):
     logger.info(f"Calculating confusion matrix")
 
     if normalize_cm:
@@ -39,8 +40,11 @@ def plot_confusion_matrix(
     logger.debug("Plotting confusion matrix")
     disp.plot(cmap="Blues", ax=ax, xticks_rotation=30)
 
-    plt.setp(ax.get_xticklabels(), rotation=30,  # type:ignore
-             horizontalalignment='right')
+    plt.setp(
+        ax.get_xticklabels(),
+        rotation=30,  # type:ignore
+        horizontalalignment="right",
+    )
     if normalize_cm:
         disp.im_.set_clim(0, 1)
     plt.tight_layout()
@@ -56,13 +60,14 @@ def plot_confusion_matrix(
 
 
 def plot_multilabel_confusion_matrix(
-        y,
-        y_pred,
-        save_path: str,
-        labels: List[str],
-        label_totals: List[int],
-        filename: str = None,
-        title: str = None):
+    y,
+    y_pred,
+    save_path: str,
+    labels: List[str],
+    label_totals: List[int],
+    filename: str = None,
+    title: str = None,
+):
     logger.info(f"Calculating multilabel confusion matrix")
 
     cm_array = multilabel_confusion_matrix(y, y_pred)
@@ -70,10 +75,7 @@ def plot_multilabel_confusion_matrix(
 
     n_rows = math.ceil(math.sqrt(len(labels)))
     n_cols = math.ceil(len(labels) / n_rows)
-    fig, axs = plt.subplots(
-        ncols=int(n_cols),
-        nrows=int(n_rows),
-        figsize=(size, size))
+    fig, axs = plt.subplots(ncols=int(n_cols), nrows=int(n_rows), figsize=(size, size))
 
     axs = axs.flatten()  # type: ignore
 
@@ -87,17 +89,17 @@ def plot_multilabel_confusion_matrix(
 
         label_names = [rest_label, current_label]
         disp = ConfusionMatrixDisplay(
-            confusion_matrix=norm_cm,
-            display_labels=label_names)
+            confusion_matrix=norm_cm, display_labels=label_names
+        )
 
         logger.debug(f"Plotting for {labels[i]}")
-        disp.plot(
-            cmap="Blues",
-            ax=ax,
-            xticks_rotation=30)
+        disp.plot(cmap="Blues", ax=ax, xticks_rotation=30)
 
-        plt.setp(ax.get_xticklabels(), rotation=30,  # type:ignore
-                 horizontalalignment='right')
+        plt.setp(
+            ax.get_xticklabels(),
+            rotation=30,  # type:ignore
+            horizontalalignment="right",
+        )
         disp.im_.set_clim(0, 1)
 
         ax.set_title(f"CM for all vs {labels[i]}")
