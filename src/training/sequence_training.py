@@ -1,6 +1,6 @@
 import logging
 from itertools import chain
-from typing import List, Literal, Union
+from typing import Dict, List, Literal, Union
 
 import numpy as np
 import torch
@@ -101,6 +101,7 @@ class RecurrentTrainer(Trainer):
         output_dim: int,
         use_batch_norm: bool = True,
         hidden_layers: List[int] = None,
+        model_weights: Dict[str, torch.Tensor] = None,
         **kwargs,
     ):
         self.encoder = MLP(
@@ -112,6 +113,9 @@ class RecurrentTrainer(Trainer):
             hidden_layers=hidden_layers,
             **kwargs,
         )
+
+        if model_weights is not None:
+            self.encoder.load_state_dict(model_weights)
 
         return self.encoder
 
@@ -126,6 +130,7 @@ class RecurrentTrainer(Trainer):
         init_state_context: bool,
         concat_encoder_input: bool,
         dropout_prob: float = 0.0,
+        model_weights: Dict[str, torch.Tensor] = None,
         **kwargs,
     ):
 
@@ -157,13 +162,17 @@ class RecurrentTrainer(Trainer):
         else:
             raise ValueError("Only values `lstm` and `lstmcell` are supported")
 
+        if model_weights is not None:
+            self.decoder.load_state_dict(model_weights)
+
         return self.decoder
 
-    def init_trainer(self, **optim_params):
-        self.init_loss()
+    def init_trainer(self, inference: bool = False, **optim_params):
         self.encoder = self.encoder.to(self.device)
         self.decoder = self.decoder.to(self.device)
-        self.init_optim(**optim_params)
+        if not inference:
+            self.init_loss()
+            self.init_optim(**optim_params)
 
     def init_loss(self):
         self.loss = nn.CrossEntropyLoss(
@@ -171,14 +180,14 @@ class RecurrentTrainer(Trainer):
         )
         return self.loss
 
-    def init_optim(self, lr):
+    def init_optim(self, lr: float = 0.01):
         encoder_parameters = self.encoder.parameters()
         decoder_parameters = self.decoder.parameters()
         self.optim = optim.Adam(chain(encoder_parameters, decoder_parameters), lr=lr)
         return self.optim
 
     def init_dataloader(
-        self, data, mode: Union[Literal["train"], Literal["test"], None], **kwargs
+        self, data, mode: Union[Literal["train", "test"], None], **kwargs
     ):
         loader = DataLoader(
             data, collate_fn=Collator(self.vocabulary.pad_token_id), **kwargs
