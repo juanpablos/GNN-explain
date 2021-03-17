@@ -8,10 +8,12 @@ import torch
 
 from src.data.formula_index import FormulaMapping
 from src.data.formulas import *
+from src.data.gnn.utils import clean_state
 from src.data.loader import text_sequence_loader
 from src.data.utils import get_input_dim, train_test_dataset
 from src.eval_utils import evaluate_text_model
 from src.run_logic import run, seed_everything
+from src.training.check_formulas import FormulaReconstruction
 from src.training.sequence_training import RecurrentTrainer
 from src.typing import LSTMConfig, MinModelConfig, NetworkDataConfig
 from src.utils import prepare_info_dir, write_result_info_text, write_train_data
@@ -28,7 +30,7 @@ def get_model_name(hidden_layers, lstm_config, encoder_output):
     name = lstm_config["name"]
     lstm_input = f"IN{encoder_output}"
     lstm_hidden = f"lstmH{lstm_config['hidden_dim']}"
-    use_init = f"lstmH{lstm_config['hidden_dim']}"
+    use_init = f"init{lstm_config['init_state_context']}"
     dropout = f"drop{lstm_config['dropout_prob']}"
     concat_input = f"cat{lstm_config['concat_encoder_input']}"
 
@@ -38,9 +40,81 @@ def get_model_name(hidden_layers, lstm_config, encoder_output):
         compose_state = f"comp{lstm_config['compose_encoder_state']}"
         compose_dim = f"d{lstm_config['compose_dim']}"
 
-        lstm = f"{lstm}-{compose_state}{compose_dim}"
+        lstm = f"{lstm}-{compose_state}-{compose_dim}"
 
     return encoder, lstm
+
+
+def inference(
+    results_path: str,
+    model_name_to_load: str,
+    encoder_config: MinModelConfig,
+    decoder_config: LSTMConfig,
+    gpu_num: int,
+    inference_filename: str,
+    inference_data_file: str,
+):
+    logger.info("Loading inference data")
+    # load the data we want to evaluate in
+    data = torch.load(inference_data_file)
+
+    inference_data = []
+    for weights in data:
+        weights = clean_state(weights)
+        concat_weights = torch.cat([w.flatten() for w in weights.values()])
+        inference_data.append(concat_weights)
+    inference_data = torch.stack(inference_data, dim=0)
+    assert len(inference_data.shape) == 2
+
+    logger.info("Loading Pre-trained meta model")
+    model_weights = torch.load(f"{results_path}/models/{model_name_to_load}")
+    encoder_weights = model_weights["encoder"]
+    decoder_weights = model_weights["decoder"]
+    vocabulary = model_weights["vocabulary"]
+
+    # load the model in the trainer
+    trainer = RecurrentTrainer(
+        seed=None,
+        subset_size=0.2,
+        logging_variables="all",
+        vocabulary=vocabulary,
+        target_apply_mapping=None,
+    )
+
+    encoder_config["input_dim"] = inference_data.shape[-1]
+    decoder_config["vocab_size"] = len(vocabulary)
+
+    logger.info("Initializing trainer and metamodel")
+    trainer.init_encoder(**encoder_config, model_weights=encoder_weights)
+    trainer.init_decoder(**decoder_config, model_weights=decoder_weights)
+
+    if torch.cuda.is_available():
+        device = torch.device(f"cuda:{gpu_num}")
+    else:
+        device = torch.device("cpu")
+
+    trainer.set_device(device=device)
+    trainer.init_trainer(inference=True)
+
+    logger.info("Calculating inference")
+    # directly run the dataset on the inference
+    predictions, _ = trainer.inference(inference_data)
+
+    logger.info("Reconstructing formulas")
+    # reconstruct formulas with the scores
+    formula_reconstruction = FormulaReconstruction(vocabulary)
+
+    # write the expected and predictions in a file sequentially
+    generated_formulas, _ = formula_reconstruction.batch2expression(
+        batch_data=predictions.tolist()
+    )
+
+    logger.info("Writing results")
+    inference_path = f"{results_path}/inference/{model_name_to_load}"
+    os.makedirs(inference_path, exist_ok=True)
+    with open(f"{inference_path}/{inference_filename}", "w", encoding="utf-8") as out:
+        for formula in generated_formulas:
+            out.write(f"{str(formula)}\n")
 
 
 def run_experiment(
@@ -264,7 +338,7 @@ def main(
         ],
     }
 
-    model_hash = "f4034364ea-batch"
+    model_hash = "40e65407aa"
 
     # * filters
     # selector = FilterApply(condition="or")
@@ -308,11 +382,11 @@ def main(
 
     # * /labelers
     data_config: NetworkDataConfig = {
-        "root": "data/gnns",
+        "root": "data/gnns_v2",
         "model_hash": model_hash,
         "selector": selector,
         "labeler": labeler,
-        "formula_mapping": FormulaMapping("./data/formulas.json"),
+        "formula_mapping": FormulaMapping("./data/formulas_v2.json"),
         "test_selector": test_selector,
         "load_aggregated": "aggregated.pt",
         "force_preaggregated": False,
@@ -332,7 +406,7 @@ def main(
 
     msg = f"{name}-{encoder}-{decoder}-{train_batch}b-{lr}lr"
 
-    results_path = f"./results/testing/{model_hash}"
+    results_path = f"./results/v2/testing/{model_hash}"
 
     plot_file = None
     if make_plots:
@@ -371,6 +445,56 @@ def main(
     logger.info(f"Took {end-start} seconds")
 
 
+def main_inference():
+    encoder_output = 1024
+    mlp_config: MinModelConfig = {
+        "num_layers": 3,
+        "input_dim": None,
+        "hidden_dim": 128,
+        "hidden_layers": [256, 256],
+        "output_dim": encoder_output,
+        "use_batch_norm": True,
+    }
+    lstm_config: LSTMConfig = {
+        "name": "lstmcell",
+        "encoder_dim": encoder_output,
+        "embedding_dim": 4,
+        "hidden_dim": 256,
+        "vocab_size": None,
+        "dropout_prob": 0,
+        # * works best with
+        "init_state_context": True,
+        # * works best with
+        # * when too little classes and/or data, works best without
+        "concat_encoder_input": True,
+        # * works best without
+        "compose_encoder_state": False,
+        "compose_dim": 256,
+    }
+
+    model_hash = "f4034364ea-batch"
+    results_path = f"./results/v1/exp5 - text - flat encoder/{model_hash}"
+
+    model_name = "NoFilter()-TextSequenceAtomic()-ManualFilter(12)-1L256+2L256-emb4-lstmcellIN1024-lstmH256-lstmH256-catTrue-drop0-compFalsed256-512b-0.005lr.pt"
+
+    formula_hash = "ac4932d9e6"
+
+    inference_data_file = (
+        f"./data/gnns/{model_hash}/acgnn-n5000-6106dbd778-{formula_hash}.pt"
+    )
+    inference_filename = f"{formula_hash}.txt"
+
+    inference(
+        encoder_config=mlp_config,
+        decoder_config=lstm_config,
+        gpu_num=0,
+        results_path=results_path,
+        model_name_to_load=model_name,
+        inference_data_file=inference_data_file,
+        inference_filename=inference_filename,
+    )
+
+
 if __name__ == "__main__":
     logger.setLevel(logging.DEBUG)
     logger.propagate = False
@@ -385,12 +509,14 @@ if __name__ == "__main__":
 
     logger.addHandler(ch)
 
-    __layers = [1024, 1024, 1024]
-    main(
-        seed=0,
-        train_batch=512,
-        lr=0.005,
-        mlp_hidden_layers=__layers,
-        save_model=True,
-        make_plots=True,
-    )
+    # __layers = [1024, 1024, 1024]
+    # main(
+    #     seed=0,
+    #     train_batch=512,
+    #     lr=0.005,
+    #     mlp_hidden_layers=__layers,
+    #     save_model=True,
+    #     make_plots=True,
+    # )
+
+    main_inference()
