@@ -68,7 +68,7 @@ class RecurrentTrainer(Trainer):
     def __init__(
         self,
         vocabulary: Vocabulary,
-        target_apply_mapping: FormulaAppliedDatasetWrapper,
+        target_apply_mapping: FormulaAppliedDatasetWrapper = None,
         seed: int = None,
         subset_size: float = 0.2,
         logging_variables: Union[Literal["all"], List[str]] = "all",
@@ -88,7 +88,7 @@ class RecurrentTrainer(Trainer):
     def activation(self, output, dim=1):
         return torch.log_softmax(output, dim=dim)
 
-    def inference(self, output, dim=1):
+    def inference_func(self, output, dim=1):
         _, y_pred = output.max(dim=dim)
         return y_pred
 
@@ -369,7 +369,7 @@ class RecurrentTrainer(Trainer):
                     # (batch, vocab_dim)
                     # output = self.activation(batch_pred)
                     # (batch,)
-                    output = self.inference(batch_pred, dim=1)
+                    output = self.inference_func(batch_pred, dim=1)
                     # copy predicted tokens to batch_predictions
                     batch_predictions[:, t] = output
 
@@ -457,3 +457,74 @@ class RecurrentTrainer(Trainer):
 
     def get_models(self):
         return [self.encoder, self.decoder]
+
+    def inference(self, data):
+
+        #!########
+        self.encoder.eval()
+        self.decoder.eval()
+        #!########
+
+        max_seq_length = 100
+
+        predictions = []
+        scores = []
+
+        with torch.no_grad():
+            # for x in data:
+            x: torch.Tensor = data.to(self.device)
+
+            # (batch, encoder_dim), float
+            encoder_out = self.encoder(x)
+
+            # (batch,), int/long
+            input_tokens = x.new_full(
+                (x.size(0),), fill_value=self.vocabulary.start_token_id
+            ).long()
+
+            # (batch, 100), 100 is max seq length, int/long
+            batch_predictions = x.new_full(
+                (x.size(0), max_seq_length), fill_value=self.vocabulary.pad_token_id
+            ).long()
+
+            # (batch, 100, vocab_dim), 100 is max seq, float
+            batch_scores = x.new_full(
+                (x.size(0), max_seq_length, self.decoder.vocab_dim),
+                fill_value=self.vocabulary.pad_token_id,
+            )
+
+            # tuple
+            # lstm (1, batch, lstm_hidden)
+            # lstmcell (batch, lstm_hidden)
+            states = self.decoder.init_hidden_state(encoder_out=encoder_out)
+
+            for t in range(max_seq_length):
+                # batch_pred: (batch, vocab_dim)
+                # states
+                # lstm tuple (1, batch, lstm_hidden)
+                # lstmcell (batch, lstm_hidden)
+                batch_pred, states = self.decoder.single_step(
+                    encoder_out=encoder_out,
+                    sequence_step=input_tokens,
+                    step_state=states,
+                    step=t,
+                )
+
+                batch_scores[:, t, :] = batch_pred
+
+                # (batch, vocab_dim)
+                # output = self.activation(batch_pred)
+                # (batch,)
+                output = self.inference_func(batch_pred, dim=1)
+                # copy predicted tokens to batch_predictions
+                batch_predictions[:, t] = output
+
+                input_tokens = output
+
+            scores.append(batch_scores.detach())
+            predictions.append(batch_predictions.detach())
+
+        inference_predictions = torch.cat(predictions, dim=0)
+        inference_scores = torch.cat(scores, dim=0)
+
+        return inference_predictions, inference_scores

@@ -20,7 +20,7 @@ class SequenceMetrics:
     def __init__(
         self,
         vocabulary: Vocabulary,
-        result_mapping: FormulaAppliedDatasetWrapper,
+        result_mapping: FormulaAppliedDatasetWrapper = None,
         seed: int = None,
         subset_size: float = 0.2,
     ):
@@ -168,6 +168,7 @@ class SequenceMetrics:
         return valid_syntax
 
     def _single_validation(self, index, formula):
+        assert self.formula_mapping is not None, "Formula mapping cannot be None"
         correct = self.formula_mapping[index]
 
         tp: float = 0.0
