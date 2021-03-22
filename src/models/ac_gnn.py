@@ -83,7 +83,7 @@ class ACGNNNoInput(nn.Module):
 
         self.linear_prediction = nn.Linear(hidden_dim, output_dim)
 
-    def forward(self, x, edge_index, batch):
+    def forward(self, x, edge_index, batch, **kwargs):
 
         h = x
         if not self.bigger_input:
@@ -170,7 +170,7 @@ class ACGNN(nn.Module):
 
         self.linear_prediction = nn.Linear(hidden_dim, output_dim)
 
-    def forward(self, x, edge_index, batch):
+    def forward(self, x, edge_index, batch, **kwargs):
 
         # input_dim -> H
         h = self.input_embedding(x)
