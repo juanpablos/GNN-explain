@@ -71,8 +71,10 @@ formulas.extend(color_bases)
 
 pair_combinations = list(itertools.combinations(color_bases, 2))
 or_pairs = generate_pair_formulas(pair_combinations, OR)
-and_pairs = generate_pair_formulas(pair_combinations, AND)
-formulas.extend(or_pairs + and_pairs)
+
+# this doesnt make any sense
+# and_pairs = generate_pair_formulas(pair_combinations, AND)
+formulas.extend(or_pairs)
 
 
 # at lest N
@@ -86,7 +88,7 @@ color_lt_exist = generate_lt_exist_random_base(
 formulas.extend(color_gt_exist + color_lt_exist)
 
 
-and_or_pairs = or_pairs + and_pairs
+and_or_pairs = or_pairs
 # at lest N, + AND/OR
 operation_gt_exist = generate_gt_exist_random_base(
     bases=and_or_pairs, nested=color_bases, lower=1, upper=5
@@ -97,4 +99,4 @@ operation_lt_exist = generate_lt_exist_random_base(
 )
 formulas.extend(operation_gt_exist + operation_lt_exist)
 
-write(formula_file="data/formulas_v2.json", n_splits=4)
+write(formula_file="data/formulas_v2_v2.json", n_splits=4)
