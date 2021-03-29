@@ -2,22 +2,23 @@ from copy import deepcopy
 
 import torch
 import torch.nn.functional as F
-from sklearn.cluster import AgglomerativeClustering
-from sklearn.decomposition import TruncatedSVD
+import torch_geometric.transforms as T
 from sklearn.metrics import (
     classification_report,
     f1_score,
     precision_score,
     recall_score,
 )
-from torch_geometric import datasets
-from torch_geometric.data.data import Data
-import torch_geometric.transforms as T
-from torch_geometric.nn import SplineConv
-from src.models.ac_gnn import ACGNNNoInput, ACGNN
+from sklearn.model_selection import train_test_split
+from torch.utils.data import DataLoader as TorchLoader
+from torch.utils.data import Dataset
+from torch_geometric.data import DataLoader as GeometricLoader
+
+from src.models.ac_gnn import ACGNN, ACGNNNoInput
 from src.models.mlp import MLP
 from src.run_logic import seed_everything
-from .temp_chem import MoleculeNet
+
+from temp_chem import MoleculeNet
 
 seed_everything(42)
 
@@ -44,97 +45,177 @@ class MyMLP(MLP):
     def forward(self, x, **kwargs):
         return super().forward(x)
 
-def train(use_data, use_model):
+
+def flatten_graphs(data):
+    new_dataset = []
+    new_targets = []
+    for _data in data:
+        new_dataset.extend(_data.x)
+        new_targets.extend(_data.y)
+
+    return torch.stack(new_dataset), torch.stack(new_targets)
+
+
+class TensorDataset(Dataset):
+    def __init__(self, _x, _y):
+        self._x = _x
+        self._y = _y
+
+    def __getitem__(self, i):
+        return self._x[i], self._y[i]
+
+    def __len__(self):
+        return len(self._x)
+
+
+def train_mlp(use_data, use_model):
     use_model.train()
     optimizer.zero_grad()
-    output = use_model(
-        x=use_data.x,
-        edge_index=use_data.edge_index,
-        batch=None,
-    )
+    for x, y in use_data:
+        x = x.to("cuda")
+        y = y.to("cuda")
+        output = use_model(x)
 
-    new_y = F.one_hot(use_data.y).float()
-    F.binary_cross_entropy_with_logits(
-        output[use_data.train_mask], new_y[use_data.train_mask]
-    ).backward()
-    optimizer.step()
+        new_y = F.one_hot(y).float()
+        F.binary_cross_entropy_with_logits(output, new_y).backward()
+        optimizer.step()
 
 
-def test(use_data, use_model):
-    use_model.eval()
-    logits, accs, pre, rec, f1s = (
-        use_model(
-            x=use_data.x,
-            edge_index=use_data.edge_index,
-            edge_attr=use_data.edge_attr,
+def train_gnn(use_data, use_model):
+    use_model.train()
+    optimizer.zero_grad()
+    for data in use_data:
+        data = data.to("cuda")
+        output = use_model(
+            x=data.x,
+            edge_index=data.edge_index,
             batch=None,
-        ),
-        [],
-        [],
-        [],
-        [],
-    )
-    for _, mask in use_data("train_mask", "val_mask", "test_mask"):
-        pred = logits[mask].max(1)[1]
-        target = use_data.y[mask]
-        acc = pred.eq(target).sum().item() / mask.sum().item()
+        )
 
-        target_ = target.detach().cpu().numpy()
-        pred_ = pred.detach().cpu().numpy()
-
-        precision = precision_score(target_, pred_)
-        recall = recall_score(target_, pred_)
-        f1 = f1_score(target_, pred_)
-
-        accs.append(acc)
-        pre.append(precision)
-        rec.append(recall)
-        f1s.append(f1)
-    return accs, pre, rec, f1s
+        new_y = F.one_hot(data.y).float()
+        F.binary_cross_entropy_with_logits(output, new_y).backward()
+        optimizer.step()
 
 
-write_model = False
-dataset = datasets.Planetoid("delete/hey/Cora", "Cora", transform=T.TargetIndegree())
-single_data = dataset[0]
-num_classes = dataset.num_classes
-binary = False
+def test_mlp(use_data, use_model):
+    use_model.eval()
 
-single_data = reduce_features(single_data, 4)
+    logits = []
+    targets = []
+    for x, y in use_data:
+        x = x.to("cuda")
+        output = use_model(x)
 
-print("num features", single_data.num_features, "num classes", num_classes)
+        logits.append(output.detach().cpu())
+        targets.append(y.cpu())
+
+    logits = torch.cat(logits)
+    pred = logits.max(1)[1]
+    target = torch.cat(targets)
+
+    acc = pred.eq(target).float().mean().item()
+
+    target_ = target.detach().cpu().numpy()
+    pred_ = pred.detach().cpu().numpy()
+
+    precision = precision_score(target_, pred_)
+    recall = recall_score(target_, pred_)
+    f1 = f1_score(target_, pred_)
+
+    return pred, target, acc, precision, recall, f1
+
+
+def test_gnn(use_data, use_model):
+    use_model.eval()
+
+    logits = []
+    targets = []
+    for data in use_data:
+        data = data.to("cuda")
+        output = use_model(
+            x=data.x,
+            edge_index=data.edge_index,
+            edge_attr=data.edge_attr,
+            batch=None,
+        )
+
+        logits.append(output.detach().cpu())
+        targets.append(data.y.cpu())
+
+    logits = torch.cat(logits)
+    pred = logits.max(1)[1]
+    target = torch.cat(targets)
+
+    acc = pred.eq(target).float().mean().item()
+
+    target_ = target.detach().cpu().numpy()
+    pred_ = pred.detach().cpu().numpy()
+
+    precision = precision_score(target_, pred_)
+    recall = recall_score(target_, pred_)
+    f1 = f1_score(target_, pred_)
+
+    return pred, target, acc, precision, recall, f1
+
+
+write_model = True
+use_mlp = False
+dataset = MoleculeNet("./data/chem", "esol")
+
+usable_set = [*dataset]
+train_set, test_set = train_test_split(
+    usable_set, test_size=0.2, random_state=42, shuffle=True
+)
+train_set, val_set = train_test_split(
+    train_set, test_size=0.25, random_state=42, shuffle=True
+)
 
 seed_everything(42)
-data = binarize_target(single_data, 2)
-num_classes = 2
-binary = True
 
-# model = ACGNNNoInput(
-#     input_dim=data.num_features,
-#     hidden_dim=8,
-#     output_dim=num_classes,
-#     aggregate_type="add",
-#     combine_type="identity",
-#     num_layers=2,
-#     combine_layers=1,
-#     mlp_layers=1,
-#     task="node",
-#     use_batch_norm=False,
-# )
-
+# ---- MLP -----
 # model = MyMLP(
 #     num_layers=2,
-#     input_dim=data.num_features,
+#     input_dim=dataset.num_features,
 #     hidden_dim=8,
-#     output_dim=num_classes,
+#     output_dim=dataset.num_classes,
 #     use_batch_norm=True,
 # )
+# train_set = TorchLoader(
+#     TensorDataset(*flatten_graphs(train_set)), batch_size=128, shuffle=True
+# )
+# val_set = TorchLoader(
+#     TensorDataset(*flatten_graphs(val_set)), batch_size=512, shuffle=False
+# )
+# test_set = TorchLoader(
+#     TensorDataset(*flatten_graphs(test_set)), batch_size=512, shuffle=False
+# )
+# use_mlp = True
 
-model = SplineNet(n_features=data.num_features, n_classes=num_classes, hidden=8)
+
+# ---- GNN -----
+model = ACGNNNoInput(
+    input_dim=dataset.num_features,
+    hidden_dim=8,
+    output_dim=dataset.num_classes,
+    aggregate_type="add",
+    combine_type="identity",
+    num_layers=2,
+    combine_layers=1,
+    mlp_layers=1,
+    task="node",
+    use_batch_norm=False,
+)
+train_set = GeometricLoader(train_set, batch_size=128, shuffle=True)
+val_set = GeometricLoader(val_set, batch_size=512, shuffle=False)
+test_set = GeometricLoader(test_set, batch_size=512, shuffle=False)
+
 
 device = torch.device("cuda")
-# device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-model, data = model.to(device), data.to(device)
+model = model.to(device)
 optimizer = torch.optim.Adam(model.parameters(), lr=0.01, weight_decay=0.005)
+
+train = train_mlp if use_mlp else train_gnn
+test = test_mlp if use_mlp else test_gnn
 
 good_models = []
 
@@ -145,8 +226,16 @@ best_val_acc = (
 ) = test_precision = val_recall = test_recall = val_f1_score = test_f1_score = 0
 log = "Epoch: {:03d}, Train: ({:.4f}, {:.4f}, {:.4f}, {:.4f}), Val: ({:.4f}, {:.4f}, {:.4f}, {:.4f}), Test: ({:.4f}, {:.4f}, {:.4f}, {:.4f})"
 for epoch in range(1, 300):
-    train(data, model)
-    _accs, _pres, _recs, _f1s = test(data, model)
+    _accs, _pres, _recs, _f1s = [], [], [], []
+
+    train(train_set, model)
+
+    for data_set in [train_set, val_set, test_set]:
+        *_, _acc, _pre, _rec, _f1 = test(data_set, model)
+        _accs.append(_acc)
+        _pres.append(_pre)
+        _recs.append(_rec)
+        _f1s.append(_f1)
 
     (train_acc, val_acc, tmp_test_acc) = _accs
     (train_pre, val_pre, tmp_test_pre) = _pres
@@ -167,10 +256,23 @@ for epoch in range(1, 300):
 
         good_models.append((epoch, deepcopy(model.state_dict())))
 
-    # print(log.format(epoch,
-    #                  train_acc, train_pre, train_rec, train_f1,
-    #                  best_val_acc, val_precision, val_recall, val_f1_score,
-    # test_acc, test_precision, test_recall, test_f1_score))
+    print(
+        log.format(
+            epoch,
+            train_acc,
+            train_pre,
+            train_rec,
+            train_f1,
+            best_val_acc,
+            val_precision,
+            val_recall,
+            val_f1_score,
+            test_acc,
+            test_precision,
+            test_recall,
+            test_f1_score,
+        )
+    )
 print(
     log.format(
         epoch,
@@ -189,24 +291,17 @@ print(
     )
 )
 
-test_mask = data.test_mask
-target_data = data.y[test_mask]
 for e, goods in good_models[-1:]:
     model.load_state_dict(goods)
     model.eval()
-    pred = model(
-        x=data.x, edge_index=data.edge_index, edge_attr=data.edge_attr, batch=None
-    )[test_mask].max(1)[1]
+    pred, target, *_ = test(test_set, model)
 
-    target_ = target_data.detach().cpu().numpy()
     pred_ = pred.detach().cpu().numpy()
 
-    report = classification_report(target_, pred_)
+    report = classification_report(target.cpu().numpy(), pred_)
 
     print("data from epoch", e)
     print(report, "\n")
 
     if write_model:
-        data = data.to("cpu")
-        torch.save([goods], "trained_cora.pt")
-        torch.save(data, "reduced_cora.pt")
+        torch.save([goods], "trained_molecules.pt")

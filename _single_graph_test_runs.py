@@ -17,7 +17,6 @@ from torch_geometric.nn import SplineConv
 from src.models.ac_gnn import ACGNNNoInput, ACGNN
 from src.models.mlp import MLP
 from src.run_logic import seed_everything
-from .temp_chem import MoleculeNet
 
 seed_everything(42)
 
