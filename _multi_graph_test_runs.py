@@ -17,6 +17,7 @@ from torch_geometric.nn import SplineConv
 from src.models.ac_gnn import ACGNNNoInput, ACGNN
 from src.models.mlp import MLP
 from src.run_logic import seed_everything
+from .temp_chem import MoleculeNet
 
 seed_everything(42)
 
@@ -43,95 +44,19 @@ class MyMLP(MLP):
     def forward(self, x, **kwargs):
         return super().forward(x)
 
-
-class SplineNet(torch.nn.Module):
-    def __init__(self, n_features, n_classes, hidden):
-        super(SplineNet, self).__init__()
-        self.conv1 = SplineConv(n_features, hidden, dim=1, kernel_size=2)
-        self.conv2 = SplineConv(hidden, n_classes, dim=1, kernel_size=2)
-
-    def forward(self, x, edge_index, edge_attr, **kwargs):
-        x = F.dropout(x, training=self.training)
-        x = F.elu(self.conv1(x, edge_index, edge_attr))
-        x = F.dropout(x, training=self.training)
-        x = self.conv2(x, edge_index, edge_attr)
-        return x
-
-
-def dimension_reduction(all_data):
-    _x = all_data.x
-
-    feats = TruncatedSVD(n_components=500).fit_transform(_x)
-    features = torch.from_numpy(feats)
-
-    new_dataset = Data(
-        x=features.float(),
-        edge_index=all_data.edge_index,
-        test_mask=all_data.test_mask,
-        train_mask=all_data.train_mask,
-        val_mask=all_data.val_mask,
-        y=all_data.y,
-        edge_attr=all_data.edge_attr,
-    )
-
-    return new_dataset
-
-
-def reduce_features(all_data, k):
-    clusters = AgglomerativeClustering(k, linkage="ward").fit_predict(all_data.x)
-    features = torch.from_numpy(clusters)
-    feats = F.one_hot(features)
-
-    new_dataset = Data(
-        x=feats.float(),
-        edge_index=all_data.edge_index,
-        test_mask=all_data.test_mask,
-        train_mask=all_data.train_mask,
-        val_mask=all_data.val_mask,
-        y=all_data.y,
-        edge_attr=all_data.edge_attr,
-    )
-
-    return new_dataset
-
-
-def binarize_target(all_data, to_label):
-    _y = all_data.y
-
-    new_y = (_y == to_label).long()
-
-    new_dataset = Data(
-        x=all_data.x,
-        edge_index=all_data.edge_index,
-        test_mask=all_data.test_mask,
-        train_mask=all_data.train_mask,
-        val_mask=all_data.val_mask,
-        y=new_y,
-        edge_attr=all_data.edge_attr,
-    )
-
-    return new_dataset
-
-
 def train(use_data, use_model):
     use_model.train()
     optimizer.zero_grad()
     output = use_model(
         x=use_data.x,
         edge_index=use_data.edge_index,
-        edge_attr=use_data.edge_attr,
         batch=None,
     )
 
-    if binary:
-        new_y = F.one_hot(use_data.y).float()
-        F.binary_cross_entropy_with_logits(
-            output[use_data.train_mask], new_y[use_data.train_mask]
-        ).backward()
-    else:
-        F.cross_entropy(
-            output[use_data.train_mask], use_data.y[use_data.train_mask]
-        ).backward()
+    new_y = F.one_hot(use_data.y).float()
+    F.binary_cross_entropy_with_logits(
+        output[use_data.train_mask], new_y[use_data.train_mask]
+    ).backward()
     optimizer.step()
 
 
