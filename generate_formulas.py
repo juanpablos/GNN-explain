@@ -271,7 +271,8 @@ def main(use_formula: FOC):
 
 
 if __name__ == "__main__":
-    _formula_file = "data/formulas_v2.json"
+    _formula_path = "data/"
+    _formula_filename = "formulas_v2.json"
 
     logger.setLevel(logging.DEBUG)
     logger.propagate = False
@@ -281,7 +282,7 @@ if __name__ == "__main__":
     _console_f = logging.Formatter("%(levelname)-8s: %(message)s")
     ch.setFormatter(_console_f)
 
-    fh = logging.FileHandler(f"{_formula_file}.log")
+    fh = logging.FileHandler(f"{_formula_path}/{_formula_filename}.log")
     fh.setLevel(logging.DEBUG)
     _file_f = logging.Formatter('%(asctime)s %(name)s %(levelname)s "%(message)s"')
     fh.setFormatter(_file_f)
@@ -290,7 +291,7 @@ if __name__ == "__main__":
     logger.addHandler(fh)
 
     __times = {}
-    _formulas = FormulaMapping(file=_formula_file)
+    _formulas = FormulaMapping(file=_formula_path + _formula_filename)
     for __hash, __formula in _formulas:
 
         _cf = logging.Formatter(f"{__hash}: %(levelname)-8s: %(message)s")
@@ -304,5 +305,5 @@ if __name__ == "__main__":
         __times[str(__formula)] = __elapsed
 
     print(json.dumps(__times, ensure_ascii=False, indent=2))
-    with open(f"{_formula_file}_timings.json", "w") as __f:
+    with open(f"{_formula_path}/{_formula_filename}_timings.json", "w") as __f:
         json.dump(__times, __f, ensure_ascii=False, indent=2)
