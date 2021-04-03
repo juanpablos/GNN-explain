@@ -168,7 +168,7 @@ def test(use_data, use_model):
     return accs, pre, rec, f1s
 
 
-write_model = False
+write_model = True
 dataset = datasets.Planetoid("delete/hey/Cora", "Cora", transform=T.TargetIndegree())
 single_data = dataset[0]
 num_classes = dataset.num_classes
@@ -183,19 +183,6 @@ data = binarize_target(single_data, 2)
 num_classes = 2
 binary = True
 
-# model = ACGNNNoInput(
-#     input_dim=data.num_features,
-#     hidden_dim=8,
-#     output_dim=num_classes,
-#     aggregate_type="add",
-#     combine_type="identity",
-#     num_layers=2,
-#     combine_layers=1,
-#     mlp_layers=1,
-#     task="node",
-#     use_batch_norm=False,
-# )
-
 # model = MyMLP(
 #     num_layers=2,
 #     input_dim=data.num_features,
@@ -204,7 +191,22 @@ binary = True
 #     use_batch_norm=True,
 # )
 
-model = SplineNet(n_features=data.num_features, n_classes=num_classes, hidden=8)
+
+model = ACGNNNoInput(
+    input_dim=data.num_features,
+    hidden_dim=8,
+    output_dim=num_classes,
+    aggregate_type="add",
+    combine_type="identity",
+    num_layers=2,
+    combine_layers=1,
+    mlp_layers=1,
+    task="node",
+    use_batch_norm=False,
+)
+
+
+# model = SplineNet(n_features=data.num_features, n_classes=num_classes, hidden=8)
 
 device = torch.device("cuda")
 # device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -266,7 +268,7 @@ print(
 
 test_mask = data.test_mask
 target_data = data.y[test_mask]
-for e, goods in good_models[-1:]:
+for e, goods in good_models[-1:]:  # only the best
     model.load_state_dict(goods)
     model.eval()
     pred = model(

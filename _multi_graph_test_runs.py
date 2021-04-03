@@ -2,7 +2,6 @@ from copy import deepcopy
 
 import torch
 import torch.nn.functional as F
-import torch_geometric.transforms as T
 from sklearn.metrics import (
     classification_report,
     f1_score,
@@ -291,7 +290,7 @@ print(
     )
 )
 
-for e, goods in good_models[-1:]:
+for e, goods in good_models[-1:]:  # only the best
     model.load_state_dict(goods)
     model.eval()
     pred, target, *_ = test(test_set, model)
