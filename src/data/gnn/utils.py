@@ -11,11 +11,15 @@ except ImportError:
     from convert import gnn2graph, gnn2tensordict  # type: ignore
 
 
-def prepare_files(path: str):
+def prepare_files(path: str, model_hash: str = None):
     files: Dict[str, str] = {}
     # reproducibility, always sorted files
     for file in sorted(os.listdir(path)):
-        if file.endswith(".pt"):
+        if (
+            file.endswith(".pt")
+            and "gnn-" in file
+            and (model_hash is None or model_hash in file)
+        ):
             _hash = file.split(".")[0].split("-")[-1]
             files[_hash] = file
     return files
@@ -52,7 +56,7 @@ def network_loader_generator(
         )
 
     model_path = os.path.join(root, model_hash)
-    available_formulas = prepare_files(model_path)
+    available_formulas = prepare_files(model_path, model_hash=model_hash)
 
     big_dataset = {}
 
@@ -165,9 +169,9 @@ def tensor_dict_gnn(root: str, model_hash: str, filename: str, nobatch: bool):
 
 if __name__ == "__main__":
     aggregate_formulas(
-        root="data/gnns_v2",
+        root="./data/gnns_v2",
         model_hash="40e65407aa",
-        filename="aggregated_all.pt",
+        filename="aggregated.pt",
         nobatch=True,
         assert_nobatch=True,
     )
