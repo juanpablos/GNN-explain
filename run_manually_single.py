@@ -7,8 +7,8 @@ from torch_geometric.utils import to_networkx
 from temp_chem import MoleculeNet
 from src.graphs.foc import *
 
-
-# dataset = [torch.load("./data/gnns/f4034364ea-batch/reduced_cora.pt")]
+use_random = True
+# dataset = [torch.load("./data/gnns_v2/40e65407aa/reduced_cora.pt")]
 dataset = MoleculeNet("./data/chem", "esol")
 
 graphs = []
@@ -23,9 +23,11 @@ for data in dataset:
 
     graphs.append(graph)
 
-formula = AND(
-    Property("GREEN"), Exist(AND(Role("EDGE"), Property("GREEN")), lower=2, upper=None)
-)
+# formula = AND(
+#     Property("GREEN"), Exist(AND(Role("EDGE"), Property("BLACK")), lower=None, upper=1)
+# )
+formula = OR(Property("RED"), Property("GREEN"))
+
 
 total_expected = []
 total_pred = []
@@ -34,7 +36,11 @@ graph_stats = []
 
 for graph in graphs:
     expected = np.array(list(nx.get_node_attributes(graph, "y").values()))
-    actual = FOC(formula)(graph=graph)
+
+    if use_random:
+        actual = np.random.choice([0, 1], size=expected.size, replace=True)
+    else:
+        actual = FOC(formula)(graph=graph)
 
     total_expected.extend(expected.tolist())
     total_pred.extend(actual.tolist())
