@@ -195,6 +195,12 @@ class ACGNN(nn.Module):
         reset(self.input_embedding)
         reset(self.linear_prediction)
 
+    def remove_batchnorm(self):
+        self.batch_norms = nn.ModuleList()
+        identity = nn.Identity()
+        for _ in range(self.num_layers):
+            self.batch_norms.append(identity)
+
 
 class NetworkACGNN(nn.Module):
     def __init__(self, hidden_dim: int, output_dim: int, mlp_layers: int, **kwargs):

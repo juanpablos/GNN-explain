@@ -33,6 +33,7 @@ def run(
     lr: float = 0.01,
     stop_when: StopFormat = None,
     run_train_test: bool = False,
+    prefix: str = "",
 ):
 
     if torch.cuda.is_available():
@@ -63,8 +64,8 @@ def run(
         if stop(**trainer.metric_logger):
             break
         logger_metrics.info(trainer.metric_logger.log(tocsv=True))
-        logger.debug(f"{it: 03d} {trainer.log()}")
+        logger.debug(f"{prefix}{it: 03d} {trainer.log()}")
 
-    logger.info(f"{it: 03d} {trainer.log()}")
+    logger.info(f"{prefix}{it: 03d} {trainer.log()}")
 
     return trainer.get_models()

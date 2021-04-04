@@ -38,6 +38,7 @@ def run_experiment(
     lr: float = 0.01,
     stop_when: StopFormat = None,
     unique_test: bool = True,
+    remove_batchnorm_when_trained: bool = True,
 ):
 
     logger.debug("Initializing graph stream")
@@ -104,6 +105,16 @@ def run_experiment(
                 lr=lr,
                 stop_when=stop_when,
             )
+            if remove_batchnorm_when_trained:
+                trainer.remove_batchnorm()
+                (model,) = run(
+                    trainer=trainer,
+                    iterations=iterations,
+                    gpu_num=gpu_num,
+                    lr=lr,
+                    stop_when=stop_when,
+                    prefix="NOBN ",
+                )
 
             model.cpu()
             weights = model.state_dict()
@@ -177,7 +188,7 @@ def main(use_formula: FOC):
         "mlp_layers": 1,  # the number of layers in A and V
         "combine_layers": 2,  # layers in the combine MLP if combine_type=mlp
         "task": "node",
-        "use_batch_norm": False,
+        "use_batch_norm": True,
     }
     model_config_hash = hashlib.md5(
         json.dumps(model_config, sort_keys=True).encode()
@@ -262,6 +273,7 @@ def main(use_formula: FOC):
         lr=0.01,
         stop_when=stop_when,
         unique_test=unique_test,
+        remove_batchnorm_when_trained=True,
     )
     end = timer()
     time_elapsed = end - start
