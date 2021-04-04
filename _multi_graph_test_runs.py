@@ -192,7 +192,7 @@ seed_everything(42)
 
 
 # ---- GNN -----
-model = ACGNNNoInput(
+model = ACGNN(
     input_dim=dataset.num_features,
     hidden_dim=8,
     output_dim=dataset.num_classes,

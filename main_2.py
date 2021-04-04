@@ -232,18 +232,16 @@ def main(
         "use_batch_norm": True,
     }
 
-    model_hash = "f4034364ea-batch"
+    model_hash = "40e65407aa"
 
     # * filters
     # selector = FilterApply(condition="or")
     # selector.add(AtomicFilter(atomic="all"))
     # selector.add(RestrictionFilter(lower=1, upper=2))
     # selector.add(RestrictionFilter(lower=None, upper=-1))
-    # selector = SelectFilter(hashes=[
-    #     "0c957889eb",
-    #     "1c998884a4",
-    #     "4056021fb9"
-    # ])
+    # selector = SelectFilter(
+    #     hashes=["dc670b1bec", "4805042859", "688d12b701", "652c706f1b"]
+    # )
     selector = NoFilter()
     # * /filters
 
@@ -253,35 +251,34 @@ def main(
     # test_selector.add(RestrictionFilter(lower=4, upper=None))
     test_selector = SelectFilter(
         hashes=[
-            "4805042859",
-            "aae49a2efc",
-            "ac4932d9e6",
-            "2baa2ed86c",
-            "4056021fb9",
-            "548c9f191e",
-            "c37cb98a75",
-            "b628ede2fc",
-            "f38520e138",
-            "65597e2291",
-            "5e65a2eaac",
-            "838d8aecad",
+            "22609b6219",
+            "d376f80fe0",
+            "4865ca5688",
+            "b739521345",
+            "98e4690a6c",
+            "fd1ede286c",
+            "56dc8827b8",
+            "c1eec67813",
+            "8500dc307e",
+            "530867a9ca",
         ]
     )
     # test_selector = NullFilter()
     # * /test_filters
 
     # * labelers
+    # label_logic = MultiLabelAtomicLabeler()
     label_logic = MultilabelRestrictionLabeler(mode="both")
     labeler = LabelerApply(labeler=label_logic)
     # * /labelers
     data_config: NetworkDataConfig = {
-        "root": "data/gnns",
+        "root": "data/gnns_v2",
         "model_hash": model_hash,
         "selector": selector,
         "labeler": labeler,
         "formula_mapping": FormulaMapping("./data/formulas.json"),
         "test_selector": test_selector,
-        "load_aggregated": "aggregated.pt",
+        "load_aggregated": "aggregated_all.pt",
         "force_preaggregated": False,
     }
 
@@ -294,7 +291,7 @@ def main(
     hid = "+".join([f"{l}L{val}" for l, val in enumerate(hidden_layers, start=1)])
     msg = f"{name}-{hid}-{train_batch}b-{lr}lr"
 
-    results_path = f"./results/testing/{model_hash}"
+    results_path = f"./results/v2/testing/{model_hash}"
     plot_file = None
     if make_plots:
         plot_file = msg

@@ -192,7 +192,7 @@ binary = True
 # )
 
 
-model = ACGNNNoInput(
+model = ACGNN(
     input_dim=data.num_features,
     hidden_dim=8,
     output_dim=num_classes,

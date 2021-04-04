@@ -359,18 +359,16 @@ def main(
     # test_selector.add(RestrictionFilter(lower=4, upper=None))
     test_selector = SelectFilter(
         hashes=[
-            "4805042859",
-            "aae49a2efc",
-            "ac4932d9e6",
-            "2baa2ed86c",
-            "4056021fb9",
-            "548c9f191e",
-            "c37cb98a75",
-            "b628ede2fc",
-            "f38520e138",
-            "65597e2291",
-            "5e65a2eaac",
-            "838d8aecad",
+            "22609b6219",
+            "d376f80fe0",
+            "4865ca5688",
+            "b739521345",
+            "98e4690a6c",
+            "fd1ede286c",
+            "56dc8827b8",
+            "c1eec67813",
+            "8500dc307e",
+            "530867a9ca",
         ]
     )
     # test_selector = NullFilter()
@@ -386,9 +384,9 @@ def main(
         "model_hash": model_hash,
         "selector": selector,
         "labeler": labeler,
-        "formula_mapping": FormulaMapping("./data/formulas_v2.json"),
+        "formula_mapping": FormulaMapping("./data/formulas.json"),
         "test_selector": test_selector,
-        "load_aggregated": "aggregated.pt",
+        "load_aggregated": "aggregated_all.pt",
         "force_preaggregated": False,
     }
 
@@ -451,7 +449,7 @@ def main_inference():
         "num_layers": 3,
         "input_dim": None,
         "hidden_dim": 128,
-        "hidden_layers": [256, 256],
+        "hidden_layers": [1024, 1024, 1024],
         "output_dim": encoder_output,
         "use_batch_norm": True,
     }
@@ -472,16 +470,19 @@ def main_inference():
         "compose_dim": 256,
     }
 
-    model_hash = "f4034364ea-batch"
-    results_path = f"./results/v1/exp5 - text - flat encoder/{model_hash}"
+    model_hash = "40e65407aa"
+    results_path = f"./results/v2/exp5 - text - flat encoder/{model_hash}"
 
-    model_name = "NoFilter()-TextSequenceAtomic()-ManualFilter(12)-1L256+2L256-emb4-lstmcellIN1024-lstmH256-lstmH256-catTrue-drop0-compFalsed256-512b-0.005lr.pt"
+    model_name = "NoFilter()-TextSequenceAtomic()-NullFilter()-1L1024+2L1024+3L1024-emb4-lstmcellIN1024-lstmH256-initTrue-catTrue-drop0-compFalse-d256-512b-0.005lr.pt"
 
-    formula_hash = "ac4932d9e6"
+    formula_hash = "trained_cora"
 
-    inference_data_file = (
-        f"./data/gnns/{model_hash}/acgnn-n5000-6106dbd778-{formula_hash}.pt"
-    )
+    inference_data_file = f"./data/gnns_v2/{model_hash}/{formula_hash}.pt"
+    # formula_hash = "ac4932d9e6"
+
+    # inference_data_file = (
+    #     f"./data/gnns/{model_hash}/acgnn-n5000-6106dbd778-{formula_hash}.pt"
+    # )
     inference_filename = f"{formula_hash}.txt"
 
     inference(
@@ -509,14 +510,14 @@ if __name__ == "__main__":
 
     logger.addHandler(ch)
 
-    # __layers = [1024, 1024, 1024]
-    # main(
-    #     seed=0,
-    #     train_batch=512,
-    #     lr=0.005,
-    #     mlp_hidden_layers=__layers,
-    #     save_model=True,
-    #     make_plots=True,
-    # )
+    __layers = [256, 256]
+    main(
+        seed=0,
+        train_batch=512,
+        lr=0.005,
+        mlp_hidden_layers=__layers,
+        save_model=True,
+        make_plots=True,
+    )
 
-    main_inference()
+    # main_inference()
