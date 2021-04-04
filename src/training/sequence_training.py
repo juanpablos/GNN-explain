@@ -402,14 +402,13 @@ class RecurrentTrainer(Trainer):
             targets, batch_total=total_batch, max_variable=max_sequence
         )
         # no need to pad this one, it is a 1D tensor
-        epoch_lengths = torch.cat(lengths, dim=0)
+        epoch_lengths = torch.cat(lengths, dim=0).cpu()
         epoch_indices = torch.tensor(indices)
 
         if not keep_device:
             epoch_scores = epoch_scores.cpu()
             epoch_predictions = epoch_predictions.cpu()
             epoch_targets = epoch_targets.cpu()
-            epoch_lengths = epoch_lengths.cpu()
 
         return (
             epoch_scores,
