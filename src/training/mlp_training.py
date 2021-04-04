@@ -19,6 +19,7 @@ from src.models import MLP
 from . import Trainer
 
 logger = logging.getLogger(__name__)
+logger_metrics = logging.getLogger("metrics")
 
 
 class Metric:
@@ -142,6 +143,8 @@ class MLPTrainer(Trainer):
         self.n_classes = n_classes
         self.multilabel = multilabel
         self.metrics = Metric(average=metrics_average, multilabel=multilabel)
+
+        logger_metrics.info(",".join(self.metric_logger.keys()))
 
     def transform_y(self, y):
         if self.n_classes == 2 and not self.multilabel:

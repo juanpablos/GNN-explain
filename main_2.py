@@ -24,6 +24,7 @@ from src.visualization.confusion_matrix import (
 from src.visualization.curve_plot import plot_training
 
 logger = logging.getLogger("src")
+logger_metrics = logging.getLogger("metrics")
 
 
 def run_experiment(
@@ -93,6 +94,16 @@ def run_experiment(
 
     model_config["input_dim"] = input_shape[0]
     model_config["output_dim"] = n_classes
+
+    # --- metrics logger
+    os.makedirs(os.path.join(results_path, "info"), exist_ok=True)
+    fh = logging.FileHandler(
+        os.path.join(results_path, "info", f"{info_filename}.log"), mode="w"
+    )
+    fh.setLevel(logging.INFO)
+    fh.setFormatter(logging.Formatter("%(asctime)s,%(message)s"))
+    logger_metrics.addHandler(fh)
+    # /--- metrics logger
 
     trainer = MLPTrainer(
         logging_variables="all",
@@ -278,7 +289,7 @@ def main(
         "labeler": labeler,
         "formula_mapping": FormulaMapping("./data/formulas.json"),
         "test_selector": test_selector,
-        "load_aggregated": "aggregated_all.pt",
+        "load_aggregated": "aggregated.pt",
         "force_preaggregated": False,
     }
 
@@ -291,7 +302,7 @@ def main(
     hid = "+".join([f"{l}L{val}" for l, val in enumerate(hidden_layers, start=1)])
     msg = f"{name}-{hid}-{train_batch}b-{lr}lr"
 
-    results_path = f"./results/v2/testing/{model_hash}"
+    results_path = f"./results/v2_clean/testing/{model_hash}"
     plot_file = None
     if make_plots:
         plot_file = msg
@@ -330,21 +341,17 @@ if __name__ == "__main__":
     logger.setLevel(logging.DEBUG)
     logger.propagate = False
 
+    logger_metrics.setLevel(logging.INFO)
+    logger_metrics.propagate = False
+
     ch = logging.StreamHandler()
     ch.setLevel(logging.DEBUG)
     _console_f = logging.Formatter("%(levelname)-8s: %(message)s")
     ch.setFormatter(_console_f)
 
-    # fh = logging.FileHandler("main_2.log")
-    # fh.setLevel(logging.DEBUG)
-    # _file_f = logging.Formatter(
-    #     '%(asctime)s %(filename) %(name)s %(levelname)s "%(message)s"')
-    # fh.setFormatter(_file_f)
-
     logger.addHandler(ch)
-    # logger.addHandler(fh)
 
-    __layers = [1024, 1024, 1024, 1024]
+    __layers = [256, 256, 256]
     # for __batch in [128, 256, 512]:
     #     for __lr in [0.0005, 0.001, 0.005]:
 
@@ -353,7 +360,7 @@ if __name__ == "__main__":
     #         main(seed=42, train_batch=__batch, lr=__lr, hidden_layers=__layers)
     main(
         seed=0,
-        train_batch=512,
+        train_batch=64,
         lr=0.005,
         hidden_layers=__layers,
         save_model=True,
