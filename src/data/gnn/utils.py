@@ -21,9 +21,12 @@ def prepare_files(path: str):
     return files
 
 
-def clean_state(model_dict):
+def clean_state(model_dict, assert_nobatch: bool = False):
     """Removes the weights associated with batchnorm"""
-    return {k: v for k, v in model_dict.items() if "batch" not in k}
+    cleaned_weights = {k: v for k, v in model_dict.items() if "batch" not in k}
+    if assert_nobatch:
+        assert cleaned_weights == model_dict
+    return cleaned_weights
 
 
 def stack_dict_tensors(tensor_dict_list):
@@ -62,12 +65,20 @@ def network_loader_generator(
 
         big_dataset[formula_hash] = {"file": formula_file, "data": data}
 
-    save_file = os.path.join(model_path, "processed", filename)
+    save_path = os.path.join(model_path, "processed")
+    os.makedirs(save_path, exist_ok=True)
+    save_file = os.path.join(save_path, filename)
     print(f"Saving whole dataset")
     torch.save(big_dataset, save_file)
 
 
-def aggregate_formulas(root: str, model_hash: str, filename: str, nobatch: bool):
+def aggregate_formulas(
+    root: str,
+    model_hash: str,
+    filename: str,
+    nobatch: bool,
+    assert_nobatch: bool = False,
+):
 
     network_loader = network_loader_generator(
         root=root, model_hash=model_hash, filename=filename
@@ -80,7 +91,7 @@ def aggregate_formulas(root: str, model_hash: str, filename: str, nobatch: bool)
             for network in networks:
                 # legacy
                 if nobatch:
-                    network = clean_state(network)
+                    network = clean_state(network, assert_nobatch=assert_nobatch)
                 # /legacy
 
                 concat_weights = torch.cat([w.flatten() for w in network.values()])
@@ -153,12 +164,13 @@ def tensor_dict_gnn(root: str, model_hash: str, filename: str, nobatch: bool):
 
 
 if __name__ == "__main__":
-    # aggregate_formulas(
-    #     root="data/gnns",
-    #     model_hash="f4034364ea-batch",
-    #     filename="aggregated.pt",
-    #     nobatch=True
-    # )
+    aggregate_formulas(
+        root="data/gnns_v2",
+        model_hash="40e65407aa",
+        filename="aggregated_all.pt",
+        nobatch=True,
+        assert_nobatch=True,
+    )
 
     # stack_gnn_graphs(
     #     root="../../../data/gnns",
@@ -168,9 +180,9 @@ if __name__ == "__main__":
     #     as_undirected=True
     # )
 
-    tensor_dict_gnn(
-        root="../../../data/gnns",
-        model_hash="f4034364ea-batch",
-        filename="gnns_tensor_dict.pt",
-        nobatch=True,
-    )
+    # tensor_dict_gnn(
+    #     root="../../../data/gnns",
+    #     model_hash="f4034364ea-batch",
+    #     filename="gnns_tensor_dict.pt",
+    #     nobatch=True,
+    # )
