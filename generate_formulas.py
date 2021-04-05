@@ -3,6 +3,7 @@ import json
 import logging
 import os
 import random
+import sys
 from collections import defaultdict
 from timeit import default_timer as timer
 from typing import Any, Dict
@@ -212,7 +213,7 @@ def main(use_formula: FOC):
         "m": 4,
     }
 
-    save_path = f"data/gnns_v2/{model_config_hash}"
+    save_path = f"data/gnns_v3/{model_config_hash}"
     # ! manual operation
     os.makedirs(save_path, exist_ok=True)
     # * model_name - number of models - model hash - formula hash
@@ -226,7 +227,7 @@ def main(use_formula: FOC):
     }
 
     # total graphs to pre-generate
-    total_graphs = 300_000
+    total_graphs = 100_000
     # graphs selected per training session / model
     n_graphs = 5120
     # how many graphs are selected for the testing
@@ -269,11 +270,11 @@ def main(use_formula: FOC):
         batch_size=batch_size,
         iterations=iterations,
         gpu_num=0,
-        data_workers=2,
+        data_workers=1,
         lr=0.01,
         stop_when=stop_when,
         unique_test=unique_test,
-        remove_batchnorm_when_trained=True,
+        remove_batchnorm_when_trained=False,
     )
     end = timer()
     time_elapsed = end - start
@@ -283,8 +284,10 @@ def main(use_formula: FOC):
 
 
 if __name__ == "__main__":
+    __formula_index = sys.argv[1]
+
     _formula_path = "data/"
-    _formula_filename = "formulas_v2.json"
+    _formula_filename = f"formulas_v3.json.{__formula_index}"
 
     logger.setLevel(logging.DEBUG)
     logger.propagate = False
@@ -317,5 +320,7 @@ if __name__ == "__main__":
         __times[str(__formula)] = __elapsed
 
     print(json.dumps(__times, ensure_ascii=False, indent=2))
-    with open(f"{_formula_path}/{_formula_filename}_timings.json", "w") as __f:
+    with open(
+        f"{_formula_path}/{_formula_filename}_timings.json", "w", encoding="utf-8"
+    ) as __f:
         json.dump(__times, __f, ensure_ascii=False, indent=2)

@@ -100,16 +100,15 @@ class GNNTrainer(Trainer):
         self.model = self.model.to(self.device)
         self.init_optim(**optim_params)
 
-    def remove_batchnorm(self, **optim_params):
+    def remove_batchnorm(self):
         self.model.remove_batchnorm()
-        self.init_trainer(**optim_params)
 
     def init_loss(self):
         self.loss = nn.BCEWithLogitsLoss(reduction="mean")
         return self.loss
 
     def init_optim(self, lr):
-        self.optim = optim.AdamW(self.model.parameters(), lr=lr)
+        self.optim = optim.Adam(self.model.parameters(), lr=lr, weight_decay=0)
         return self.optim
 
     def init_dataloader(
