@@ -50,6 +50,19 @@ def generate_lt_exist_random_base(bases, nested, lower, upper):
     return exists
 
 
+def generate_gtlt_exist_random_base(bases, nested, restriction_pairs):
+    exists = []
+    for lower, upper in restriction_pairs:
+        base = random.choice(bases)
+        inner = random.choice(nested)
+
+        f = AND(base, Exist(AND(Role("EDGE"), inner), lower=lower, upper=upper))
+
+        exists.append(f)
+
+    return exists
+
+
 def write(formula_file, n_splits):
     mapping = {get_hash(_formula): repr(_formula) for _formula in formulas}
 
@@ -99,4 +112,14 @@ operation_lt_exist = generate_lt_exist_random_base(
 )
 formulas.extend(operation_gt_exist + operation_lt_exist)
 
-write(formula_file="data/formulas_v2_v2.json", n_splits=4)
+# between N and M, + AND/OR/*
+restrictions = list(itertools.combinations_with_replacement([1, 2, 3, 4, 5], r=2))
+operation_gtlt_exist_1 = generate_gtlt_exist_random_base(
+    bases=and_or_pairs + color_bases, nested=color_bases, restriction_pairs=restrictions
+)
+operation_gtlt_exist_2 = generate_gtlt_exist_random_base(
+    bases=and_or_pairs + color_bases, nested=color_bases, restriction_pairs=restrictions
+)
+formulas.extend(operation_gtlt_exist_1 + operation_gtlt_exist_2)
+
+write(formula_file="data/formulas_v3.json", n_splits=6)
