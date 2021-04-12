@@ -1,47 +1,27 @@
+import os
 from copy import deepcopy
 
 import torch
+import torch.nn
 import torch.nn.functional as F
-from sklearn.cluster import AgglomerativeClustering
-from sklearn.decomposition import TruncatedSVD
+import torch.optim
+import torch_geometric.transforms as T
 from sklearn.metrics import (
     classification_report,
     f1_score,
     precision_score,
     recall_score,
 )
-from torch_geometric import datasets
 from torch_geometric.data.data import Data
-import torch_geometric.transforms as T
 from torch_geometric.nn import SplineConv
-from src.models.ac_gnn import ACGNNNoInput, ACGNN
+
+from src.models.ac_gnn import ACGNN, ACGNNNoInput
 from src.models.mlp import MLP
 from src.run_logic import seed_everything
 
 seed_everything(42)
-
-
-class MyMLP(MLP):
-    def __init__(
-        self,
-        num_layers: int,
-        input_dim: int,
-        hidden_dim: int,
-        output_dim: int,
-        use_batch_norm: bool,
-        **kwargs
-    ):
-        super().__init__(
-            num_layers,
-            input_dim,
-            hidden_dim,
-            output_dim,
-            use_batch_norm=use_batch_norm,
-            **kwargs
-        )
-
-    def forward(self, x, **kwargs):
-        return super().forward(x)
+cora_data_path = os.path.join("data", "cora_data")
+model_path = os.path.join("data", "gnns_v2", "40e65407aa")
 
 
 class SplineNet(torch.nn.Module):
@@ -58,41 +38,27 @@ class SplineNet(torch.nn.Module):
         return x
 
 
-def dimension_reduction(all_data):
-    _x = all_data.x
+class MyMLP(MLP):
+    def __init__(
+        self,
+        num_layers: int,
+        input_dim: int,
+        hidden_dim: int,
+        output_dim: int,
+        use_batch_norm: bool,
+        **kwargs,
+    ):
+        super().__init__(
+            num_layers,
+            input_dim,
+            hidden_dim,
+            output_dim,
+            use_batch_norm=use_batch_norm,
+            **kwargs,
+        )
 
-    feats = TruncatedSVD(n_components=500).fit_transform(_x)
-    features = torch.from_numpy(feats)
-
-    new_dataset = Data(
-        x=features.float(),
-        edge_index=all_data.edge_index,
-        test_mask=all_data.test_mask,
-        train_mask=all_data.train_mask,
-        val_mask=all_data.val_mask,
-        y=all_data.y,
-        edge_attr=all_data.edge_attr,
-    )
-
-    return new_dataset
-
-
-def reduce_features(all_data, k):
-    clusters = AgglomerativeClustering(k, linkage="ward").fit_predict(all_data.x)
-    features = torch.from_numpy(clusters)
-    feats = F.one_hot(features)
-
-    new_dataset = Data(
-        x=feats.float(),
-        edge_index=all_data.edge_index,
-        test_mask=all_data.test_mask,
-        train_mask=all_data.train_mask,
-        val_mask=all_data.val_mask,
-        y=all_data.y,
-        edge_attr=all_data.edge_attr,
-    )
-
-    return new_dataset
+    def forward(self, x, **kwargs):
+        return super().forward(x)
 
 
 def binarize_target(all_data, to_label):
@@ -113,7 +79,7 @@ def binarize_target(all_data, to_label):
     return new_dataset
 
 
-def train(use_data, use_model):
+def train(use_data, use_model, optimizer, binary):
     use_model.train()
     optimizer.zero_grad()
     output = use_model(
@@ -168,122 +134,168 @@ def test(use_data, use_model):
     return accs, pre, rec, f1s
 
 
-write_model = True
-dataset = datasets.Planetoid("delete/hey/Cora", "Cora", transform=T.TargetIndegree())
-single_data = dataset[0]
-num_classes = dataset.num_classes
-binary = False
+def run(model, use_data, binary, log):
+    device = torch.device("cuda")
+    model, use_data = model.to(device), use_data.to(device)
+    optimizer = torch.optim.Adam(model.parameters(), lr=0.01, weight_decay=0.005)
 
-single_data = reduce_features(single_data, 4)
+    good_models = []
 
-print("num features", single_data.num_features, "num classes", num_classes)
+    best_val_acc = (
+        test_acc
+    ) = (
+        val_precision
+    ) = test_precision = val_recall = test_recall = val_f1_score = test_f1_score = 0
+    log = "Epoch: {:03d}, Train: ({:.4f}, {:.4f}, {:.4f}, {:.4f}), Val: ({:.4f}, {:.4f}, {:.4f}, {:.4f}), Test: ({:.4f}, {:.4f}, {:.4f}, {:.4f})"
+    for epoch in range(1, 300):
+        train(use_data, model, optimizer, binary)
+        _accs, _pres, _recs, _f1s = test(use_data, model)
 
-seed_everything(42)
-data = binarize_target(single_data, 2)
-num_classes = 2
-binary = True
+        (train_acc, val_acc, tmp_test_acc) = _accs
+        (train_pre, val_pre, tmp_test_pre) = _pres
+        (train_rec, val_rec, tmp_test_rec) = _recs
+        (train_f1, val_f1, tmp_test_f1) = _f1s
+        if val_f1 > val_f1_score:
+            best_val_acc = val_acc
+            test_acc = tmp_test_acc
 
-# model = MyMLP(
-#     num_layers=2,
-#     input_dim=data.num_features,
-#     hidden_dim=8,
-#     output_dim=num_classes,
-#     use_batch_norm=True,
-# )
+            val_precision = val_pre
+            test_precision = tmp_test_pre
 
+            val_recall = val_rec
+            test_recall = tmp_test_rec
 
-model = ACGNN(
-    input_dim=data.num_features,
-    hidden_dim=8,
-    output_dim=num_classes,
-    aggregate_type="add",
-    combine_type="identity",
-    num_layers=2,
-    combine_layers=1,
-    mlp_layers=1,
-    task="node",
-    use_batch_norm=False,
-)
+            val_f1_score = val_f1
+            test_f1_score = tmp_test_f1
 
+            good_models.append((epoch, deepcopy(model.state_dict())))
 
-# model = SplineNet(n_features=data.num_features, n_classes=num_classes, hidden=8)
-
-device = torch.device("cuda")
-# device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-model, data = model.to(device), data.to(device)
-optimizer = torch.optim.Adam(model.parameters(), lr=0.01, weight_decay=0.005)
-
-good_models = []
-
-best_val_acc = (
-    test_acc
-) = (
-    val_precision
-) = test_precision = val_recall = test_recall = val_f1_score = test_f1_score = 0
-log = "Epoch: {:03d}, Train: ({:.4f}, {:.4f}, {:.4f}, {:.4f}), Val: ({:.4f}, {:.4f}, {:.4f}, {:.4f}), Test: ({:.4f}, {:.4f}, {:.4f}, {:.4f})"
-for epoch in range(1, 300):
-    train(data, model)
-    _accs, _pres, _recs, _f1s = test(data, model)
-
-    (train_acc, val_acc, tmp_test_acc) = _accs
-    (train_pre, val_pre, tmp_test_pre) = _pres
-    (train_rec, val_rec, tmp_test_rec) = _recs
-    (train_f1, val_f1, tmp_test_f1) = _f1s
-    if val_f1 > val_f1_score:
-        best_val_acc = val_acc
-        test_acc = tmp_test_acc
-
-        val_precision = val_pre
-        test_precision = tmp_test_pre
-
-        val_recall = val_rec
-        test_recall = tmp_test_rec
-
-        val_f1_score = val_f1
-        test_f1_score = tmp_test_f1
-
-        good_models.append((epoch, deepcopy(model.state_dict())))
-
-    # print(log.format(epoch,
-    #                  train_acc, train_pre, train_rec, train_f1,
-    #                  best_val_acc, val_precision, val_recall, val_f1_score,
-    # test_acc, test_precision, test_recall, test_f1_score))
-print(
-    log.format(
-        epoch,
-        train_acc,
-        train_pre,
-        train_rec,
-        train_f1,
-        best_val_acc,
-        val_precision,
-        val_recall,
-        val_f1_score,
-        test_acc,
-        test_precision,
-        test_recall,
-        test_f1_score,
+        if log:
+            print(
+                log.format(
+                    epoch,
+                    train_acc,
+                    train_pre,
+                    train_rec,
+                    train_f1,
+                    best_val_acc,
+                    val_precision,
+                    val_recall,
+                    val_f1_score,
+                    test_acc,
+                    test_precision,
+                    test_recall,
+                    test_f1_score,
+                )
+            )
+    print(
+        log.format(
+            epoch,
+            train_acc,
+            train_pre,
+            train_rec,
+            train_f1,
+            best_val_acc,
+            val_precision,
+            val_recall,
+            val_f1_score,
+            test_acc,
+            test_precision,
+            test_recall,
+            test_f1_score,
+        )
     )
-)
 
-test_mask = data.test_mask
-target_data = data.y[test_mask]
-for e, goods in good_models[-1:]:  # only the best
-    model.load_state_dict(goods)
-    model.eval()
-    pred = model(
-        x=data.x, edge_index=data.edge_index, edge_attr=data.edge_attr, batch=None
-    )[test_mask].max(1)[1]
+    if good_models:
+        return good_models[-1]
+    else:
+        return -1, deepcopy(model.state_dict())
 
-    target_ = target_data.detach().cpu().numpy()
-    pred_ = pred.detach().cpu().numpy()
 
-    report = classification_report(target_, pred_)
+all_datasets = [
+    "original_reduced_cora",
+    "processed_cora_svd_kmeans_d500",
+    "processed_cora_ae_h32-mid512-p01_agglomerative",
+    "processed_cora_ae_h32-mid512-p03_agglomerative",
+    "processed_cora_ae_h32-mid512-p07_agglomerative",
+    "processed_cora_ae_h32-mid512-p1_agglomerative",
+    "processed_cora_ae_h128-mid512-p01_agglomerative",
+    "processed_cora_ae_h128-mid512-p03_agglomerative",
+    "processed_cora_ae_h128-mid512-p07_agglomerative",
+    "processed_cora_ae_h128-mid512-p1_agglomerative",
+]
 
-    print("data from epoch", e)
-    print(report, "\n")
 
-    if write_model:
-        data = data.to("cpu")
-        torch.save([goods], "trained_cora.pt")
-        torch.save(data, "reduced_cora.pt")
+for reduced_dataset in all_datasets:
+    n_models = 1
+    should_log = True
+
+    dataset = torch.load(os.path.join(cora_data_path, f"{reduced_dataset}.pt"))
+
+    # from torch_geometric import datasets
+    # dataset = datasets.Planetoid("data/Cora", "Cora", transform=T.TargetIndegree())[0]
+
+    print("num features", dataset.num_features)
+
+    data = binarize_target(dataset, 2)
+
+    all_models = []
+    reports = []
+    for m in range(n_models):
+        _model = ACGNN(
+            input_dim=data.num_features,
+            hidden_dim=8,
+            output_dim=2,
+            aggregate_type="add",
+            combine_type="identity",
+            num_layers=2,
+            combine_layers=1,
+            mlp_layers=1,
+            task="node",
+            use_batch_norm=False,
+        )
+
+        # _model = MyMLP(
+        #     num_layers=2,
+        #     input_dim=data.num_features,
+        #     hidden_dim=8,
+        #     output_dim=2,
+        #     use_batch_norm=True,
+        # )
+
+        # _model = SplineNet(n_features=data.num_features, n_classes=2, hidden=8)
+
+        epoch, best_model = run(
+            model=_model, use_data=data, binary=True, log=should_log
+        )
+
+        if should_log:
+            test_mask = data.test_mask
+            target_data = data.y[test_mask]
+
+            _model.load_state_dict(best_model)
+            _model.eval()
+            pred = _model(
+                x=data.x,
+                edge_index=data.edge_index,
+                edge_attr=data.edge_attr,
+                batch=None,
+            )[test_mask].max(1)[1]
+
+            target_ = target_data.detach().cpu().numpy()
+            pred_ = pred.detach().cpu().numpy()
+
+            report = classification_report(target_, pred_)
+
+            print(reduced_dataset)
+            print("data from epoch", epoch)
+            print(report, "\n")
+
+            reports.append(f"data from epoch, {epoch}\n\n{str(report)}")
+
+        all_models.append(best_model)
+
+    # torch.save(all_models, os.path.join(model_path, f"{reduced_dataset}.pt"))
+    with open(os.path.join("results", "cora", f"{reduced_dataset}.txt"), "w") as f:
+        for report in reports:
+            f.write(report)
