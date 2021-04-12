@@ -128,6 +128,24 @@ def train_autoencoder(autoencoder, data, epoch, batch_size, loss_p=1):
     return model
 
 
+def binarize_target(original_data, to_label):
+    _y = original_data.y
+
+    new_y = (_y == to_label).long()
+
+    new_dataset = Data(
+        x=original_data.x,
+        edge_index=original_data.edge_index,
+        test_mask=original_data.test_mask,
+        train_mask=original_data.train_mask,
+        val_mask=original_data.val_mask,
+        y=new_y,
+        edge_attr=original_data.edge_attr,
+    )
+
+    return new_dataset
+
+
 def dimension_reduction(original_data, dim):
     _x = original_data.x
 
@@ -178,6 +196,8 @@ dataset = datasets.Planetoid("data/Cora", "Cora")
 num_classes = dataset.num_classes
 num_features = dataset.num_features
 dataset = dataset[0]
+
+dataset = binarize_target(dataset, 2)
 
 reductor = "original"
 method_name = "kmeans"
