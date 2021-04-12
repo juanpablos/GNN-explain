@@ -1,4 +1,5 @@
 import os
+import warnings
 from copy import deepcopy
 
 import torch
@@ -134,7 +135,7 @@ def test(use_data, use_model):
     return accs, pre, rec, f1s
 
 
-def run(model, use_data, binary, log):
+def run(model, use_data, binary, log_epoch):
     device = torch.device("cuda")
     model, use_data = model.to(device), use_data.to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=0.01, weight_decay=0.005)
@@ -170,7 +171,7 @@ def run(model, use_data, binary, log):
 
             good_models.append((epoch, deepcopy(model.state_dict())))
 
-        if log:
+        if log_epoch:
             print(
                 log.format(
                     epoch,
@@ -225,23 +226,26 @@ all_datasets = [
     "processed_cora_ae_h128-mid512-p1_agglomerative",
 ]
 
+warnings.catch_warnings().__enter__()
+warnings.filterwarnings("ignore")
 
 for reduced_dataset in all_datasets:
-    n_models = 1
-    should_log = True
+    print(reduced_dataset)
+    n_models = 10
+    should_log = False
+    log_results = True
 
-    dataset = torch.load(os.path.join(cora_data_path, f"{reduced_dataset}.pt"))
+    data = torch.load(os.path.join(cora_data_path, f"{reduced_dataset}.pt"))
 
     # from torch_geometric import datasets
     # dataset = datasets.Planetoid("data/Cora", "Cora", transform=T.TargetIndegree())[0]
 
-    print("num features", dataset.num_features)
-
-    data = binarize_target(dataset, 2)
+    print("num features", data.num_features)
 
     all_models = []
     reports = []
     for m in range(n_models):
+        print(f"{m+1}/{n_models}")
         _model = ACGNN(
             input_dim=data.num_features,
             hidden_dim=8,
@@ -266,10 +270,10 @@ for reduced_dataset in all_datasets:
         # _model = SplineNet(n_features=data.num_features, n_classes=2, hidden=8)
 
         epoch, best_model = run(
-            model=_model, use_data=data, binary=True, log=should_log
+            model=_model, use_data=data, binary=True, log_epoch=should_log
         )
 
-        if should_log:
+        if should_log or log_results:
             test_mask = data.test_mask
             target_data = data.y[test_mask]
 
@@ -295,7 +299,9 @@ for reduced_dataset in all_datasets:
 
         all_models.append(best_model)
 
-    # torch.save(all_models, os.path.join(model_path, f"{reduced_dataset}.pt"))
-    with open(os.path.join("results", "cora", f"{reduced_dataset}.txt"), "w") as f:
-        for report in reports:
-            f.write(report)
+    torch.save(all_models, os.path.join(model_path, f"{reduced_dataset}.pt"))
+
+    if should_log or log_results:
+        with open(os.path.join("results", "cora", f"{reduced_dataset}.txt"), "w") as f:
+            for report in reports:
+                f.write(report)
