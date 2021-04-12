@@ -53,6 +53,7 @@ def inference(
     gpu_num: int,
     inference_filename: str,
     inference_data_file: str,
+    write_representation: bool = True,
 ):
     logger.info("Loading inference data")
     # load the data we want to evaluate in
@@ -114,7 +115,8 @@ def inference(
     os.makedirs(inference_path, exist_ok=True)
     with open(f"{inference_path}/{inference_filename}", "w", encoding="utf-8") as out:
         for formula in generated_formulas:
-            out.write(f"{str(formula)}\n")
+            f = repr(formula) if write_representation else str(formula)
+            out.write(f"{f}\n")
 
 
 def run_experiment(
@@ -475,10 +477,9 @@ def main_inference():
 
     model_name = "NoFilter()-TextSequenceAtomic()-ManualFilter(10)-1L1024+2L1024+3L1024-emb4-lstmcellIN1024-lstmH256-initTrue-catTrue-drop0-compFalse-d256-512b-0.005lr.pt"
 
-    formula_hash = "trained_cora"
+    formula_hash = "processed_cora_ae_h32-mid512-p01_agglomerative"
 
     inference_data_file = f"./data/gnns_v2/{model_hash}/{formula_hash}.pt"
-    # formula_hash = "ac4932d9e6"
 
     # inference_data_file = (
     #     f"./data/gnns/{model_hash}/acgnn-n5000-6106dbd778-{formula_hash}.pt"
@@ -493,6 +494,7 @@ def main_inference():
         model_name_to_load=model_name,
         inference_data_file=inference_data_file,
         inference_filename=inference_filename,
+        write_representation=True,
     )
 
 
