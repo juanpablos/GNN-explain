@@ -59,8 +59,8 @@ def inference(
     data = torch.load(inference_data_file)
 
     inference_data = []
-    for weights in data:
-        weights = clean_state(weights)
+    for network in data:
+        weights = clean_state(network)
         concat_weights = torch.cat([w.flatten() for w in weights.values()])
         inference_data.append(concat_weights)
     inference_data = torch.stack(inference_data, dim=0)
@@ -386,7 +386,7 @@ def main(
         "labeler": labeler,
         "formula_mapping": FormulaMapping("./data/formulas.json"),
         "test_selector": test_selector,
-        "load_aggregated": "aggregated_all.pt",
+        "load_aggregated": "aggregated.pt",
         "force_preaggregated": False,
     }
 
@@ -473,7 +473,7 @@ def main_inference():
     model_hash = "40e65407aa"
     results_path = f"./results/v2/exp5 - text - flat encoder/{model_hash}"
 
-    model_name = "NoFilter()-TextSequenceAtomic()-NullFilter()-1L1024+2L1024+3L1024-emb4-lstmcellIN1024-lstmH256-initTrue-catTrue-drop0-compFalse-d256-512b-0.005lr.pt"
+    model_name = "NoFilter()-TextSequenceAtomic()-ManualFilter(10)-1L1024+2L1024+3L1024-emb4-lstmcellIN1024-lstmH256-initTrue-catTrue-drop0-compFalse-d256-512b-0.005lr.pt"
 
     formula_hash = "trained_cora"
 
@@ -510,14 +510,14 @@ if __name__ == "__main__":
 
     logger.addHandler(ch)
 
-    __layers = [256, 256]
-    main(
-        seed=0,
-        train_batch=512,
-        lr=0.005,
-        mlp_hidden_layers=__layers,
-        save_model=True,
-        make_plots=True,
-    )
+    # __layers = [1024, 1024, 1024]
+    # main(
+    #     seed=0,
+    #     train_batch=512,
+    #     lr=0.005,
+    #     mlp_hidden_layers=__layers,
+    #     save_model=True,
+    #     make_plots=True,
+    # )
 
-    # main_inference()
+    main_inference()
