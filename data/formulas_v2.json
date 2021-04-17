@@ -73,5 +73,5 @@
   "34dd691f9c": "AND(OR(Property('RED'),Property('BLUE')),Exist(AND(Role('EDGE'),Property('BLACK')),5,None))",
   "b739521345": "AND(OR(Property('RED'),Property('GREEN')),Exist(AND(Role('EDGE'),Property('RED')),None,4))",
   "27f41c1a07": "AND(OR(Property('RED'),Property('BLACK')),Exist(AND(Role('EDGE'),Property('GREEN')),None,2))",
-  "0d2a4b730c": "AND(OR(Property('BLUE'),Property('GREEN')),Exist(AND(Role('EDGE'),Property('BLACK')),None,1))",
+  "0d2a4b730c": "AND(OR(Property('BLUE'),Property('GREEN')),Exist(AND(Role('EDGE'),Property('BLACK')),None,1))"
 }
