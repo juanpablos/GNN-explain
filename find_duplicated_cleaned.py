@@ -18,9 +18,10 @@ def prepare_files(path: str, model_hash: str = None):
     return duplicated
 
 
-path = "./data/gnns_v3/"
+data_path = "data"
+gnn_path = "gnns_v3"
 model_hash = "40e65407aa"
 
-formula_path = os.path.join(path, model_hash)
-cleaned_path = os.path.join(formula_path, "cleaned")
-print(prepare_files(cleaned_path))
+formula_path = os.path.join(data_path, "delete")
+# formula_path = os.path.join(data_path, gnn_path, model_hash)
+print(prepare_files(formula_path))
