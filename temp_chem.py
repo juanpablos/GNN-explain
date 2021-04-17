@@ -159,25 +159,26 @@ class MoleculeNet(InMemoryDataset):
             feature_list = []
             target_list = []
             for atom in mol.GetAtoms():
-                # x.append(x_map['atomic_num'].index(atom.GetAtomicNum()))
+                target_list.append(x_map["atomic_num"].index(atom.GetAtomicNum()))
                 # x.append(x_map['chirality'].index(str(atom.GetChiralTag())))
                 # x.append(x_map['degree'].index(atom.GetTotalDegree()))
                 # x.append(atom.GetFormalCharge())
                 # x.append(atom.GetExplicitValence())
-                feature_list.append(x_map["num_hs"].index(atom.GetTotalNumHs()))
-                # x.append(
-                #     x_map["num_radical_electrons"].index(atom.GetNumRadicalElectrons())
-                # )
+                # feature_list.append(x_map["num_hs"].index(atom.GetTotalNumHs()))
+                feature_list.append(
+                    x_map["num_radical_electrons"].index(atom.GetNumRadicalElectrons())
+                )
                 # x.append(x_map['hybridization'].index(
                 #     str(atom.GetHybridization())))
                 # y.append(x_map["is_aromatic"].index(atom.GetIsAromatic()))
-                target_list.append(x_map["is_in_ring"].index(atom.IsInRing()))
+                # target_list.append(x_map["is_in_ring"].index(atom.IsInRing()))
 
             features = torch.tensor(feature_list, dtype=torch.long).clip(0, 3)
             features = F.one_hot(features, num_classes=4).float()
 
             # features = torch.tensor(feature_list, dtype=torch.long).view(-1, 1)
-            target = torch.tensor(target_list, dtype=torch.long)
+            # target = torch.tensor(target_list, dtype=torch.long)
+            target = (torch.tensor(target_list, dtype=torch.long) == 6).long()
 
             edge_indices = []
             for bond in mol.GetBonds():
@@ -214,7 +215,7 @@ import numpy as np
 if __name__ == "__main__":
     # esol, freesolv, lipo, pcba, muv, hiv, bace, bbbp, tox21, toxcast, sider, clintox
 
-    d = MoleculeNet("./data/chem", "esol")
+    d = MoleculeNet("./data/chem3", "esol")
     print(d)
     print(d[0])
     print(d[100].x.squeeze())
