@@ -4,12 +4,13 @@ from src.data.gnn.utils import prepare_files
 
 # remove gnns that do not reach perfect training
 
-path = "./data/gnns_v2/"
-log_file = "formulas_v2.json.4.log"
+path = "./data/gnns_v3/"
+log_file = "formulas_v3.json.6.log"
 model_hash = "40e65407aa"
 
 formula_path = os.path.join(path, model_hash)
 cleaned_path = os.path.join(formula_path, "cleaned")
+os.makedirs(cleaned_path, exist_ok=True)
 
 formula_hash_to_file = prepare_files(path=formula_path)
 
