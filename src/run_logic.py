@@ -66,6 +66,9 @@ def run(
         logger_metrics.info(trainer.metric_logger.log(tocsv=True))
         logger.debug(f"{prefix}{it: 03d} {trainer.log()}")
 
+        if hasattr(trainer, "write_checkpoint"):
+            trainer.write_checkpoint()
+
     logger.info(f"{prefix}{it: 03d} {trainer.log()}")
 
     return trainer.get_models()

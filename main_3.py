@@ -208,12 +208,22 @@ def run_experiment(
     logger_metrics.addHandler(fh)
     # /--- metrics logger
 
+    if model_name is None:
+        write_checkpoint = False
+        checkpoint_path = ""
+    else:
+        write_checkpoint = True
+        checkpoint_path = os.path.join(results_path, "models", model_name)
+    os.makedirs(f"{results_path}/models/{model_name}", exist_ok=True)
     trainer = RecurrentTrainer(
         seed=seed,
-        subset_size=0.2,
+        subset_size=0.05,
         logging_variables="all",
         vocabulary=vocabulary,
         target_apply_mapping=formula_target,
+        write_checkpoints=write_checkpoint,
+        checkpoints_path=checkpoint_path,
+        checkpoints_name="model",
     )
 
     trainer.init_dataloader(
@@ -262,7 +272,6 @@ def run_experiment(
         logger.debug("Writing model")
         encoder.cpu()
         decoder.cpu()
-        os.makedirs(f"{results_path}/models/", exist_ok=True)
         obj = {
             "encoder": encoder.state_dict(),
             "decoder": decoder.state_dict(),
@@ -359,21 +368,21 @@ def main(
     # test_selector = FilterApply(condition="or")
     # test_selector.add(AtomicOnlyFilter(atomic="all"))
     # test_selector.add(RestrictionFilter(lower=4, upper=None))
-    test_selector = SelectFilter(
-        hashes=[
-            "22609b6219",
-            "d376f80fe0",
-            "4865ca5688",
-            "b739521345",
-            "98e4690a6c",
-            "fd1ede286c",
-            "56dc8827b8",
-            "c1eec67813",
-            "8500dc307e",
-            "530867a9ca",
-        ]
-    )
-    # test_selector = NullFilter()
+    # test_selector = SelectFilter(
+    #     hashes=[
+    #         "22609b6219",
+    #         "d376f80fe0",
+    #         "4865ca5688",
+    #         "b739521345",
+    #         "98e4690a6c",
+    #         "fd1ede286c",
+    #         "56dc8827b8",
+    #         "c1eec67813",
+    #         "8500dc307e",
+    #         "530867a9ca",
+    #     ]
+    # )
+    test_selector = NullFilter()
     # * /test_filters
 
     # * labelers
@@ -382,7 +391,7 @@ def main(
 
     # * /labelers
     data_config: NetworkDataConfig = {
-        "root": "data/gnns_v2",
+        "root": "data/full_gnn",
         "model_hash": model_hash,
         "selector": selector,
         "labeler": labeler,
@@ -406,7 +415,7 @@ def main(
 
     msg = f"{name}-{encoder}-{decoder}-{train_batch}b-{lr}lr"
 
-    results_path = f"./results/v2/testing/{model_hash}"
+    results_path = f"./results/v3/testing/{model_hash}"
 
     plot_file = None
     if make_plots:
@@ -473,7 +482,7 @@ def main_inference():
     }
 
     model_hash = "40e65407aa"
-    results_path = f"./results/v2/exp5 - text - flat encoder/{model_hash}"
+    results_path = f"./results/v3/exp5 - text - flat encoder/{model_hash}"
 
     model_name = "NoFilter()-TextSequenceAtomic()-ManualFilter(10)-1L1024+2L1024+3L1024-emb4-lstmcellIN1024-lstmH256-initTrue-catTrue-drop0-compFalse-d256-512b-0.005lr.pt"
 
@@ -512,14 +521,14 @@ if __name__ == "__main__":
 
     logger.addHandler(ch)
 
-    # __layers = [1024, 1024, 1024]
-    # main(
-    #     seed=0,
-    #     train_batch=512,
-    #     lr=0.005,
-    #     mlp_hidden_layers=__layers,
-    #     save_model=True,
-    #     make_plots=True,
-    # )
+    __layers = [1024, 1024, 1024]
+    main(
+        seed=0,
+        train_batch=512,
+        lr=0.005,
+        mlp_hidden_layers=__layers,
+        save_model=True,
+        make_plots=True,
+    )
 
-    main_inference()
+    # main_inference()

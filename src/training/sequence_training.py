@@ -1,4 +1,5 @@
 import logging
+import os
 from itertools import chain
 from typing import Dict, List, Literal, Union
 
@@ -72,6 +73,9 @@ class RecurrentTrainer(Trainer):
         seed: int = None,
         subset_size: float = 0.2,
         logging_variables: Union[Literal["all"], List[str]] = "all",
+        write_checkpoints: bool = False,
+        checkpoints_path: str = "results",
+        checkpoints_name: str = "model",
     ):
 
         super().__init__(seed=seed, logging_variables=logging_variables)
@@ -82,6 +86,11 @@ class RecurrentTrainer(Trainer):
             vocabulary=vocabulary,
             result_mapping=target_apply_mapping,
         )
+        self.write_checkpoints = write_checkpoints
+        self.checkpoints_path = checkpoints_path
+        self.checkpoints_name = checkpoints_name
+
+        self._internal_epoch = 0
 
         logger_metrics.info(",".join(self.metric_logger.keys()))
 
@@ -236,6 +245,7 @@ class RecurrentTrainer(Trainer):
         average_loss = np.mean(accum_loss)
 
         self.metric_logger.update(train_loss=average_loss)
+        self._internal_epoch += 1
 
         return average_loss
 
@@ -456,6 +466,17 @@ class RecurrentTrainer(Trainer):
 
     def get_models(self):
         return [self.encoder, self.decoder]
+
+    def write_checkpoint(self):
+        if self.write_checkpoints:
+            logger.debug("Saving model checkpoint")
+            data = {
+                "encoder": self.encoder.state_dict(),
+                "decoder": self.decoder.state_dict(),
+                "vocabulary": self.vocabulary,
+            }
+            name = f"{self.checkpoints_name}_{self._internal_epoch}.pt"
+            torch.save(data, os.path.join(self.checkpoints_path, name))
 
     def inference(self, data):
 
