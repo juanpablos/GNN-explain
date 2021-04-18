@@ -18,7 +18,6 @@ from src.run_logic import seed_everything
 seed_everything(42)
 
 model_path = os.path.join("data", "cora_data")
-os.makedirs(model_path, exist_ok=True)
 
 
 class Encoder(MLP):
@@ -192,28 +191,38 @@ def clusterize(original_data, new_features, cluster_name="agglomerative"):
     return new_dataset
 
 
+def write_labels_dataset(reduced_dataset, dataset_path, dataset_name):
+    os.makedirs(dataset_path, exist_ok=True)
+    for label in range(0, 7):
+        print(f"Writing for label {label}")
+        binarized_dataset = binarize_target(reduced_dataset, label)
+
+        dataset_label_name = dataset_name.format(label)
+        torch.save(
+            binarized_dataset,
+            os.path.join(dataset_path, dataset_label_name),
+        )
+
+
 dataset = datasets.Planetoid("data/Cora", "Cora")
 num_classes = dataset.num_classes
 num_features = dataset.num_features
 dataset = dataset[0]
-
-dataset = binarize_target(dataset, 2)
-
-reductor = "original"
-method_name = "kmeans"
+reductor = "autoencoder"
+method_name = "agglomerative"
 
 if reductor == "autoencoder":
     _embedded_dim = 32
     _encoder = Encoder(
         input_dim=num_features,
         output_dim=_embedded_dim,
-        hidden_layers=[512],
+        hidden_layers=[1024, 512, 256],
         use_batch_norm=True,
     )
     _decoder = Decoder(
         input_dim=_embedded_dim,
         output_dim=num_features,
-        hidden_layers=[512],
+        hidden_layers=[256, 512, 1024],
         use_batch_norm=True,
     )
     autoencoder_model = AutoEncoder(encoder=_encoder, decoder=_decoder)
@@ -222,8 +231,8 @@ if reductor == "autoencoder":
         autoencoder=autoencoder_model,
         data=dataset.x,
         epoch=500,
-        batch_size=128,
-        loss_p=0.7,
+        batch_size=512,
+        loss_p=0.1,
     )
 
     with torch.no_grad():
@@ -234,20 +243,20 @@ if reductor == "autoencoder":
 
     bad_1s = (reconstructed_data[nonzero] < 0.5).sum()
     bad_0s = (reconstructed_data[~nonzero] >= 0.5).sum()
-
-    print(bad_1s / nonzero.sum())
-    print(bad_0s / (~nonzero).sum())
+    print(f"{(bad_1s / nonzero.sum()).item():.16f}")
+    print(f"{(bad_0s / (~nonzero).sum()).item():.16f}")
 
     new_cora = clusterize(
         original_data=dataset, new_features=reduced_data, cluster_name=method_name
     )
 
-    torch.save(
-        new_cora,
-        os.path.join(
+    write_labels_dataset(
+        reduced_dataset=new_cora,
+        dataset_path=os.path.join(
             model_path,
-            f"processed_cora_ae_h{_embedded_dim}-mid512-p07_{method_name}.pt",
+            "autoencoder",
         ),
+        dataset_name=f"processed_cora_l{{}}_ae_h{_embedded_dim}-mid512-p01_{method_name}.pt",
     )
 elif reductor == "dimension":
     reduced_dim = 500
@@ -259,11 +268,14 @@ elif reductor == "dimension":
 
     print(new_cora)
 
-    torch.save(
-        new_cora,
-        os.path.join(model_path, f"processed_cora_svd_{method_name}_d{reduced_dim}.pt"),
+    write_labels_dataset(
+        reduced_dataset=new_cora,
+        dataset_path=os.path.join(
+            model_path,
+            "svd",
+        ),
+        dataset_name=f"processed_cora_l{{}}_svd_{method_name}_d{reduced_dim}.pt",
     )
-
 else:
     new_cora = clusterize(
         original_data=dataset, new_features=dataset.x, cluster_name=method_name
@@ -271,7 +283,11 @@ else:
 
     print(new_cora)
 
-    torch.save(
-        new_cora,
-        os.path.join(model_path, f"original_reduced_cora.pt"),
+    write_labels_dataset(
+        reduced_dataset=new_cora,
+        dataset_path=os.path.join(
+            model_path,
+            "original",
+        ),
+        dataset_name="original_reduced_cora_l{}.pt",
     )
