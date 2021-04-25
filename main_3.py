@@ -68,7 +68,7 @@ def inference(
     assert len(inference_data.shape) == 2
 
     logger.info("Loading Pre-trained meta model")
-    model_weights = torch.load(f"{results_path}/models/{model_name_to_load}")
+    model_weights = torch.load(f"{results_path}/models/{model_name_to_load}.pt")
     encoder_weights = model_weights["encoder"]
     decoder_weights = model_weights["decoder"]
     vocabulary = model_weights["vocabulary"]
@@ -482,17 +482,18 @@ def main_inference():
     }
 
     model_hash = "40e65407aa"
-    results_path = f"./results/v3/exp5 - text - flat encoder/{model_hash}"
+    results_path = f"./results/v3/testing/{model_hash}"
 
-    model_name = "NoFilter()-TextSequenceAtomic()-ManualFilter(10)-1L1024+2L1024+3L1024-emb4-lstmcellIN1024-lstmH256-initTrue-catTrue-drop0-compFalse-d256-512b-0.005lr.pt"
+    model_name = "NoFilter()-TextSequenceAtomic()-NullFilter()-1L1024+2L1024+3L1024-emb4-lstmcellIN1024-lstmH256-initTrue-catTrue-drop0-compFalse-d256-512b-0.005lr/model_6"
 
-    formula_hash = "processed_cora_ae_h32-mid512-p01_agglomerative"
+    formula_hash = "8b21f3f718"
+    # formula_hash = "svd_processed_cora_l4_svd_agglomerative_d500_gnn"
 
-    inference_data_file = f"./data/gnns_v2/{model_hash}/{formula_hash}.pt"
+    # inference_data_file = f"./data/full_gnn/{model_hash}/{formula_hash}.pt"
 
-    # inference_data_file = (
-    #     f"./data/gnns/{model_hash}/acgnn-n5000-6106dbd778-{formula_hash}.pt"
-    # )
+    inference_data_file = (
+        f"./data/manual/{model_hash}/acgnn-n20-{model_hash}-{formula_hash}.pt"
+    )
     inference_filename = f"{formula_hash}.txt"
 
     inference(
@@ -521,14 +522,14 @@ if __name__ == "__main__":
 
     logger.addHandler(ch)
 
-    __layers = [1024, 1024, 1024]
-    main(
-        seed=0,
-        train_batch=512,
-        lr=0.005,
-        mlp_hidden_layers=__layers,
-        save_model=True,
-        make_plots=True,
-    )
+    # __layers = [1024, 1024, 1024]
+    # main(
+    #     seed=0,
+    #     train_batch=512,
+    #     lr=0.005,
+    #     mlp_hidden_layers=__layers,
+    #     save_model=True,
+    #     make_plots=True,
+    # )
 
-    # main_inference()
+    main_inference()
