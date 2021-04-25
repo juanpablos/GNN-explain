@@ -270,7 +270,7 @@ def main(use_formula: FOC):
         batch_size=batch_size,
         iterations=iterations,
         gpu_num=0,
-        data_workers=1,
+        data_workers=0,
         lr=0.01,
         stop_when=stop_when,
         unique_test=unique_test,
@@ -287,7 +287,11 @@ if __name__ == "__main__":
     __formula_index = sys.argv[1]
 
     _formula_path = "data/"
-    _formula_filename = f"formulas_v3.json.{__formula_index}"
+
+    if __formula_index == "manual":
+        _formula_filename = "manual_formulas.json"
+    else:
+        _formula_filename = f"formulas_v3.json.{__formula_index}"
 
     logger.setLevel(logging.DEBUG)
     logger.propagate = False
