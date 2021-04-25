@@ -6,7 +6,6 @@ import torch
 import torch.nn
 import torch.nn.functional as F
 import torch.optim
-import torch_geometric.transforms as T
 from sklearn.metrics import (
     classification_report,
     f1_score,
@@ -16,13 +15,11 @@ from sklearn.metrics import (
 from torch_geometric.data.data import Data
 from torch_geometric.nn import SplineConv
 
-from src.models.ac_gnn import ACGNN, ACGNNNoInput
+from src.models.ac_gnn import ACGNN
 from src.models.mlp import MLP
 from src.run_logic import seed_everything
 
 seed_everything(42)
-cora_data_path = os.path.join("data", "cora_data")
-model_path = os.path.join("data", "gnns_v2", "40e65407aa")
 
 
 class SplineNet(torch.nn.Module):
@@ -213,18 +210,29 @@ def run(model, use_data, binary, log_epoch):
         return -1, deepcopy(model.state_dict())
 
 
+cora_method = "autoencoder"
+cora_data_path = os.path.join("data", "cora_data", cora_method)
+model_data_path = os.path.join("data", "full_gnn", "40e65407aa")
+
+model_name = "mlp"
+
+# all_datasets = [f"original_reduced_cora_l{i}" for i in range(7)]
+# all_datasets = [f"processed_cora_l{i}_svd_agglomerative_d500" for i in range(7)]
 all_datasets = [
-    "original_reduced_cora",
-    "processed_cora_svd_kmeans_d500",
-    "processed_cora_ae_h32-mid512-p01_agglomerative",
-    "processed_cora_ae_h32-mid512-p03_agglomerative",
-    "processed_cora_ae_h32-mid512-p07_agglomerative",
-    "processed_cora_ae_h32-mid512-p1_agglomerative",
-    "processed_cora_ae_h128-mid512-p01_agglomerative",
-    "processed_cora_ae_h128-mid512-p03_agglomerative",
-    "processed_cora_ae_h128-mid512-p07_agglomerative",
-    "processed_cora_ae_h128-mid512-p1_agglomerative",
+    f"processed_cora_l{i}_ae_h32-mid512-p01_agglomerative" for i in range(7)
 ]
+# all_datasets = [
+#     "original_reduced_cora",
+#     "processed_cora_svd_kmeans_d500",
+#     "processed_cora_ae_h32-mid512-p01_agglomerative",
+#     "processed_cora_ae_h32-mid512-p03_agglomerative",
+#     "processed_cora_ae_h32-mid512-p07_agglomerative",
+#     "processed_cora_ae_h32-mid512-p1_agglomerative",
+#     "processed_cora_ae_h128-mid512-p01_agglomerative",
+#     "processed_cora_ae_h128-mid512-p03_agglomerative",
+#     "processed_cora_ae_h128-mid512-p07_agglomerative",
+#     "processed_cora_ae_h128-mid512-p1_agglomerative",
+# ]
 
 warnings.catch_warnings().__enter__()
 warnings.filterwarnings("ignore")
@@ -246,26 +254,30 @@ for reduced_dataset in all_datasets:
     reports = []
     for m in range(n_models):
         print(f"{m+1}/{n_models}")
-        _model = ACGNN(
-            input_dim=data.num_features,
-            hidden_dim=8,
-            output_dim=2,
-            aggregate_type="add",
-            combine_type="identity",
-            num_layers=2,
-            combine_layers=1,
-            mlp_layers=1,
-            task="node",
-            use_batch_norm=False,
-        )
 
-        # _model = MyMLP(
-        #     num_layers=2,
-        #     input_dim=data.num_features,
-        #     hidden_dim=8,
-        #     output_dim=2,
-        #     use_batch_norm=True,
-        # )
+        if model_name == "gnn":
+            _model = ACGNN(
+                input_dim=data.num_features,
+                hidden_dim=8,
+                output_dim=2,
+                aggregate_type="add",
+                combine_type="identity",
+                num_layers=2,
+                combine_layers=1,
+                mlp_layers=1,
+                task="node",
+                use_batch_norm=False,
+            )
+        elif model_name == "mlp":
+            _model = MyMLP(
+                num_layers=2,
+                input_dim=data.num_features,
+                hidden_dim=8,
+                output_dim=2,
+                use_batch_norm=True,
+            )
+        else:
+            raise ValueError()
 
         # _model = SplineNet(n_features=data.num_features, n_classes=2, hidden=8)
 
@@ -299,9 +311,20 @@ for reduced_dataset in all_datasets:
 
         all_models.append(best_model)
 
-    torch.save(all_models, os.path.join(model_path, f"{reduced_dataset}.pt"))
+    if model_name == "gnn":
+        torch.save(
+            all_models,
+            os.path.join(
+                model_data_path, f"{cora_method}_{reduced_dataset}_{model_name}.pt"
+            ),
+        )
 
     if should_log or log_results:
-        with open(os.path.join("results", "cora", f"{reduced_dataset}.txt"), "w") as f:
+        with open(
+            os.path.join(
+                "results", "cora", f"{cora_method}_{reduced_dataset}_{model_name}.txt"
+            ),
+            "w",
+        ) as f:
             for report in reports:
                 f.write(report)
