@@ -81,6 +81,16 @@ class AutoEncoder(torch.nn.Module):
     def predict(self, x):
         return self.encoder(x=x)
 
+    def train(self, *args, **kwargs):
+        super().train(*args, **kwargs)
+        self.encoder.train(*args, **kwargs)
+        self.decoder.train(*args, **kwargs)
+
+    def eval(self, *args, **kwargs):
+        super().eval(*args, **kwargs)
+        self.encoder.eval(*args, **kwargs)
+        self.decoder.eval(*args, **kwargs)
+
 
 class WeightedLoss(torch.nn.Module):
     def __init__(self, p):
@@ -101,6 +111,7 @@ class WeightedLoss(torch.nn.Module):
 
 def train_autoencoder(autoencoder, data, epoch, batch_size, loss_p=1):
     model = autoencoder.cuda()
+    model.train()
     criterion = WeightedLoss(p=loss_p)
     # criterion = torch.nn.MSELoss(reduction="sum")
     optimizer = torch.optim.Adam(model.parameters(), lr=0.001, weight_decay=1e-5)
@@ -235,6 +246,7 @@ if reductor == "autoencoder":
         loss_p=0.1,
     )
 
+    autoencoder_model.eval()
     with torch.no_grad():
         reduced_data = autoencoder_model.predict(x=dataset.x.cuda()).detach().cpu()
 
