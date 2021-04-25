@@ -9,24 +9,23 @@ from src.models.ac_gnn import ACGNN
 from src.graphs.foc import *
 
 
-use_random = False
-
-cora_dataset = "processed_cora_ae_h32-mid512-p01_agglomerative"
+cora_dataset = "original_original_reduced_cora_l0_gnn"
 
 data_path = os.path.join("data", "cora_data")
-model_path = os.path.join("data", "gnns_v2", "40e65407aa")
+model_path = os.path.join("data", "gnns_v3", "40e65407aa")
 inference_path = os.path.join(
     "results",
-    "v2",
-    "exp5 - text - flat encoder",
+    "v3",
+    "testing",
     "40e65407aa",
     "inference",
-    "NoFilter()-TextSequenceAtomic()-ManualFilter(10)-1L1024+2L1024+3L1024-emb4-lstmcellIN1024-lstmH256-initTrue-catTrue-drop0-compFalse-d256-512b-0.005lr.pt",
+    "NoFilter()-TextSequenceAtomic()-NullFilter()-1L1024+2L1024+3L1024-emb4-lstmcellIN1024-lstmH256-initTrue-catTrue-drop0-compFalse-d256-512b-0.005lr",
 )
 
 data = torch.load(os.path.join(data_path, f"{cora_dataset}.pt"))
 models = torch.load(os.path.join(model_path, f"{cora_dataset}.pt"))
 inference_file = os.path.join(inference_path, f"{cora_dataset}.txt")
+inference_comparison_file = os.path.join(inference_path, f"{cora_dataset}_eval.txt")
 with open(inference_file, "r") as f:
     inference_formulas = [eval(formula) for formula in f.readlines()]
 
@@ -50,7 +49,11 @@ base_model = ACGNN(
     use_batch_norm=False,
 ).cuda()
 
+reports = []
 for i, (model_weights, formula) in enumerate(zip(models, inference_formulas)):
+    if formula is None:
+        print(f"model {i} is gave None as answer")
+        continue
     base_model.load_state_dict(model_weights)
     model = base_model
 
@@ -72,8 +75,9 @@ for i, (model_weights, formula) in enumerate(zip(models, inference_formulas)):
     extracted_precision = precision_score(gnn_pred, extracted_pred)
     extracted_recall = recall_score(gnn_pred, extracted_pred)
 
+    report = classification_report(gnn_pred, extracted_pred)
     print(f"model {i}, with formula {formula}")
-    print(classification_report(gnn_pred, extracted_pred))
+    print(report)
     print(
         "Macro precision:",
         extracted_precision,
@@ -81,6 +85,15 @@ for i, (model_weights, formula) in enumerate(zip(models, inference_formulas)):
         extracted_recall,
         end="\n\n",
     )
+
+    reports.append(
+        f"model {i}, with formula {formula}\n{str(report)}\n"
+        f"Macro precision: {extracted_precision}\nMacro recall: {extracted_recall}\n\n"
+    )
+
+with open(inference_comparison_file, "w", encoding="utf-8") as f:
+    for report in reports:
+        f.write(report)
 
 # formula = AND(
 #     Property("RED"), Exist(AND(Role("EDGE"), Property("RED")), lower=1, upper=None)
