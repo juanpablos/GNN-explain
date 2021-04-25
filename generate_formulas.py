@@ -189,7 +189,7 @@ def main(use_formula: FOC):
         "mlp_layers": 1,  # the number of layers in A and V
         "combine_layers": 2,  # layers in the combine MLP if combine_type=mlp
         "task": "node",
-        "use_batch_norm": True,
+        "use_batch_norm": False,
     }
     model_config_hash = hashlib.md5(
         json.dumps(model_config, sort_keys=True).encode()
