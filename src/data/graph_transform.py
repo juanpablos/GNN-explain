@@ -3,6 +3,7 @@ from typing import Any, List
 import networkx as nx
 import torch
 from torch_geometric.data import Data
+from torch_geometric.utils import to_networkx
 
 
 def stream_transform(
@@ -39,7 +40,5 @@ def stream_transform(
     return Data(x=x, edge_index=edges.t().contiguous(), y=labels)
 
 
-def graph_file_loader():
-
-    # TODO
-    pass
+def graph_data_to_graph(graph_data: Data) -> nx.Graph:
+    return to_networkx(graph_data, node_attrs=["properties"], to_undirected=True)

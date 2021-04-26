@@ -1,6 +1,9 @@
+import os
 from typing import List
 
-from src.data.graph_transform import stream_transform
+import torch
+
+from src.data.graph_transform import graph_data_to_graph, stream_transform
 from src.graphs import *
 
 
@@ -13,6 +16,7 @@ def graph_object_stream(
     property_distribution: str = "uniform",
     distribution: List[float] = None,
     verbose: int = 0,
+    number_of_graphs: int = None,
     **kwargs
 ):
 
@@ -25,7 +29,7 @@ def graph_object_stream(
     )
     _properties = property_generator(
         graph_generator=_generator,
-        number_of_graphs=None,
+        number_of_graphs=number_of_graphs,
         n_properties=n_properties,
         property_distribution=property_distribution,
         distribution=distribution,
@@ -46,6 +50,7 @@ def graph_data_stream(
     property_distribution: str = "uniform",
     distribution: List[float] = None,
     verbose: int = 0,
+    number_of_graphs: int = None,
     **kwargs
 ):
     """
@@ -74,10 +79,32 @@ def graph_data_stream(
         property_distribution=property_distribution,
         distribution=distribution,
         verbose=verbose,
+        number_of_graphs=number_of_graphs,
         **kwargs
     )
 
     for graph in graphs:
+        labels = formula(graph)
+        yield stream_transform(
+            graph=graph,
+            node_labels=labels,
+            n_node_features=n_properties,
+            feature_type="categorical",
+        )
+
+
+def graph_data_stream_pregenerated_graphs(
+    formula: FOC,
+    graphs_path: str,
+    graphs_filename: str,
+    n_properties: int = 10,
+    **kwargs
+):
+    graph_data_path = os.path.join(graphs_path, graphs_filename)
+    graphs_data = torch.load(graph_data_path)
+
+    for graph_data in graphs_data:
+        graph = graph_data_to_graph(graph_data)
         labels = formula(graph)
         yield stream_transform(
             graph=graph,
