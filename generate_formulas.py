@@ -33,6 +33,7 @@ def run_experiment(
     total_graphs: int,
     test_size: int,
     batch_size: int = 64,
+    test_batch_size: int = 1024,
     iterations: int = 100,
     gpu_num: int = 0,
     data_workers: int = 2,
@@ -121,7 +122,7 @@ def run_experiment(
             trainer.init_dataloader(
                 test_data,
                 mode="test",
-                batch_size=test_size,
+                batch_size=test_batch_size,
                 pin_memory=False,
                 shuffle=True,
                 num_workers=data_workers,
@@ -267,6 +268,7 @@ def main(use_formula: FOC):
     test_size = 500 if not use_preloaded_graphs else -1
     # the size of the training batch
     batch_size = 128
+    test_batch_size = 1024
     # if true, the test set is generated only one time and all models are
     # tested against that
     unique_test = True
@@ -282,6 +284,7 @@ def main(use_formula: FOC):
         total_graphs=total_graphs,
         n_graphs=n_graphs,
         batch_size=batch_size,
+        test_batch_size=test_batch_size,
         test_size=test_size,
         seed=seed,
         stop_when=stop_when,
@@ -301,6 +304,7 @@ def main(use_formula: FOC):
         total_graphs=total_graphs,
         test_size=test_size,
         batch_size=batch_size,
+        test_batch_size=test_batch_size,
         iterations=iterations,
         gpu_num=0,
         data_workers=0,
