@@ -17,7 +17,7 @@ def graph_object_stream(
     distribution: List[float] = None,
     verbose: int = 0,
     number_of_graphs: int = None,
-    **kwargs
+    **kwargs,
 ):
 
     _generator = graph_generator(
@@ -25,7 +25,7 @@ def graph_object_stream(
         min_nodes=min_nodes,
         max_nodes=max_nodes,
         seed=seed,
-        **kwargs
+        **kwargs,
     )
     _properties = property_generator(
         graph_generator=_generator,
@@ -51,7 +51,7 @@ def graph_data_stream(
     distribution: List[float] = None,
     verbose: int = 0,
     number_of_graphs: int = None,
-    **kwargs
+    **kwargs,
 ):
     """
 
@@ -80,7 +80,7 @@ def graph_data_stream(
         distribution=distribution,
         verbose=verbose,
         number_of_graphs=number_of_graphs,
-        **kwargs
+        **kwargs,
     )
 
     for graph in graphs:
@@ -98,7 +98,7 @@ def graph_data_stream_pregenerated_graphs(
     graphs_path: str,
     graphs_filename: str,
     n_properties: int = 10,
-    **kwargs
+    **kwargs,
 ):
     graph_data_path = os.path.join(graphs_path, graphs_filename)
     graphs_data = torch.load(graph_data_path)

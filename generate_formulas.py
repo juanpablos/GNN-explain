@@ -12,8 +12,8 @@ import torch
 
 from src.data.datasets import GraphDataset
 from src.data.formula_index import FormulaMapping
-from src.data.sampler import SubsetSampler
-from src.generate_graphs import graph_data_stream
+from src.data.sampler import PreloadedDataSampler, SubsetSampler
+from src.generate_graphs import graph_data_stream, graph_data_stream_pregenerated_graphs
 from src.graphs import *
 from src.run_logic import run, seed_everything
 from src.training.gnn_training import GNNTrainer
@@ -41,23 +41,50 @@ def run_experiment(
     unique_test: bool = True,
     remove_batchnorm_when_trained: bool = True,
 ):
+    seed = data_config.get("seed", None)
 
     logger.debug("Initializing graph stream")
-    stream = graph_data_stream(**data_config)
+    if data_config.get("use_preloaded_graphs"):
+        logger.info("Using preloaded graphs")
+        logger.debug("Loading train graphs")
+        train_stream = graph_data_stream_pregenerated_graphs(
+            **data_config,
+            graphs_path=os.path.join("data", "graphs"),
+            graphs_filename="train_graphs.pt",
+        )
+        logger.debug("Loading test graphs")
+        test_stream = graph_data_stream_pregenerated_graphs(
+            **data_config,
+            graphs_path=os.path.join("data", "graphs"),
+            graphs_filename="test_graphs.pt",
+        )
+        logger.debug("Unpacking preloaded train dataset")
+        train_data_pool = GraphDataset(train_stream, limit=None)
+        logger.debug("Unpacking preloaded test dataset")
+        test_data_pool = GraphDataset(test_stream, limit=None)
 
-    logger.info(f"Pre-generating database of {total_graphs} graphs")
-    data_pool = GraphDataset(stream, limit=total_graphs)
-    logger.info("Finished pre-generating")
+        logger.debug("Initializing subsampler")
+        data_sampler = PreloadedDataSampler(
+            dataset=train_data_pool,
+            test_dataset=test_data_pool,
+            n_elements=n_graphs,
+            seed=seed,
+        )
+    else:
+        stream = graph_data_stream(**data_config)
 
-    seed = data_config.get("seed", None)
-    logger.debug("Initializing subsampler")
-    data_sampler = SubsetSampler(
-        dataset=data_pool,
-        n_elements=n_graphs,
-        test_size=test_size,
-        seed=seed,
-        unique_test=unique_test,
-    )
+        logger.info(f"Pre-generating database of {total_graphs} graphs")
+        data_pool = GraphDataset(stream, limit=total_graphs)
+        logger.info("Finished pre-generating")
+
+        logger.debug("Initializing subsampler")
+        data_sampler = SubsetSampler(
+            dataset=data_pool,
+            n_elements=n_graphs,
+            test_size=test_size,
+            seed=seed,
+            unique_test=unique_test,
+        )
 
     models = []
     stats = {"macro": defaultdict(int), "micro": defaultdict(int)}
@@ -70,6 +97,9 @@ def run_experiment(
             logger.debug("Subsampling dataset")
             train_data, test_data = data_sampler()
             logger.debug("Finished Subsampling dataset")
+            logger.debug(
+                f"Training with {len(train_data)} graphs, testing with {len(test_data)} graphs"
+            )
 
             trainer = GNNTrainer(
                 logging_variables=[
@@ -172,7 +202,8 @@ def main(use_formula: FOC):
     # seed = 10
     seed_everything(seed)
 
-    n_models = 5000
+    # n_models = 5000
+    n_models = 20
     model_name = "acgnn"
 
     input_dim = 4
@@ -198,7 +229,9 @@ def main(use_formula: FOC):
     formula = use_formula
     formula_hash = hashlib.md5(repr(formula).encode()).hexdigest()[:10]
 
+    use_preloaded_graphs = True
     data_config = {
+        "use_preloaded_graphs": use_preloaded_graphs,
         "generator_fn": "random",
         "min_nodes": 10,
         "max_nodes": 60,
@@ -213,7 +246,7 @@ def main(use_formula: FOC):
         "m": 4,
     }
 
-    save_path = f"data/gnns_v3/{model_config_hash}"
+    save_path = f"data/gnns_v4/{model_config_hash}"
     # ! manual operation
     os.makedirs(save_path, exist_ok=True)
     # * model_name - number of models - model hash - formula hash
@@ -227,11 +260,11 @@ def main(use_formula: FOC):
     }
 
     # total graphs to pre-generate
-    total_graphs = 100_000
+    total_graphs = 100_000 if not use_preloaded_graphs else -1
     # graphs selected per training session / model
     n_graphs = 5120
     # how many graphs are selected for the testing
-    test_size = 500
+    test_size = 500 if not use_preloaded_graphs else -1
     # the size of the training batch
     batch_size = 128
     # if true, the test set is generated only one time and all models are
@@ -297,7 +330,7 @@ if __name__ == "__main__":
     logger.propagate = False
 
     ch = logging.StreamHandler()
-    ch.setLevel(logging.INFO)
+    ch.setLevel(logging.DEBUG)
     _console_f = logging.Formatter("%(levelname)-8s: %(message)s")
     ch.setFormatter(_console_f)
 

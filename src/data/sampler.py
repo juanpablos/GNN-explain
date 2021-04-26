@@ -83,3 +83,25 @@ class SubsetSampler(Generic[T]):
             train_set = NoLabelSubset(self.dataset, ind)
 
         return train_set, test_set
+
+
+class PreloadedDataSampler(SubsetSampler[T]):
+    def __init__(
+        self,
+        dataset: NoLabelDataset[T],
+        test_dataset: NoLabelDataset[T],
+        n_elements: int,
+        seed: Any,
+    ):
+        super().__init__(
+            dataset=dataset,
+            n_elements=n_elements,
+            test_size=0,
+            seed=seed,
+            unique_test=False,
+        )
+        self.test_dataset = test_dataset
+
+    def __call__(self):
+        ind = self.rand.choice(self.indices, size=self.sample, replace=False)
+        return NoLabelSubset(self.dataset, ind), self.test_dataset
