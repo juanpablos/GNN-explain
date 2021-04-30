@@ -2,6 +2,8 @@ from typing import Any, List
 
 import networkx as nx
 import torch
+import torch.nn
+import torch.nn.functional as F
 from torch_geometric.data import Data
 from torch_geometric.utils import to_networkx
 
@@ -33,11 +35,27 @@ def stream_transform(
     )
 
     if feature_type == "categorical":
-        x = torch.nn.functional.one_hot(features, n_node_features).float()
+        x = F.one_hot(features, n_node_features).float()
     else:
         x = features
 
     return Data(x=x, edge_index=edges.t().contiguous(), y=labels)
+
+
+def graph_data_to_labeled_data(
+    graph_data: Data,
+    node_labels: List[List[Any]],
+    n_node_features: int,
+    feature_type: str = "categorical",
+) -> Data:
+    features = graph_data.properties.long()
+    if feature_type == "categorical":
+        x = F.one_hot(features, n_node_features).float()
+    else:
+        x = features
+    labels = torch.tensor(node_labels, dtype=torch.long)
+
+    return Data(x=x, edge_index=graph_data.edge_index, y=labels)
 
 
 def graph_data_to_graph(graph_data: Data) -> nx.Graph:

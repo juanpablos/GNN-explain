@@ -4,7 +4,11 @@ from typing import List
 
 import torch
 
-from src.data.graph_transform import graph_data_to_graph, stream_transform
+from src.data.graph_transform import (
+    graph_data_to_graph,
+    graph_data_to_labeled_data,
+    stream_transform,
+)
 from src.graphs import *
 
 logger = logging.getLogger(__name__)
@@ -113,14 +117,15 @@ def graph_data_stream_pregenerated_graphs(
         logger.debug("Trying to load pregenerated labels")
         try:
             graphs_labels = torch.load(
-                os.path.join("data", "graphs", "label", pregenerated_labels_file)
+                os.path.join("data", "graphs", "labels", pregenerated_labels_file)
             )
         except FileNotFoundError:
             logger.debug("File not found")
         else:
-            for graph, labels in zip(graphs_data, graphs_labels):
-                yield stream_transform(
-                    graph=graph,
+            logger.debug("Loading pregenerated labels")
+            for graph_data, labels in zip(graphs_data, graphs_labels):
+                yield graph_data_to_labeled_data(
+                    graph_data=graph_data,
                     node_labels=labels,
                     n_node_features=n_properties,
                     feature_type="categorical",
