@@ -22,6 +22,15 @@ def generate_graph_labels(graphs, use_formula):
     return graph_labels
 
 
+def list_existing_labels(labels_path):
+    existing_hashes = set()
+    for label_file in os.listdir(labels_path):
+        if label_file.endswith(".pt"):
+            _hash = label_file.split("_labels")[0]
+            existing_hashes.add(_hash)
+    return existing_hashes
+
+
 graphs_path = os.path.join("data", "graphs")
 graph_labels_path = os.path.join(graphs_path, "labels")
 os.makedirs(graph_labels_path, exist_ok=True)
@@ -37,8 +46,14 @@ formula_mapping = FormulaMapping(os.path.join("data", "formulas.json"))
 train_graphs_data = torch.load(os.path.join(graphs_path, train_filename))
 test_graphs_data = torch.load(os.path.join(graphs_path, test_filename))
 
+pre_existing_labels = list_existing_labels(graph_labels_path)
+
 for formula_hash, formula_file in formula_files.items():
     formula = FOC(formula_mapping[formula_hash])
+    if formula_hash in pre_existing_labels:
+        print("Skipping", formula_hash, str(formula))
+        continue
+
     print("Currently labeling for", formula_hash, str(formula))
 
     train_graph_labels = generate_graph_labels(
