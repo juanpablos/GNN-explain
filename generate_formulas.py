@@ -41,6 +41,7 @@ def run_experiment(
     stop_when: StopFormat = None,
     unique_test: bool = True,
     remove_batchnorm_when_trained: bool = True,
+    formula_hash: str = None,
 ):
     seed = data_config.get("seed", None)
 
@@ -51,13 +52,19 @@ def run_experiment(
         train_stream = graph_data_stream_pregenerated_graphs(
             **data_config,
             graphs_path=os.path.join("data", "graphs"),
-            graphs_filename="train_graphs.pt",
+            graphs_filename="train_graphs_177100.pt",
+            pregenerated_labels_file=f"{formula_hash}_labels_train.pt"
+            if formula_hash is not None
+            else None,
         )
         logger.debug("Loading test graphs")
         test_stream = graph_data_stream_pregenerated_graphs(
             **data_config,
             graphs_path=os.path.join("data", "graphs"),
-            graphs_filename="test_graphs.pt",
+            graphs_filename="test_graphs_5313.pt",
+            pregenerated_labels_file=f"{formula_hash}_labels_test.pt"
+            if formula_hash is not None
+            else None,
         )
         logger.debug("Unpacking preloaded train dataset")
         train_data_pool = GraphDataset(train_stream, limit=None)
@@ -150,12 +157,12 @@ def run_experiment(
 
             model.cpu()
             weights = model.state_dict()
-            models.append(weights)
-
             metrics = trainer.metric_logger
 
-            stats["macro"][str(round(metrics["test_macro"], 3))] += 1
-            stats["micro"][str(round(metrics["test_micro"], 3))] += 1
+            models.append((weights, metrics["test_macro"], metrics["test_micro"]))
+
+            stats["macro"][str(round(metrics["test_macro"], 6))] += 1
+            stats["micro"][str(round(metrics["test_micro"], 6))] += 1
 
     except KeyboardInterrupt:
         logger.info("Manually Interrumpted")
@@ -256,19 +263,20 @@ def main(use_formula: FOC):
     iterations = 30
     stop_when: StopFormat = {
         "operation": "and",  # and or or
-        "conditions": {"test_micro": 0.999, "test_macro": 0.999},
+        # "conditions": {"test_micro": 1, "test_macro": 1},
+        "conditions": {"test_micro": 0.9999, "test_macro": 0.9999},
         "stay": 2,
     }
 
     # total graphs to pre-generate
     total_graphs = 100_000 if not use_preloaded_graphs else -1
     # graphs selected per training session / model
-    n_graphs = 5120
+    n_graphs = 10_000
     # how many graphs are selected for the testing
     test_size = 500 if not use_preloaded_graphs else -1
     # the size of the training batch
     batch_size = 128
-    test_batch_size = 1024
+    test_batch_size = 10_000
     # if true, the test set is generated only one time and all models are
     # tested against that
     unique_test = True
@@ -312,6 +320,7 @@ def main(use_formula: FOC):
         stop_when=stop_when,
         unique_test=unique_test,
         remove_batchnorm_when_trained=False,
+        formula_hash=formula_hash,
     )
     end = timer()
     time_elapsed = end - start
@@ -321,7 +330,10 @@ def main(use_formula: FOC):
 
 
 if __name__ == "__main__":
-    __formula_index = sys.argv[1]
+    try:
+        __formula_index = sys.argv[1]
+    except IndexError:
+        __formula_index = "manual"
 
     _formula_path = "data/"
 

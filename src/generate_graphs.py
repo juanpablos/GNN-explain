@@ -1,3 +1,4 @@
+import logging
 import os
 from typing import List
 
@@ -5,6 +6,8 @@ import torch
 
 from src.data.graph_transform import graph_data_to_graph, stream_transform
 from src.graphs import *
+
+logger = logging.getLogger(__name__)
 
 
 def graph_object_stream(
@@ -98,12 +101,38 @@ def graph_data_stream_pregenerated_graphs(
     graphs_path: str,
     graphs_filename: str,
     n_properties: int = 10,
+    pregenerated_labels_file: str = None,
     **kwargs,
 ):
     graph_data_path = os.path.join(graphs_path, graphs_filename)
     graphs_data = torch.load(graph_data_path)
 
-    for graph_data in graphs_data:
+    logger.debug("Finished loading graphs")
+
+    if pregenerated_labels_file is not None:
+        logger.debug("Trying to load pregenerated labels")
+        try:
+            graphs_labels = torch.load(
+                os.path.join("data", "graphs", "label", pregenerated_labels_file)
+            )
+        except FileNotFoundError:
+            logger.debug("File not found")
+        else:
+            for graph, labels in zip(graphs_data, graphs_labels):
+                yield stream_transform(
+                    graph=graph,
+                    node_labels=labels,
+                    n_node_features=n_properties,
+                    feature_type="categorical",
+                )
+            return  # stop here, already returned all graph data
+
+    logger.debug("Generating labels on-demand")
+    total_data = len(graphs_data)
+    for i, graph_data in enumerate(graphs_data):
+        if i % 10000 == 0:
+            logger.debug(f"{i}/{total_data}")
+
         graph = graph_data_to_graph(graph_data)
         labels = formula(graph)
         yield stream_transform(
