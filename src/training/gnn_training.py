@@ -108,7 +108,7 @@ class GNNTrainer(Trainer):
         return self.loss
 
     def init_optim(self, lr):
-        self.optim = optim.Adam(self.model.parameters(), lr=lr, weight_decay=0)
+        self.optim = optim.Adam(self.model.parameters(), lr=lr, weight_decay=1e-4)
         return self.optim
 
     def init_dataloader(
