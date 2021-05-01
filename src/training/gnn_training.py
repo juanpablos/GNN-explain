@@ -3,7 +3,6 @@ from typing import List, Literal, Tuple, Union
 import numpy as np
 import torch
 import torch.nn as nn
-import torch.optim as optim
 from torch_geometric.data import DataLoader
 from torch_scatter import scatter_mean
 
@@ -38,7 +37,9 @@ class GNNTrainer(Trainer):
     loss: nn.Module
     model: ACGNN
     optim: torch.optim.Optimizer
+    scheduler: torch.optim.lr_scheduler._LRScheduler
     train_loader: DataLoader
+    train_test_loader: DataLoader
     test_loader: DataLoader
 
     available_metrics = [
@@ -108,11 +109,21 @@ class GNNTrainer(Trainer):
         return self.loss
 
     def init_optim(self, lr):
-        self.optim = optim.Adam(self.model.parameters(), lr=lr, weight_decay=1e-4)
+        self.optim = torch.optim.Adam(self.model.parameters(), lr=lr, weight_decay=1e-4)
+        self.init_scheduler()
         return self.optim
 
+    def init_scheduler(self):
+        self.scheduler = torch.optim.lr_scheduler.StepLR(
+            optimizer=self.optim, step_size=10, gamma=0.1
+        )
+
     def init_dataloader(
-        self, data, mode: Union[Literal["train"], Literal["test"]], **kwargs
+        self,
+        data,
+        mode: Union[Literal["train"], Literal["test"]],
+        create_train_test_loader: bool = True,
+        **kwargs
     ):
 
         if mode not in ["train", "test"]:
@@ -123,6 +134,9 @@ class GNNTrainer(Trainer):
             self.train_loader = loader
         elif mode == "test":
             self.test_loader = loader
+
+            if create_train_test_loader:
+                self.train_test_loader = DataLoader(self.train_loader.dataset, **kwargs)
 
         return loader
 
@@ -149,6 +163,7 @@ class GNNTrainer(Trainer):
 
             accum_loss.append(loss.detach().cpu().numpy())
 
+        self.scheduler.step()
         average_loss = np.mean(accum_loss)
 
         self.metric_logger.update(train_loss=average_loss)
@@ -167,7 +182,13 @@ class GNNTrainer(Trainer):
         n_graphs = 0
         accum_loss = []
 
-        loader = self.train_loader if use_train_data else self.test_loader
+        if use_train_data:
+            if hasattr(self, "train_test_loader"):
+                loader = self.train_test_loader
+            else:
+                loader = self.train_loader
+        else:
+            loader = self.test_loader
 
         for data in loader:
             data = data.to(self.device)
