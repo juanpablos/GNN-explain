@@ -1,8 +1,9 @@
 import logging
 import os
-from typing import List
+from typing import Generator, List, Tuple
 
 import torch
+from torch_geometric.data.data import Data
 
 from src.data.graph_transform import (
     graph_data_to_graph,
@@ -100,18 +101,79 @@ def graph_data_stream(
         )
 
 
-def graph_data_stream_pregenerated_graphs(
+def graph_data_stream_pregenerated_graphs_train(
     formula: FOC,
     graphs_path: str,
     graphs_filename: str,
     n_properties: int = 10,
     pregenerated_labels_file: str = None,
     **kwargs,
-):
+) -> Generator[Tuple[Tuple[float, ...], Data], None, None]:
     graph_data_path = os.path.join(graphs_path, graphs_filename)
     graphs_data = torch.load(graph_data_path)
 
-    logger.debug("Finished loading graphs")
+    logger.debug("Finished loading train graphs")
+
+    if pregenerated_labels_file is not None:
+        logger.debug("Trying to load pregenerated labels")
+        try:
+            graphs_labels_data = torch.load(
+                os.path.join("data", "graphs", "labels", pregenerated_labels_file)
+            )
+        except FileNotFoundError:
+            logger.debug("File not found")
+        else:
+            logger.debug("Loading pregenerated labels")
+            for label_distribution, graphs in graphs_data.items():
+                graphs_labels = graphs_labels_data[label_distribution]
+
+                for graph_data, labels in zip(graphs, graphs_labels):
+                    yield (
+                        label_distribution,
+                        graph_data_to_labeled_data(
+                            graph_data=graph_data,
+                            node_labels=labels,
+                            n_node_features=n_properties,
+                            feature_type="categorical",
+                        ),
+                    )
+            return  # stop here, already returned all graph data
+
+    logger.debug("Generating labels on-demand")
+    counter = 0
+    total_data = len(graphs_data) * len(next(iter(graphs_data.values())))
+    for label_distribution, graphs in graphs_data.items():
+        if counter % 10000 == 0:
+            logger.debug(f"{counter}/{total_data}")
+
+        for graph_data in graphs:
+            graph = graph_data_to_graph(graph_data)
+            labels = formula(graph)
+            yield (
+                label_distribution,
+                stream_transform(
+                    graph=graph,
+                    node_labels=labels,
+                    n_node_features=n_properties,
+                    feature_type="categorical",
+                ),
+            )
+
+        counter += len(graphs)
+
+
+def graph_data_stream_pregenerated_graphs_test(
+    formula: FOC,
+    graphs_path: str,
+    graphs_filename: str,
+    n_properties: int = 10,
+    pregenerated_labels_file: str = None,
+    **kwargs,
+) -> Generator[Data, None, None]:
+    graph_data_path = os.path.join(graphs_path, graphs_filename)
+    graphs_data = torch.load(graph_data_path)
+
+    logger.debug("Finished loading test graphs")
 
     if pregenerated_labels_file is not None:
         logger.debug("Trying to load pregenerated labels")

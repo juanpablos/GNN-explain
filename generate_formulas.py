@@ -13,7 +13,11 @@ import torch
 from src.data.datasets import GraphDataset
 from src.data.formula_index import FormulaMapping
 from src.data.sampler import PreloadedDataSampler, SubsetSampler
-from src.generate_graphs import graph_data_stream, graph_data_stream_pregenerated_graphs
+from src.generate_graphs import (
+    graph_data_stream,
+    graph_data_stream_pregenerated_graphs_test,
+    graph_data_stream_pregenerated_graphs_train,
+)
 from src.graphs import *
 from src.run_logic import run, seed_everything
 from src.training.gnn_training import GNNTrainer
@@ -49,19 +53,19 @@ def run_experiment(
     if data_config.get("use_preloaded_graphs"):
         logger.info("Using preloaded graphs")
         logger.debug("Loading train graphs")
-        train_stream = graph_data_stream_pregenerated_graphs(
+        train_stream = graph_data_stream_pregenerated_graphs_train(
             **data_config,
             graphs_path=os.path.join("data", "graphs"),
-            graphs_filename="train_graphs_177100.pt",
+            graphs_filename="train_graphs_v2_354200.pt",
             pregenerated_labels_file=f"{formula_hash}_labels_train.pt"
             if formula_hash is not None
             else None,
         )
         logger.debug("Loading test graphs")
-        test_stream = graph_data_stream_pregenerated_graphs(
+        test_stream = graph_data_stream_pregenerated_graphs_test(
             **data_config,
             graphs_path=os.path.join("data", "graphs"),
-            graphs_filename="test_graphs_5313.pt",
+            graphs_filename="test_graphs_v2_10626.pt",
             pregenerated_labels_file=f"{formula_hash}_labels_test.pt"
             if formula_hash is not None
             else None,
@@ -73,9 +77,9 @@ def run_experiment(
 
         logger.debug("Initializing subsampler")
         data_sampler = PreloadedDataSampler(
-            dataset=train_data_pool,
+            train_dataset=train_data_pool,
             test_dataset=test_data_pool,
-            n_elements=n_graphs,
+            n_elements_per_distribution=5,
             seed=seed,
         )
     else:
@@ -113,7 +117,9 @@ def run_experiment(
                 logging_variables=[
                     "train_loss",
                     "test_loss",
+                    # "train_macro",
                     "test_macro",
+                    # "train_micro",
                     "test_micro",
                 ]
             )
@@ -131,8 +137,9 @@ def run_experiment(
                 mode="test",
                 batch_size=test_batch_size,
                 pin_memory=False,
-                shuffle=True,
+                shuffle=False,
                 num_workers=data_workers,
+                create_train_test_loader=True,
             )
 
             trainer.init_model(**model_config)
@@ -143,6 +150,7 @@ def run_experiment(
                 gpu_num=gpu_num,
                 lr=lr,
                 stop_when=stop_when,
+                run_train_test=False,
             )
             if remove_batchnorm_when_trained:
                 trainer.remove_batchnorm()
@@ -171,8 +179,7 @@ def run_experiment(
             o.write(f"Interrupted work in file {save_path}\n")
             o.write(f"Only {len(models)} models were written\n")
     except Exception as e:
-        logger.error(f"Exception encountered: {type(e).__name__}")
-        logger.error(f"Message: {e}")
+        logger.exception(f"Exception encountered: {type(e).__name__}")
         _error_file = f"{save_path}/{filename.format(len(models))}.error"
         with open(_error_file, "w") as o:
             o.write(f"Problem in file {save_path}/{filename.format('X')}\n")
@@ -206,12 +213,12 @@ def run_experiment(
 
 
 def main(use_formula: FOC):
-    seed = random.randint(1, 1 << 30)
-    # seed = 10
+    # seed = random.randint(1, 1 << 30)
+    seed = 42
     seed_everything(seed)
 
     # n_models = 5000
-    n_models = 20
+    n_models = 100
     model_name = "acgnn"
 
     input_dim = 4
@@ -260,22 +267,24 @@ def main(use_formula: FOC):
     # * model_name - number of models - model hash - formula hash
     filename = f"{model_name}-" + "n{}" + f"-{model_config_hash}-{formula_hash}.pt"
 
-    iterations = 30
+    iterations = 15
+
     stop_when: StopFormat = {
         "operation": "and",  # and or or
-        # "conditions": {"test_micro": 1, "test_macro": 1},
-        "conditions": {"test_micro": 0.9999, "test_macro": 0.9999},
-        "stay": 2,
+        "conditions": {"test_micro": 1, "test_macro": 1},
+        # "conditions": {"test_micro": 0.9999, "test_macro": 0.9999},
+        "stay": 0,
+        # "stay": 2,
     }
 
     # total graphs to pre-generate
     total_graphs = 100_000 if not use_preloaded_graphs else -1
     # graphs selected per training session / model
-    n_graphs = 10_000
+    n_graphs = 20_000
     # how many graphs are selected for the testing
     test_size = 500 if not use_preloaded_graphs else -1
     # the size of the training batch
-    batch_size = 128
+    batch_size = 16
     test_batch_size = 10_000
     # if true, the test set is generated only one time and all models are
     # tested against that
@@ -316,7 +325,7 @@ def main(use_formula: FOC):
         iterations=iterations,
         gpu_num=0,
         data_workers=0,
-        lr=0.01,
+        lr=5e-3,
         stop_when=stop_when,
         unique_test=unique_test,
         remove_batchnorm_when_trained=False,
@@ -340,7 +349,7 @@ if __name__ == "__main__":
     if __formula_index == "manual":
         _formula_filename = "manual_formulas.json"
     else:
-        _formula_filename = f"formulas_v3.json.{__formula_index}"
+        _formula_filename = f"manual_formulas.json.{__formula_index}"
 
     logger.setLevel(logging.DEBUG)
     logger.propagate = False

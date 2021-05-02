@@ -1,9 +1,13 @@
-from typing import Any, Generic
+import logging
+from collections import defaultdict
+from typing import Any, Generic, Tuple
 
 import numpy as np
 
 from src.data.datasets import NoLabelDataset, NoLabelSubset
 from src.typing import T
+
+logger = logging.getLogger(__name__)
 
 
 class SubsetSampler(Generic[T]):
@@ -88,20 +92,49 @@ class SubsetSampler(Generic[T]):
 class PreloadedDataSampler(SubsetSampler[T]):
     def __init__(
         self,
-        dataset: NoLabelDataset[T],
+        train_dataset: NoLabelDataset[Tuple[Tuple[float, ...], T]],
         test_dataset: NoLabelDataset[T],
-        n_elements: int,
+        n_elements_per_distribution: int,
         seed: Any,
     ):
-        super().__init__(
-            dataset=dataset,
-            n_elements=n_elements,
-            test_size=0,
-            seed=seed,
-            unique_test=False,
+
+        self.train_dataset_mapping, self.train_dataset = self._regroup_distributions(
+            train_dataset
         )
+
+        if (
+            len(next(iter(self.train_dataset_mapping.values())))
+            < n_elements_per_distribution
+        ):
+            existing_elements = len(next(iter(self.train_dataset_mapping.values())))
+            logger.error(
+                f"Requested {n_elements_per_distribution} elements, only {existing_elements} available"
+            )
+            raise ValueError("Not enough elements for each distribution")
+
+        logger.info(
+            "Each sample iteration will yield "
+            f"{len(self.train_dataset_mapping) * n_elements_per_distribution} training elements"
+        )
+
+        self.sample = n_elements_per_distribution
+        self.rand = np.random.default_rng(seed)
+
         self.test_dataset = test_dataset
 
+    def _regroup_distributions(self, dataset):
+        distribution_mapping = defaultdict(list)
+        cleaned_dataset = []
+        for i, (distribution, data) in enumerate(dataset):
+            distribution_mapping[distribution].append(i)
+            cleaned_dataset.append(data)
+        return distribution_mapping, NoLabelDataset(dataset=cleaned_dataset)
+
     def __call__(self):
-        ind = self.rand.choice(self.indices, size=self.sample, replace=False)
-        return NoLabelSubset(self.dataset, ind), self.test_dataset
+        indices = []
+        for distribution, indices_available in self.train_dataset_mapping.items():
+            ind = self.rand.choice(indices_available, size=self.sample, replace=False)
+            indices.append(ind)
+
+        train_indices = np.concatenate(indices)
+        return NoLabelSubset(self.train_dataset, train_indices), self.test_dataset
