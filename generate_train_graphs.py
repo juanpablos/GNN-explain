@@ -30,7 +30,7 @@ def graph_to_data(graph):
     return _data
 
 
-def generate_tuples():
+def generate_tuples():  # 1771 combinations
     color_tuples = []
     for a in range(0, 101, 5):
         for b in range(0, 101, 5):
