@@ -70,16 +70,16 @@ def run_experiment(
             if formula_hash is not None
             else None,
         )
-        logger.debug("Unpacking preloaded train dataset")
-        train_data_pool = GraphDataset(train_stream, limit=None)
+        # logger.debug("Unpacking preloaded train dataset")
+        # train_data_pool = GraphDataset(train_stream, limit=None)
         logger.debug("Unpacking preloaded test dataset")
         test_data_pool = GraphDataset(test_stream, limit=None)
 
         logger.debug("Initializing subsampler")
         data_sampler = PreloadedDataSampler(
-            train_dataset=train_data_pool,
+            train_dataset=train_stream,
             test_dataset=test_data_pool,
-            n_elements_per_distribution=5,
+            n_elements_per_distribution=15,
             seed=seed,
         )
     else:
@@ -213,8 +213,8 @@ def run_experiment(
 
 
 def main(use_formula: FOC):
-    # seed = random.randint(1, 1 << 30)
-    seed = 42
+    seed = random.randint(1, 1 << 30)
+    # seed = 42
     seed_everything(seed)
 
     # n_models = 5000
@@ -280,12 +280,12 @@ def main(use_formula: FOC):
     # total graphs to pre-generate
     total_graphs = 100_000 if not use_preloaded_graphs else -1
     # graphs selected per training session / model
-    n_graphs = 20_000
+    n_graphs = 20_000 if not use_preloaded_graphs else -1
     # how many graphs are selected for the testing
     test_size = 500 if not use_preloaded_graphs else -1
     # the size of the training batch
     batch_size = 16
-    test_batch_size = 10_000
+    test_batch_size = 20_000
     # if true, the test set is generated only one time and all models are
     # tested against that
     unique_test = True
@@ -310,6 +310,7 @@ def main(use_formula: FOC):
 
     data_config["formula"] = formula
 
+    logger.info(f"Running formula: {str(formula)}")
     start = timer()
     run_experiment(
         n_models=n_models,
@@ -359,7 +360,7 @@ if __name__ == "__main__":
     _console_f = logging.Formatter("%(levelname)-8s: %(message)s")
     ch.setFormatter(_console_f)
 
-    fh = logging.FileHandler(f"{_formula_path}/{_formula_filename}.log")
+    fh = logging.FileHandler(f"{_formula_path}/{_formula_filename}.log", encoding="utf-8")
     fh.setLevel(logging.DEBUG)
     _file_f = logging.Formatter('%(asctime)s %(name)s %(levelname)s "%(message)s"')
     fh.setFormatter(_file_f)

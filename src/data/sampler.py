@@ -1,6 +1,6 @@
 import logging
 from collections import defaultdict
-from typing import Any, Generic, Tuple
+from typing import Any, Generator, Generic, Tuple
 
 import numpy as np
 
@@ -92,7 +92,7 @@ class SubsetSampler(Generic[T]):
 class PreloadedDataSampler(SubsetSampler[T]):
     def __init__(
         self,
-        train_dataset: NoLabelDataset[Tuple[Tuple[float, ...], T]],
+        train_dataset: Generator[Tuple[Tuple[float, ...], T], None, None],
         test_dataset: NoLabelDataset[T],
         n_elements_per_distribution: int,
         seed: Any,
