@@ -93,6 +93,13 @@ def aggregate_formulas(
         for networks, formula_hash in network_loader:
             dataset = []
             for network in networks:
+                try:
+                    # now models are stored like (model, *metrics)
+                    # before it was just the model
+                    network = network[0]
+                except (IndexError, KeyError):
+                    pass
+
                 # legacy
                 if nobatch:
                     network = clean_state(network, assert_nobatch=assert_nobatch)
@@ -169,7 +176,7 @@ def tensor_dict_gnn(root: str, model_hash: str, filename: str, nobatch: bool):
 
 if __name__ == "__main__":
     aggregate_formulas(
-        root="./data/gnns_v2",
+        root="./data/gnns_v4_v2",
         model_hash="40e65407aa",
         filename="aggregated.pt",
         nobatch=True,
