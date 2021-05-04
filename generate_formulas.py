@@ -228,7 +228,7 @@ def main(use_formula: FOC):
     seed_everything(seed)
 
     # n_models = 5000
-    n_models = 100
+    n_models = 500
     model_name = "acgnn"
 
     input_dim = 4
@@ -351,17 +351,15 @@ def main(use_formula: FOC):
 
 
 if __name__ == "__main__":
+    __formula_file = sys.argv[1]
     try:
-        __formula_index = sys.argv[1]
+        __formula_file_index = sys.argv[2]
     except IndexError:
-        __formula_index = "manual"
+        _formula_filename = __formula_file
+    else:
+        _formula_filename = f"{__formula_file}.{__formula_file_index}"
 
     _formula_path = "data/"
-
-    if __formula_index == "manual":
-        _formula_filename = "manual_formulas.json"
-    else:
-        _formula_filename = f"manual_formulas.json.{__formula_index}"
 
     logger.setLevel(logging.DEBUG)
     logger.propagate = False
