@@ -46,7 +46,17 @@ def run_experiment(
     unique_test: bool = True,
     remove_batchnorm_when_trained: bool = True,
     formula_hash: str = None,
+    skip_if_exists: bool = True,
 ):
+    if skip_if_exists:
+        exist, _ = save_file_exists(save_path, filename)
+        if exist:
+            logger.info(
+                f"Skipping formula {str(data_config['formula'])} "
+                "because file already exists"
+            )
+            return
+
     seed = data_config.get("seed", None)
 
     logger.debug("Initializing graph stream")
@@ -331,6 +341,7 @@ def main(use_formula: FOC):
         unique_test=unique_test,
         remove_batchnorm_when_trained=False,
         formula_hash=formula_hash,
+        skip_if_exists=True,
     )
     end = timer()
     time_elapsed = end - start
@@ -360,7 +371,9 @@ if __name__ == "__main__":
     _console_f = logging.Formatter("%(levelname)-8s: %(message)s")
     ch.setFormatter(_console_f)
 
-    fh = logging.FileHandler(f"{_formula_path}/{_formula_filename}.log", encoding="utf-8")
+    fh = logging.FileHandler(
+        f"{_formula_path}/{_formula_filename}.log", encoding="utf-8"
+    )
     fh.setLevel(logging.DEBUG)
     _file_f = logging.Formatter('%(asctime)s %(name)s %(levelname)s "%(message)s"')
     fh.setFormatter(_file_f)
