@@ -1,6 +1,6 @@
 import os
 from collections import defaultdict
-
+import json
 import torch
 from torch_geometric.utils import to_networkx
 
@@ -65,6 +65,8 @@ test_filename = "test_graphs_v2_10626.pt"
 
 gnn_path = os.path.join("data", "full_gnn", "40e65407aa")
 formula_files = prepare_files(path=gnn_path, model_hash="40e65407aa")
+# with open(os.path.join("data", "formulas_v3.json"), encoding="utf-8") as f:
+#     formula_files = json.load(f)
 
 formula_mapping = FormulaMapping(os.path.join("data", "formulas.json"))
 
@@ -72,8 +74,21 @@ train_graphs_data = torch.load(os.path.join(graphs_path, train_filename))
 test_graphs_data = torch.load(os.path.join(graphs_path, test_filename))
 
 pre_existing_labels = list_existing_labels(graph_labels_path)
+manual_run_hashes = []
+# manual_run_hashes = [
+#     "688d12b701",
+#     "676d3c83b1",
+#     "dc670b1bec",
+#     "4805042859",
+#     "652c706f1b",
+#     "a8c45da01a",
+#     "40a6f530d2",
+#     "6aa72b4580",
+# ]
 
-for formula_hash, formula_file in formula_files.items():
+run_hashes = manual_run_hashes if manual_run_hashes else formula_files
+
+for formula_hash in run_hashes:
     formula = FOC(formula_mapping[formula_hash])
     if formula_hash in pre_existing_labels:
         print("Skipping", formula_hash, str(formula))
@@ -89,8 +104,8 @@ for formula_hash, formula_file in formula_files.items():
         os.path.join(graph_labels_path, f"{formula_hash}_labels_train.pt"),
     )
 
-    test_graph_labels = generate_train_labels(
-        train_data=test_graphs_data, use_formula=formula
+    test_graph_labels = generate_test_labels(
+        test_data=test_graphs_data, use_formula=formula
     )
     torch.save(
         test_graph_labels,
