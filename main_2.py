@@ -249,7 +249,8 @@ def run_experiment(
             logger.info(f"Running experiment for crossfold {i}/{n_splits}")
 
             cf_model_name = f"{model_name}_cf{i}"
-            info_filename = f"{info_filename}_cf{i}"
+            cf_plot_filename = f"{plot_filename}_cf{i}"
+            cf_info_filename = f"{info_filename}_cf{i}"
 
             _run_experiment(
                 train_data=train_data,
@@ -268,15 +269,15 @@ def run_experiment(
                 run_train_test=run_train_test,
                 results_path=results_path,
                 model_name=cf_model_name,
-                plot_filename=plot_filename,
+                plot_filename=cf_plot_filename,
                 plot_title=plot_title,
-                info_filename=info_filename,
+                info_filename=cf_info_filename,
                 multilabel=multilabel,
             )
 
         folds_file = os.path.join(results_path, "info", f"{model_name}.folds")
         with open(folds_file, "w", encoding="utf-8") as f:
-            json.dump(datasets.get_folds(), f)
+            json.dump(datasets.get_folds(), f, ensure_ascii=False, indent=2)
     else:
         if isinstance(datasets, tuple):
             logger.debug("Using selected data as test")

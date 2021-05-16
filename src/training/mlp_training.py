@@ -236,6 +236,9 @@ class MLPTrainer(Trainer):
             x = x.to(self.device)
             y = y.to(self.device)
 
+            if x.size(0) == 1:
+                continue
+
             output = self.model(x)
             loss = self.loss(output, self.transform_y(y))
 
