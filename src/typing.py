@@ -84,6 +84,12 @@ class LSTMConfig(LSTMConfigBase, total=False):
     compose_dim: int
 
 
+class CrossFoldConfiguration(TypedDict):
+    n_splits: int
+    shuffle: bool
+    random_state: int
+
+
 class MetricHistory(Protocol):
     def __getitem__(self, key: str) -> float:
         ...

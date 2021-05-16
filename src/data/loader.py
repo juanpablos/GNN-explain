@@ -1,5 +1,6 @@
 import logging
 import os
+from src.data.sampler import NetworkDatasetCrossFoldSampler
 from typing import Any, Dict, List
 
 import torch
@@ -24,7 +25,7 @@ from src.data.formulas.labeler import (
 )
 from src.data.gnn.utils import prepare_files
 from src.data.utils import label_idx2tensor
-from src.typing import S, T
+from src.typing import CrossFoldConfiguration, S, T
 
 logger = logging.getLogger(__name__)
 
@@ -95,6 +96,7 @@ def categorical_loader(
     test_selector: Filter,
     load_aggregated: str = None,
     force_preaggregated: bool = False,
+    cross_fold_configuration: CrossFoldConfiguration = None,
     _legacy_load_without_batch: bool = False,
 ):
 
@@ -154,6 +156,7 @@ def categorical_loader(
             dataset = NetworkDataset.categorical(
                 label=label,
                 formula=formula_object,
+                formula_hash=formula_hash,
                 file=file_path,
                 multilabel=is_multilabel,
                 _legacy_load_without_batch=_legacy_load_without_batch,
@@ -163,11 +166,12 @@ def categorical_loader(
             dataset = NetworkDataset.categorical(
                 label=label,
                 formula=formula_object,
+                formula_hash=formula_hash,
                 preloaded=preloaded[formula_hash],
                 multilabel=is_multilabel,
             )
 
-        if testing_selected_formulas:
+        if testing_selected_formulas and cross_fold_configuration is not None:
             current_indices = [i + total_samples for i in range(len(dataset))]
             if formula_hash in testing_selected_formulas:
                 test_dataset.extend(current_indices)
@@ -178,16 +182,21 @@ def categorical_loader(
         datasets.append(dataset)
         total_samples += len(dataset)
 
-    dataset_all = LabeledDataset.from_iterable(datasets, multilabel=is_multilabel)
-
-    if testing_selected_formulas:
-        assert len(test_dataset) > 0, "test_dataset is empty"
-        return_dataset = (
-            LabeledSubset(dataset=dataset_all, indices=train_dataset),
-            LabeledSubset(dataset=dataset_all, indices=test_dataset),
+    if cross_fold_configuration is not None:
+        return_dataset = NetworkDatasetCrossFoldSampler(
+            datasets=datasets, crossfold_config=cross_fold_configuration
         )
     else:
-        return_dataset = dataset_all
+        dataset_all = LabeledDataset.from_iterable(datasets, multilabel=is_multilabel)
+
+        if testing_selected_formulas:
+            assert len(test_dataset) > 0, "test_dataset is empty"
+            return_dataset = (
+                LabeledSubset(dataset=dataset_all, indices=train_dataset),
+                LabeledSubset(dataset=dataset_all, indices=test_dataset),
+            )
+        else:
+            return_dataset = dataset_all
 
     return (
         return_dataset,
