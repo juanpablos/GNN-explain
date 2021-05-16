@@ -19,9 +19,9 @@ def prepare_files(path: str, model_hash: str = None):
 
 
 data_path = "data"
-gnn_path = "gnns_v3"
+gnn_path = "gnns_v4"
 model_hash = "40e65407aa"
 
-formula_path = os.path.join(data_path, "delete")
-# formula_path = os.path.join(data_path, gnn_path, model_hash)
+# formula_path = os.path.join(data_path, "delete")
+formula_path = os.path.join(data_path, gnn_path, model_hash)
 print(prepare_files(formula_path))

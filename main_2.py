@@ -262,37 +262,36 @@ def main(
     # test_selector.add(RestrictionFilter(lower=4, upper=None))
     test_selector = SelectFilter(
         hashes=[
-            "22609b6219",
-            "d376f80fe0",
-            "4865ca5688",
-            "b739521345",
-            "fd1ede286c",
-            "c1eec67813",
-            "8500dc307e",
-            "530867a9ca",
+            "548c9f191e",
+            "f0c2c63b89",
+            "2d69688180",
+            "ac7a72db0f",
+            "da7c072589",
+            "ddc0cfc54b",
+            "eecfedc45d",
         ]
     )
     # test_selector = NullFilter()
     # * /test_filters
 
     # * labelers
-    label_logic = BinaryAtomicLabeler(atomic="BLACK", hop=1)
+    # label_logic = BinaryAtomicLabeler(atomic="GREEN", hop=1)
     # label_logic = MultiLabelAtomicLabeler()
-    # label_logic = MultilabelRestrictionLabeler(mode="both")
+    label_logic = MultilabelRestrictionLabeler(mode="both")
     labeler = LabelerApply(labeler=label_logic)
     # * /labelers
     data_config: NetworkDataConfig = {
-        "root": "data/full_gnn",
+        "root": "data/gnns_v4",
         "model_hash": model_hash,
         "selector": selector,
         "labeler": labeler,
         "formula_mapping": FormulaMapping("./data/formulas.json"),
         "test_selector": test_selector,
         "load_aggregated": "aggregated.pt",
-        "force_preaggregated": False,
+        "force_preaggregated": True,
     }
 
-    iterations = 10
+    iterations = 50
     test_batch = 1024
 
     if name is None:
@@ -301,7 +300,7 @@ def main(
     hid = "+".join([f"{l}L{val}" for l, val in enumerate(hidden_layers, start=1)])
     msg = f"{name}-{hid}-{train_batch}b-{lr}lr"
 
-    results_path = f"./results/full_gnn/testing/{model_hash}"
+    results_path = f"./results/v4/testing/{model_hash}"
     plot_file = None
     if make_plots:
         plot_file = msg
@@ -359,8 +358,8 @@ if __name__ == "__main__":
     #         main(seed=42, train_batch=__batch, lr=__lr, hidden_layers=__layers)
     main(
         seed=0,
-        train_batch=1024,
-        lr=5e-3,
+        train_batch=32,
+        lr=5e-4,
         hidden_layers=__layers,
         save_model=True,
         make_plots=True,
