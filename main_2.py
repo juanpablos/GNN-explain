@@ -1,21 +1,27 @@
+import json
 import logging
 import os
 import random
 from timeit import default_timer as timer
-from typing import List
+from typing import Dict, List, Union
 
 import torch
 from sklearn.metrics import classification_report
+from torch.functional import Tensor
 
+from src.data.auxiliary import NetworkDatasetCollectionWrapper
+from src.data.datasets import LabeledDataset, LabeledSubset
 from src.data.formula_index import FormulaMapping
 from src.data.formulas import *
 from src.data.formulas.labeler import MultiLabelCategoricalLabeler
 from src.data.loader import categorical_loader
+from src.data.sampler import NetworkDatasetCrossFoldSampler
 from src.data.utils import get_input_dim, get_label_distribution, train_test_dataset
 from src.eval_utils import evaluate_model
+from src.graphs.foc import Element
 from src.run_logic import run, seed_everything
 from src.training.mlp_training import MLPTrainer
-from src.typing import MinModelConfig, NetworkDataConfig
+from src.typing import CrossFoldConfiguration, MinModelConfig, NetworkDataConfig, S
 from src.utils import write_result_info
 from src.visualization.confusion_matrix import (
     plot_confusion_matrix,
@@ -27,14 +33,16 @@ logger = logging.getLogger("src")
 logger_metrics = logging.getLogger("metrics")
 
 
-def run_experiment(
+def _run_experiment(
+    train_data: Union[LabeledDataset[Tensor, S], LabeledSubset[Tensor, S]],
+    test_data: Union[LabeledDataset[Tensor, S], LabeledSubset[Tensor, S]],
+    class_mapping: Dict[S, str],
+    hash_formula: Dict[str, Element],
+    hash_label: Dict[str, S],
+    data_reconstruction: NetworkDatasetCollectionWrapper,
     model_config: MinModelConfig,
-    data_config: NetworkDataConfig,
     iterations: int = 100,
     gpu_num: int = 0,
-    seed: int = 10,
-    test_size: float = 0.25,
-    stratify: bool = True,
     data_workers: int = 2,
     batch_size: int = 64,
     test_batch_size: int = 512,
@@ -46,40 +54,15 @@ def run_experiment(
     plot_title: str = None,
     info_filename: str = "info",
     multilabel: bool = True,
-    _legacy_load_without_batch: bool = False,
 ):
 
-    logger.info("Loading Files")
+    logger.info("Running experiment")
     # class_mapping: label_id -> label_name
     # hash_formula: formula_hash -> formula_object
     # hash_label:
     #   single label: formula_hash -> label_id
     #   multilabel: formula_hash -> List[label_id]
     # data_reconstruction: point_index -> formula_object
-    (
-        datasets,
-        class_mapping,
-        hash_formula,
-        hash_label,
-        data_reconstruction,
-    ) = categorical_loader(
-        **data_config, _legacy_load_without_batch=_legacy_load_without_batch
-    )
-
-    if isinstance(datasets, tuple):
-        logger.debug("Using selected data as test")
-        # * only here because return type problems when **[TypedDict]
-        train_data, test_data = datasets
-    else:
-        logger.debug("Splitting data")
-        train_data, test_data = train_test_dataset(
-            dataset=datasets,
-            test_size=test_size,
-            random_state=seed,
-            shuffle=True,
-            stratify=stratify,
-            multilabel=multilabel,
-        )
 
     n_classes = len(class_mapping)
     logger.debug(f"{n_classes} classes detected")
@@ -218,6 +201,122 @@ def run_experiment(
         )
 
 
+def run_experiment(
+    model_config: MinModelConfig,
+    data_config: NetworkDataConfig,
+    crossfold_config: CrossFoldConfiguration = None,
+    iterations: int = 100,
+    gpu_num: int = 0,
+    seed: int = 10,
+    test_size: float = 0.25,
+    stratify: bool = True,
+    data_workers: int = 2,
+    batch_size: int = 64,
+    test_batch_size: int = 512,
+    lr: float = 0.01,
+    run_train_test: bool = False,
+    results_path: str = "./results",
+    model_name: str = None,
+    plot_filename: str = None,
+    plot_title: str = None,
+    info_filename: str = "info",
+    multilabel: bool = True,
+    _legacy_load_without_batch: bool = False,
+):
+
+    logger.info("Loading Files")
+    # class_mapping: label_id -> label_name
+    # hash_formula: formula_hash -> formula_object
+    # hash_label:
+    #   single label: formula_hash -> label_id
+    #   multilabel: formula_hash -> List[label_id]
+    # data_reconstruction: point_index -> formula_object
+    (
+        datasets,
+        class_mapping,
+        hash_formula,
+        hash_label,
+        data_reconstruction,
+    ) = categorical_loader(
+        **data_config,
+        cross_fold_configuration=crossfold_config,
+        _legacy_load_without_batch=_legacy_load_without_batch,
+    )
+
+    if isinstance(datasets, NetworkDatasetCrossFoldSampler):
+        n_splits = datasets.n_splits
+        for i, (train_data, test_data) in enumerate(datasets, start=1):
+            logger.info(f"Running experiment for crossfold {i}/{n_splits}")
+
+            cf_model_name = f"{model_name}_cf{i}"
+            info_filename = f"{info_filename}_cf{i}"
+
+            _run_experiment(
+                train_data=train_data,
+                test_data=test_data,
+                class_mapping=class_mapping,
+                hash_formula=hash_formula,
+                hash_label=hash_label,
+                data_reconstruction=data_reconstruction,
+                model_config=model_config,
+                iterations=iterations,
+                gpu_num=gpu_num,
+                data_workers=data_workers,
+                batch_size=batch_size,
+                test_batch_size=test_batch_size,
+                lr=lr,
+                run_train_test=run_train_test,
+                results_path=results_path,
+                model_name=cf_model_name,
+                plot_filename=plot_filename,
+                plot_title=plot_title,
+                info_filename=info_filename,
+                multilabel=multilabel,
+            )
+
+        folds_file = os.path.join(results_path, "info", f"{model_name}.folds")
+        with open(folds_file, "w", encoding="utf-8") as f:
+            json.dump(datasets.get_folds(), f)
+    else:
+        if isinstance(datasets, tuple):
+            logger.debug("Using selected data as test")
+            # * only here because return type problems when **[TypedDict]
+            train_data, test_data = datasets
+        else:
+            logger.debug("Splitting data")
+            train_data, test_data = train_test_dataset(
+                dataset=datasets,
+                test_size=test_size,
+                random_state=seed,
+                shuffle=True,
+                stratify=stratify,
+                multilabel=multilabel,
+            )
+
+        _run_experiment(
+            train_data=train_data,
+            test_data=test_data,
+            class_mapping=class_mapping,
+            hash_formula=hash_formula,
+            hash_label=hash_label,
+            data_reconstruction=data_reconstruction,
+            model_config=model_config,
+            iterations=iterations,
+            gpu_num=gpu_num,
+            data_workers=data_workers,
+            batch_size=batch_size,
+            test_batch_size=test_batch_size,
+            lr=lr,
+            run_train_test=run_train_test,
+            results_path=results_path,
+            model_name=model_name,
+            plot_filename=plot_filename,
+            plot_title=plot_title,
+            info_filename=info_filename,
+            multilabel=multilabel,
+        )
+
+
 def main(
     name: str = None,
     seed: int = None,
@@ -257,6 +356,7 @@ def main(
     # * /filters
 
     # * test_filters
+    # ! ignored if cross validation is used
     # test_selector = FilterApply(condition="or")
     # test_selector.add(AtomicOnlyFilter(atomic="all"))
     # test_selector.add(RestrictionFilter(lower=4, upper=None))
@@ -290,6 +390,11 @@ def main(
         "load_aggregated": "aggregated.pt",
         "force_preaggregated": True,
     }
+    crossfold_config: CrossFoldConfiguration = {
+        "n_splits": 10,
+        "shuffle": True,
+        "random_state": seed,
+    }
 
     iterations = 50
     test_batch = 1024
@@ -300,7 +405,7 @@ def main(
     hid = "+".join([f"{l}L{val}" for l, val in enumerate(hidden_layers, start=1)])
     msg = f"{name}-{hid}-{train_batch}b-{lr}lr"
 
-    results_path = f"./results/v4/testing/{model_hash}"
+    results_path = f"./results/v4/crossfold/{model_hash}"
     plot_file = None
     if make_plots:
         plot_file = msg
@@ -312,6 +417,7 @@ def main(
     run_experiment(
         model_config=model_config,
         data_config=data_config,
+        crossfold_config=crossfold_config,
         iterations=iterations,
         gpu_num=0,
         seed=seed,
