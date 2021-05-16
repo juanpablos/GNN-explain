@@ -1,11 +1,13 @@
 import os
+
 import torch
+
 from src.data.gnn.utils import prepare_files
 
 # remove gnns that do not reach perfect training
 
-path = "./data/gnns_v3/"
-log_file = "formulas_v3.json.6.log"
+path = "./data/gnns_v4/"
+log_file = "formulas_v3.json.2.log.1"
 model_hash = "40e65407aa"
 
 formula_path = os.path.join(path, model_hash)
@@ -31,7 +33,7 @@ with open(os.path.join(path, log_file)) as f:
                 # save what we have and reset
                 formula_file_cleaned = formula_hash_to_file[
                     current_formula_hash
-                ].replace("5000", str(len(cleaned_formulas)))
+                ].replace("-n500-", f"-n{str(len(cleaned_formulas))}-")
                 print(f"saving formula {current_formula_hash}")
                 torch.save(
                     cleaned_formulas, os.path.join(cleaned_path, formula_file_cleaned)
@@ -53,14 +55,17 @@ with open(os.path.join(path, log_file)) as f:
         if "Training model" in line:
             current_gnn_index = int(line.split("Training model ")[1].split("/")[0]) - 1
 
-        if "src.run_logic INFO" in line and 'INFO " 30' not in line:
+        if (
+            "src.run_logic INFO" in line
+            and "test_macro 1.000000  test_micro 1.000000" in line
+        ):
             print(f"Adding gnn {current_gnn_index} - on hash {current_formula_hash}")
             cleaned_formulas.append(current_formulas[current_gnn_index])
 
     if cleaned_formulas and current_formula_hash is not None:
         # when finished, save what is left
         formula_file_cleaned = formula_hash_to_file[current_formula_hash].replace(
-            "5000", str(len(cleaned_formulas))
+            "-n500-", f"-n{str(len(cleaned_formulas))}-"
         )
         print(f"saving formula {current_formula_hash}")
         torch.save(cleaned_formulas, os.path.join(cleaned_path, formula_file_cleaned))
