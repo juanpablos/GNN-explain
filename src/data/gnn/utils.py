@@ -176,7 +176,7 @@ def tensor_dict_gnn(root: str, model_hash: str, filename: str, nobatch: bool):
 
 if __name__ == "__main__":
     aggregate_formulas(
-        root="./data/gnns_v4_v2",
+        root="./data/gnns_v4",
         model_hash="40e65407aa",
         filename="aggregated.pt",
         nobatch=True,

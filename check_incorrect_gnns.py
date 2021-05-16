@@ -159,6 +159,10 @@ def run_checks(gnns, model_configs, dataset, is_uniform: bool, formula_hash: str
 
     total_gnns = len(gnns)
     for i, gnn in enumerate(gnns):
+        try:
+            gnn = gnn[0]
+        except (IndexError, KeyError):
+            pass
         logger.debug(f"{i+1}/{total_gnns}")
         if i % 100 == 0:
             logger.info(f"{i+1}/{total_gnns}")
@@ -260,7 +264,7 @@ def run(
         "use_batch_norm": False,
     }
 
-    gnn_path = os.path.join("data", "full_gnn", "40e65407aa")
+    gnn_path = os.path.join("data", "gnns_v4", "40e65407aa")
     formula_files = prepare_files(path=gnn_path, model_hash="40e65407aa")
 
     if hashes_to_use is not None:
@@ -357,7 +361,7 @@ def run(
 
 
 if __name__ == "__main__":
-    __results_path = os.path.join("results", "validity_checks", "full_gnn")
+    __results_path = os.path.join("results", "validity_checks", "testing")
     os.makedirs(__results_path, exist_ok=True)
 
     logger.setLevel(logging.DEBUG)
@@ -389,7 +393,7 @@ if __name__ == "__main__":
     # graph_logger.addHandler(graph_fh)
 
     run(
-        hashes_to_use=["dc670b1bec", "c439b78825", "d8a8c1299e", "8a4d116623"],
+        # hashes_to_use=["dc670b1bec", "c439b78825", "d8a8c1299e", "8a4d116623"],
         results_path=__results_path,
         tagging_folder="tagging",
         summary_file="check_results.txt",
