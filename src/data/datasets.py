@@ -286,6 +286,7 @@ class NetworkDataset(Dataset, Generic[S]):
         self,
         label: S,
         formula: Element,
+        formula_hash: str,
         file: str = "",
         limit: int = None,
         multilabel: bool = False,
@@ -307,6 +308,7 @@ class NetworkDataset(Dataset, Generic[S]):
         self._labels: IndexableIterable[S] = DummyIterable(label, length=len(dataset))
         self._multilabel = multilabel
         self._formula = formula
+        self._formula_hash = formula_hash
         self._text = text
         self._vocabulary = vocabulary
 
@@ -315,6 +317,7 @@ class NetworkDataset(Dataset, Generic[S]):
         cls,
         label: S,
         formula: Element,
+        formula_hash: str,
         file: str = "",
         limit: int = None,
         multilabel: bool = False,
@@ -325,6 +328,7 @@ class NetworkDataset(Dataset, Generic[S]):
         dataset = cls(
             label=label,
             formula=formula,
+            formula_hash=formula_hash,
             file=file,
             limit=limit,
             multilabel=multilabel,
@@ -341,6 +345,7 @@ class NetworkDataset(Dataset, Generic[S]):
         cls,
         label: S,
         formula: Element,
+        formula_hash: str,
         file: str = "",
         limit: int = None,
         vocabulary: Vocabulary = None,
@@ -351,6 +356,7 @@ class NetworkDataset(Dataset, Generic[S]):
         dataset = cls(
             label=label,
             formula=formula,
+            formula_hash=formula_hash,
             file=file,
             limit=limit,
             multilabel=False,
@@ -387,6 +393,10 @@ class NetworkDataset(Dataset, Generic[S]):
     @property
     def formula(self):
         return self._formula
+
+    @property
+    def formula_hash(self):
+        return self._formula_hash
 
     @property
     def text(self):

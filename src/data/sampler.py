@@ -1,11 +1,17 @@
 import logging
 from collections import defaultdict
-from typing import Any, Generator, Generic, Tuple
+from typing import Any, Dict, Generator, Generic, List, Tuple
 
 import numpy as np
-
-from src.data.datasets import NoLabelDataset, NoLabelSubset
-from src.typing import T
+from sklearn.model_selection import KFold, StratifiedKFold
+from torch.functional import Tensor
+from src.data.datasets import (
+    LabeledDataset,
+    NetworkDataset,
+    NoLabelDataset,
+    NoLabelSubset,
+)
+from src.typing import CrossFoldConfiguration, T
 
 logger = logging.getLogger(__name__)
 
@@ -138,3 +144,66 @@ class PreloadedDataSampler(SubsetSampler[T]):
 
         train_indices = np.concatenate(indices)
         return NoLabelSubset(self.train_dataset, train_indices), self.test_dataset
+
+
+class NetworkDatasetCrossFoldSampler(Generic[T]):
+    def __init__(
+        self,
+        datasets: List[NetworkDataset[Tensor]],
+        crossfold_config: CrossFoldConfiguration,
+    ):
+        self.multilabel = datasets[0].multilabel
+
+        if self.multilabel:
+            logger.debug("Using regular KFold")
+            kfold_strategy = KFold
+        else:
+            logger.debug("Using stratified KFold")
+            kfold_strategy = StratifiedKFold
+
+        self.kfold = kfold_strategy(**crossfold_config)
+
+        self.datasets = datasets
+        self.labels = [dataset.labels[0] for dataset in datasets]
+
+        self.folds = {}
+
+    def __iter__(self):
+        for i, (train_index, test_index) in enumerate(
+            self.kfold.split(X=self.datasets, y=self.labels), start=1
+        ):
+            train_datasets = [self.datasets[i] for i in train_index]
+            test_datasets = [self.datasets[i] for i in test_index]
+
+            train_dataset = LabeledDataset.from_iterable(
+                train_datasets, multilabel=self.multilabel
+            )
+            test_dataset = LabeledDataset.from_iterable(
+                test_datasets, multilabel=self.multilabel
+            )
+
+            self.folds[i] = {
+                "train": [
+                    {
+                        "hash": dataset.formula_hash,
+                        "formula": repr(dataset.formula),
+                    }
+                    for dataset in train_datasets
+                ],
+                "test": [
+                    {
+                        "hash": dataset.formula_hash,
+                        "formula": repr(dataset.formula),
+                    }
+                    for dataset in test_datasets
+                ],
+            }
+
+            yield train_dataset, test_dataset
+
+    @property
+    def n_splits(self) -> int:
+        return self.kfold.n_splits
+
+    def get_folds(self) -> Dict[int, Dict[str, List[Dict[str, str]]]]:
+        return self.folds
