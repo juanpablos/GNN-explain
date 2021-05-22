@@ -13,15 +13,55 @@ class StopTraining:
             if "operation" not in conditions:
                 raise ValueError("`conditions` must have key 'operation'")
 
-            if conditions["operation"] not in ["and", "or"]:
-                raise ValueError("`operation` must be either 'and' or 'or'")
+            if conditions["operation"] not in ["and", "or", "early"]:
+                raise ValueError(
+                    f"{conditions['operation']} is not a supported operation"
+                )
 
-            self.operation = all if conditions["operation"] == "and" else any
             self.conditions = conditions["conditions"]
+            self.operation = self.__get_operation(conditions["operation"])
             self.check = True
             self.stop = False
             self.stay = conditions.get("stay", 1)
             self.original_stay = conditions.get("stay", 1)
+
+            self._auxiliary_storage = {}
+
+    def __get_operation(self, operation):
+        operations = {
+            "and": lambda: self._and_condition,
+            "or": lambda: self._or_condition,
+            "early": self._early_condition_pre_check,
+        }
+        return operations[operation]()
+
+    def _and_condition(self, **kwargs):
+        current_state = [
+            kwargs[cond] >= value for cond, value in self.conditions.items()
+        ]
+        return all(current_state)
+
+    def _or_condition(self, **kwargs):
+        current_state = [
+            kwargs[cond] >= value for cond, value in self.conditions.items()
+        ]
+        return any(current_state)
+
+    def _early_condition(self, **kwargs):
+        condition, tolerance = next(iter(self.conditions.items()))
+        current_value = kwargs[condition]
+        last_value = self._auxiliary_storage.get(condition, current_value)
+
+        increasing = False
+        if current_value - last_value > tolerance:
+            increasing = True
+
+        self._auxiliary_storage[condition] = current_value
+        return increasing
+
+    def _early_condition_pre_check(self):
+        assert len(self.conditions) == 1, "early stopping only accepts one variable"
+        return self._early_condition
 
     def __call__(self, **kwargs):
         if self.operation is None:
@@ -37,11 +77,7 @@ class StopTraining:
                 )
             self.check = False
 
-        current_state = [
-            kwargs[cond] >= value for cond, value in self.conditions.items()
-        ]
-
-        if self.operation(current_state):
+        if self.operation(**kwargs):
             self.stay -= 1
         else:
             self.stay = self.original_stay

@@ -21,7 +21,13 @@ from src.eval_utils import evaluate_model
 from src.graphs.foc import Element
 from src.run_logic import run, seed_everything
 from src.training.mlp_training import MLPTrainer
-from src.typing import CrossFoldConfiguration, MinModelConfig, NetworkDataConfig, S
+from src.typing import (
+    CrossFoldConfiguration,
+    MinModelConfig,
+    NetworkDataConfig,
+    S,
+    StopFormat,
+)
 from src.utils import write_result_info
 from src.visualization.confusion_matrix import (
     plot_confusion_matrix,
@@ -47,6 +53,7 @@ def _run_experiment(
     batch_size: int = 64,
     test_batch_size: int = 512,
     lr: float = 0.01,
+    early_stopping: StopFormat = None,
     run_train_test: bool = False,
     results_path: str = "./results",
     model_name: str = None,
@@ -121,6 +128,7 @@ def _run_experiment(
         iterations=iterations,
         gpu_num=gpu_num,
         lr=lr,
+        stop_when=early_stopping,
         run_train_test=run_train_test,
     )
 
@@ -214,6 +222,7 @@ def run_experiment(
     batch_size: int = 64,
     test_batch_size: int = 512,
     lr: float = 0.01,
+    early_stopping: StopFormat = None,
     run_train_test: bool = False,
     results_path: str = "./results",
     model_name: str = None,
@@ -266,6 +275,7 @@ def run_experiment(
                 batch_size=batch_size,
                 test_batch_size=test_batch_size,
                 lr=lr,
+                early_stopping=early_stopping,
                 run_train_test=run_train_test,
                 results_path=results_path,
                 model_name=cf_model_name,
@@ -308,6 +318,7 @@ def run_experiment(
             batch_size=batch_size,
             test_batch_size=test_batch_size,
             lr=lr,
+            early_stopping=early_stopping,
             run_train_test=run_train_test,
             results_path=results_path,
             model_name=model_name,
@@ -376,9 +387,9 @@ def main(
     # * /test_filters
 
     # * labelers
-    # label_logic = BinaryAtomicLabeler(atomic="GREEN", hop=1)
+    label_logic = BinaryAtomicLabeler(atomic="BLUE", hop=None)
     # label_logic = MultiLabelAtomicLabeler()
-    label_logic = MultilabelRestrictionLabeler(mode="both")
+    # label_logic = MultilabelRestrictionLabeler(mode="both")
     labeler = LabelerApply(labeler=label_logic)
     # * /labelers
     data_config: NetworkDataConfig = {
@@ -392,12 +403,18 @@ def main(
         "force_preaggregated": True,
     }
     crossfold_config: CrossFoldConfiguration = {
-        "n_splits": 10,
+        "n_splits": 5,
         "shuffle": True,
         "random_state": seed,
     }
 
-    iterations = 50
+    early_stopping: StopFormat = {
+        "operation": "early",
+        "conditions": {"test_loss": 0.001},
+        "stay": 2,
+    }
+
+    iterations = 30
     test_batch = 1024
 
     if name is None:
@@ -428,6 +445,7 @@ def main(
         batch_size=train_batch,
         test_batch_size=test_batch,
         lr=lr,
+        early_stopping=early_stopping,
         run_train_test=True,
         results_path=results_path,
         model_name=model_name,
