@@ -50,14 +50,19 @@ class StopTraining:
     def _early_condition(self, **kwargs):
         condition, tolerance = next(iter(self.conditions.items()))
         current_value = kwargs[condition]
-        last_value = self._auxiliary_storage.get(condition, current_value)
 
-        increasing = False
-        if current_value - last_value > tolerance:
-            increasing = True
+        decreasing = True
+        last_low = self._auxiliary_storage.get(condition)
 
-        self._auxiliary_storage[condition] = current_value
-        return increasing
+        if last_low is None or last_low - current_value >= tolerance:
+            # its not yet set, or it is decreasing faster than `tolerance`
+            self._auxiliary_storage[condition] = current_value
+        else:
+            # its increasing or decreasing too slowly
+            decreasing = False
+
+        # returning True is 1 step closer to stopping
+        return not decreasing
 
     def _early_condition_pre_check(self):
         assert len(self.conditions) == 1, "early stopping only accepts one variable"

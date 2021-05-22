@@ -411,7 +411,7 @@ def main(
     early_stopping: StopFormat = {
         "operation": "early",
         "conditions": {"test_loss": 0.001},
-        "stay": 2,
+        "stay": 3,
     }
 
     iterations = 30
