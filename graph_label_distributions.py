@@ -149,13 +149,24 @@ with open(
 
 total = next(iter(stats_mapping.values()))["total"]
 
-percent_10["min"] = min(percent_10.values())
-percent_10["complement"] = total - percent_10["min"]
+_min = min(percent_10.values())
+_max = max(percent_10.values())
+
+percent_10["min"] = _min
+percent_10["min_complement"] = total - _min
+percent_10["max"] = _max
+percent_10["max_complement"] = total - _max
 percent_10["total"] = total
 with open(os.path.join(results_path, "percent_10.json"), "w", encoding="utf-8") as f:
     json.dump(percent_10, f, ensure_ascii=False, indent=2)
-percent_20["min"] = min(percent_20.values())
-percent_20["complement"] = total - percent_20["min"]
+
+_min = min(percent_20.values())
+_max = max(percent_20.values())
+
+percent_20["min"] = _min
+percent_20["min_complement"] = total - _min
+percent_20["max"] = _max
+percent_20["max_complement"] = total - _max
 percent_20["total"] = total
 with open(os.path.join(results_path, "percent_20.json"), "w", encoding="utf-8") as f:
     json.dump(percent_20, f, ensure_ascii=False, indent=2)
