@@ -217,9 +217,7 @@ class MultilabelRestrictionLabeler(MultiLabelCategoricalLabeler):
     RED -> Exist(None)
     """
 
-    def __init__(
-        self, mode: Union[Literal["lower"], Literal["upper"], Literal["both"]] = "both"
-    ):
+    def __init__(self, mode: Literal["lower", "upper", "both"] = "both"):
         super().__init__()
         self.current_hop = 0
         self.max_hop = 0
@@ -275,7 +273,8 @@ class MultilabelRestrictionLabeler(MultiLabelCategoricalLabeler):
         self.max_hop = 0
 
     def __str__(self):
-        return "MultiLabelRestriction()"
+        modes = ",".join(self.mode)
+        return f"MultiLabelRestriction({modes})"
 
 
 # *----- text sequential
