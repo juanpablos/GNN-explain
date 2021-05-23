@@ -34,6 +34,8 @@ class Metric:
         self.average = average
         self.multilabel = multilabel
 
+        logger.debug(f"Using {self.average} average strategy")
+
     def __call__(self, y_true: torch.Tensor, y_pred: torch.Tensor):
         self.y_true = y_true.cpu().numpy()
         self.y_pred = y_pred.cpu().numpy()
@@ -78,7 +80,7 @@ class Metric:
                 precision_avg,
                 recall_avg,
                 f1score_avg,
-                label_support,
+                _,
             ) = precision_recall_fscore_support(
                 self.y_true, self.y_pred, average="binary", beta=1.0
             )
@@ -91,7 +93,7 @@ class Metric:
                 macro_precision_avg,
                 macro_recall_avg,
                 macro_f1score_avg,
-                label_support,
+                _,
             ) = precision_recall_fscore_support(
                 self.y_true, self.y_pred, average="macro", beta=1.0
             )
@@ -121,7 +123,7 @@ class Metric:
             precision_single,
             recall_single,
             f1score_single,
-            _,
+            label_support,
         ) = precision_recall_fscore_support(
             self.y_true, self.y_pred, average=None, beta=1.0
         )
