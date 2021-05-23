@@ -4,6 +4,7 @@ import os
 from typing import List
 
 import matplotlib.pyplot as plt
+from mpl_toolkits.axes_grid1 import AxesGrid
 from sklearn.metrics import (
     ConfusionMatrixDisplay,
     confusion_matrix,
@@ -22,37 +23,58 @@ def plot_confusion_matrix(
     title: str = None,
     *,
     normalize_cm: bool = True,
+    plot_precision_and_recall: bool = True,
 ):
     logger.info(f"Calculating confusion matrix")
-
-    if normalize_cm:
-        normalize = "true"
-    else:
-        normalize = None
-
-    matrix_og = confusion_matrix(y, y_pred, normalize=normalize)
-
     size = 10 if len(labels) < 10 else len(labels) * 1.25
-    fig, ax = plt.subplots(figsize=(size, size))
 
-    disp = ConfusionMatrixDisplay(matrix_og, display_labels=labels)
+    if plot_precision_and_recall:
+        fig = plt.figure(figsize=(2 * size, size))
+        axs = AxesGrid(
+            fig,
+            111,
+            nrows_ncols=(1, 2),
+            axes_pad=0.5,
+            cbar_mode="single",
+            cbar_location="right",
+            cbar_pad=0.5,
+        )
+        normalize_list = ["true", "pred"]
+        titles = ["Recall", "Precision"]
+    else:
+        fig, ax = plt.subplots(ncols=1, nrows=1, figsize=(size, size))
+        axs = [ax]
+        normalize_list = ["true" if normalize_cm else None]
+        titles = [None]
 
-    logger.debug("Plotting confusion matrix")
-    disp.plot(cmap="Blues", ax=ax, xticks_rotation=30)
+    for ax, normalize, ax_title in zip(axs, normalize_list, titles):
+        matrix_og = confusion_matrix(y, y_pred, normalize=normalize)
 
-    plt.setp(
-        ax.get_xticklabels(),
-        rotation=30,  # type:ignore
-        horizontalalignment="right",
-    )
-    if normalize_cm:
+        disp = ConfusionMatrixDisplay(matrix_og, display_labels=labels)
+
+        logger.debug("Plotting confusion matrix")
+        disp.plot(cmap="Blues", ax=ax, xticks_rotation=30, colorbar=False)
+
+        plt.setp(
+            ax.get_xticklabels(),
+            rotation=30,  # type:ignore
+            horizontalalignment="right",
+        )
+
+        ax.set_title(ax_title)
+
+    if normalize_cm or plot_precision_and_recall:
         disp.im_.set_clim(0, 1)
-    plt.tight_layout()
+    ax.cax.colorbar(disp.im_)
+    ax.cax.toggle_label(True)
+
+    if not plot_precision_and_recall:
+        plt.tight_layout()
 
     figure_name = filename if filename is not None else "confusion_matrix"
     figure_title = title if title is not None else ""
 
-    plt.title(figure_title, wrap=True)
+    plt.suptitle(figure_title, wrap=True)
 
     os.makedirs(f"{save_path}/cm/", exist_ok=True)
     plt.savefig(f"{save_path}/cm/{figure_name}.png")

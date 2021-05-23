@@ -201,6 +201,7 @@ def _run_experiment(
                 title=plot_title,
                 labels=cm_labels,
                 normalize_cm=True,
+                plot_precision_and_recall=True,
             )
 
         metrics = trainer.metric_logger
@@ -418,7 +419,7 @@ def main(
     early_stopping: StopFormat = {
         "operation": "early",
         "conditions": {"test_loss": 0.001},
-        "stay": 10,
+        "stay": 1,
     }
 
     iterations = 30
