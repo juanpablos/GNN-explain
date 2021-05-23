@@ -260,7 +260,7 @@ def run_experiment(
 
     if isinstance(datasets, NetworkDatasetCrossFoldSampler):
         n_splits = datasets.n_splits
-        for i, (train_data, test_data) in enumerate(datasets, start=1):
+        for i, (train_data, test_data, data_reconstruction) in enumerate(datasets, start=1):
             logger.info(f"Running experiment for crossfold {i}/{n_splits}")
 
             cf_model_name = f"{model_name}_cf{i}"
@@ -395,7 +395,8 @@ def main(
     # * /test_filters
 
     # * labelers
-    label_logic = BinaryAtomicLabeler(atomic="RED", hop=0)
+    # label_logic = BinaryAtomicLabeler(atomic="BLACK", hop=1)
+    label_logic = BinaryHopLabeler(hop=1)
     # label_logic = MultiLabelAtomicLabeler()
     # label_logic = MultilabelRestrictionLabeler(mode="both")
     labeler = LabelerApply(labeler=label_logic)
@@ -419,7 +420,7 @@ def main(
     early_stopping: StopFormat = {
         "operation": "early",
         "conditions": {"test_loss": 0.001},
-        "stay": 1,
+        "stay": 5,
     }
 
     iterations = 30

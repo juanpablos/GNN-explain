@@ -5,6 +5,8 @@ from typing import Any, Dict, Generator, Generic, List, Tuple
 import numpy as np
 from sklearn.model_selection import KFold, StratifiedKFold
 from torch.functional import Tensor
+
+from src.data.auxiliary import NetworkDatasetCollectionWrapper
 from src.data.datasets import (
     LabeledDataset,
     NetworkDataset,
@@ -182,6 +184,8 @@ class NetworkDatasetCrossFoldSampler(Generic[T]):
                 test_datasets, multilabel=self.multilabel
             )
 
+            reconstruction_mapping = NetworkDatasetCollectionWrapper(test_datasets)
+
             self.folds[i] = {
                 "train": [
                     {
@@ -199,7 +203,7 @@ class NetworkDatasetCrossFoldSampler(Generic[T]):
                 ],
             }
 
-            yield train_dataset, test_dataset
+            yield train_dataset, test_dataset, reconstruction_mapping
 
     @property
     def n_splits(self) -> int:
