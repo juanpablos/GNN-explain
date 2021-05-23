@@ -152,12 +152,24 @@ def write_result_info(
 
     with open(f"{path}/info/{filename}.txt", "w", encoding="utf-8") as o:
         for metric, values in metrics.items():
-            if "average" in values:
-                o.write(f"{metric}: {values['average']}\n")
+            if any(
+                avg in values
+                for avg in ["binary_average", "micro_average", "macro_average"]
+            ):
+                for avg in ["binary_average", "micro_average", "macro_average"]:
+                    try:
+                        o.write(f"{metric}_{avg}: {values[avg]}\n")
+                    except KeyError:
+                        pass
                 for label_id, single in enumerate(values["single"]):
                     o.write(f"\t{classes[label_id]}: {single}\n")
             else:
                 o.write(f"{metric}: {values['total']}\n")
+
+                if "counts" in values:
+                    for label_id, count in enumerate(values["counts"]):
+                        o.write(f"\t{classes[label_id]}: {count}\n")
+
             o.write("\n")
 
         # format:

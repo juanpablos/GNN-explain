@@ -13,7 +13,10 @@ from src.data.auxiliary import NetworkDatasetCollectionWrapper
 from src.data.datasets import LabeledDataset, LabeledSubset
 from src.data.formula_index import FormulaMapping
 from src.data.formulas import *
-from src.data.formulas.labeler import MultiLabelCategoricalLabeler
+from src.data.formulas.labeler import (
+    BinaryCategoricalLabeler,
+    MultiLabelCategoricalLabeler,
+)
 from src.data.loader import categorical_loader
 from src.data.sampler import NetworkDatasetCrossFoldSampler
 from src.data.utils import get_input_dim, get_label_distribution, train_test_dataset
@@ -60,6 +63,7 @@ def _run_experiment(
     plot_filename: str = None,
     plot_title: str = None,
     info_filename: str = "info",
+    binary_labels: bool = True,
     multilabel: bool = True,
 ):
 
@@ -98,7 +102,7 @@ def _run_experiment(
     trainer = MLPTrainer(
         logging_variables="all",
         n_classes=n_classes,
-        metrics_average="macro",
+        metrics_average="binary" if binary_labels else "macro",
         multilabel=multilabel,
     )
 
@@ -229,6 +233,7 @@ def run_experiment(
     plot_filename: str = None,
     plot_title: str = None,
     info_filename: str = "info",
+    binary_labels: bool = True,
     multilabel: bool = True,
     _legacy_load_without_batch: bool = False,
 ):
@@ -282,6 +287,7 @@ def run_experiment(
                 plot_filename=cf_plot_filename,
                 plot_title=plot_title,
                 info_filename=cf_info_filename,
+                binary_labels=binary_labels,
                 multilabel=multilabel,
             )
 
@@ -325,6 +331,7 @@ def run_experiment(
             plot_filename=plot_filename,
             plot_title=plot_title,
             info_filename=info_filename,
+            binary_labels=binary_labels,
             multilabel=multilabel,
         )
 
@@ -387,7 +394,7 @@ def main(
     # * /test_filters
 
     # * labelers
-    label_logic = BinaryAtomicLabeler(atomic="BLUE", hop=None)
+    label_logic = BinaryAtomicLabeler(atomic="RED", hop=0)
     # label_logic = MultiLabelAtomicLabeler()
     # label_logic = MultilabelRestrictionLabeler(mode="both")
     labeler = LabelerApply(labeler=label_logic)
@@ -411,7 +418,7 @@ def main(
     early_stopping: StopFormat = {
         "operation": "early",
         "conditions": {"test_loss": 0.001},
-        "stay": 3,
+        "stay": 10,
     }
 
     iterations = 30
@@ -452,7 +459,7 @@ def main(
         plot_filename=plot_file,
         plot_title=msg,  # ? maybe a better message
         info_filename=msg,
-        # * this should only be available when binary in experiment 3
+        binary_labels=isinstance(label_logic, BinaryCategoricalLabeler),
         multilabel=isinstance(label_logic, MultiLabelCategoricalLabeler),
         _legacy_load_without_batch=True,  # ! remove eventually
     )

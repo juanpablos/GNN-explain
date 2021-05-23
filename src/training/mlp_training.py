@@ -65,9 +65,58 @@ class Metric:
     def report(self):
         metrics = {}
 
-        precision_avg, recall_avg, f1score_avg, _ = precision_recall_fscore_support(
-            self.y_true, self.y_pred, average=self.average, beta=1.0
-        )
+        precision = {}
+        recall = {}
+        f1 = {}
+
+        acc = {}
+
+        support = {}
+
+        if self.average == "binary":
+            (
+                precision_avg,
+                recall_avg,
+                f1score_avg,
+                label_support,
+            ) = precision_recall_fscore_support(
+                self.y_true, self.y_pred, average="binary", beta=1.0
+            )
+
+            precision = {"binary_average": precision_avg}
+            recall = {"binary_average": recall_avg}
+            f1 = {"binary_average": f1score_avg}
+        else:
+            (
+                macro_precision_avg,
+                macro_recall_avg,
+                macro_f1score_avg,
+                label_support,
+            ) = precision_recall_fscore_support(
+                self.y_true, self.y_pred, average="macro", beta=1.0
+            )
+            (
+                micro_precision_avg,
+                micro_recall_avg,
+                micro_f1score_avg,
+                _,
+            ) = precision_recall_fscore_support(
+                self.y_true, self.y_pred, average="micro", beta=1.0
+            )
+
+            precision = {
+                "macro_average": macro_precision_avg,
+                "micro_average": micro_precision_avg,
+            }
+            recall = {
+                "macro_average": macro_recall_avg,
+                "micro_average": micro_recall_avg,
+            }
+            f1 = {
+                "macro_average": macro_f1score_avg,
+                "micro_average": micro_f1score_avg,
+            }
+
         (
             precision_single,
             recall_single,
@@ -76,23 +125,30 @@ class Metric:
         ) = precision_recall_fscore_support(
             self.y_true, self.y_pred, average=None, beta=1.0
         )
-
-        precision = {"average": precision_avg, "single": precision_single}
-        recall = {"average": recall_avg, "single": recall_single}
-        f1 = {"average": f1score_avg, "single": f1score_single}
+        precision["single"] = precision_single
+        recall["single"] = recall_single
+        f1["single"] = f1score_single
 
         acc = {"total": accuracy_score(self.y_true, self.y_pred)}
+
+        support = {"total": np.sum(label_support), "counts": label_support}
 
         metrics["precision"] = precision
         metrics["recall"] = recall
         metrics["f1"] = f1
         metrics["acc"] = acc
+        metrics["support"] = support
 
         if self.multilabel:
-            jaccard_avg = jaccard_score(self.y_true, self.y_pred, average=self.average)
+            macro_jaccard_avg = jaccard_score(self.y_true, self.y_pred, average="macro")
+            micro_jaccard_avg = jaccard_score(self.y_true, self.y_pred, average="micro")
             jaccard_single = jaccard_score(self.y_true, self.y_pred, average=None)
 
-            jaccard = {"average": jaccard_avg, "single": jaccard_single}
+            jaccard = {
+                "macro_average": macro_jaccard_avg,
+                "micro_average": micro_jaccard_avg,
+                "single": jaccard_single,
+            }
             hamming = {"total": hamming_loss(self.y_true, self.y_pred)}
 
             metrics["jaccard"] = jaccard
