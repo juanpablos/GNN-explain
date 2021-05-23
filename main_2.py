@@ -260,7 +260,9 @@ def run_experiment(
 
     if isinstance(datasets, NetworkDatasetCrossFoldSampler):
         n_splits = datasets.n_splits
-        for i, (train_data, test_data, data_reconstruction) in enumerate(datasets, start=1):
+        for i, (train_data, test_data, data_reconstruction) in enumerate(
+            datasets, start=1
+        ):
             logger.info(f"Running experiment for crossfold {i}/{n_splits}")
 
             cf_model_name = f"{model_name}_cf{i}"
@@ -396,9 +398,10 @@ def main(
 
     # * labelers
     # label_logic = BinaryAtomicLabeler(atomic="BLACK", hop=1)
-    label_logic = BinaryHopLabeler(hop=1)
+    # label_logic = BinaryHopLabeler(hop=1)
+    # label_logic = BinaryRestrictionLabeler(lower=None, upper=4)
     # label_logic = MultiLabelAtomicLabeler()
-    # label_logic = MultilabelRestrictionLabeler(mode="both")
+    label_logic = MultilabelRestrictionLabeler(mode="upper", class_for_no_label=True)
     labeler = LabelerApply(labeler=label_logic)
     # * /labelers
     data_config: NetworkDataConfig = {

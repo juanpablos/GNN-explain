@@ -8,7 +8,6 @@ from typing import (
     OrderedDict,
     Tuple,
     TypeVar,
-    Union,
 )
 
 from src.data.formulas.visitor import Visitor
@@ -172,11 +171,16 @@ class SequentialCategoricalLabeler(CategoricalLabeler[int, int]):
 
 
 class MultiLabelCategoricalLabeler(CategoricalLabeler[Tuple[int, ...], int]):
-    def __init__(self):
+    def __init__(self, class_for_no_label: bool = False):
         super().__init__()
         self.current_counter = 0
         self.result: Tuple[int, ...] = ()
         self.current_result: List[int] = []
+
+        self.class_for_no_label = class_for_no_label
+        if class_for_no_label:
+            self.classes[self.current_counter] = "N/C"
+            self.current_counter += 1
 
     def reset(self):
         self.current_result = []
@@ -184,14 +188,17 @@ class MultiLabelCategoricalLabeler(CategoricalLabeler[Tuple[int, ...], int]):
 
     def process(self, formula: Element):
         if not self.current_result:
-            raise ValueError(f"Current formula don't have any label: {formula}")
+            if self.class_for_no_label:
+                self.current_result.append(0)
+            else:
+                raise ValueError(f"Current formula don't have any label: {formula}")
         # ** we do not care about the order of the output
         self.result = tuple(set(self.current_result))
 
 
 class MultiLabelAtomicLabeler(MultiLabelCategoricalLabeler):
-    def __init__(self):
-        super().__init__()
+    def __init__(self, class_for_no_label: bool = False):
+        super().__init__(class_for_no_label=class_for_no_label)
         # TODO: unify inverse logic between multilabel labelers
         # no need for this to be ordered
         self.inverse_classes: Dict[str, int] = {}
@@ -217,8 +224,12 @@ class MultilabelRestrictionLabeler(MultiLabelCategoricalLabeler):
     RED -> Exist(None)
     """
 
-    def __init__(self, mode: Literal["lower", "upper", "both"] = "both"):
-        super().__init__()
+    def __init__(
+        self,
+        mode: Literal["lower", "upper", "both"] = "both",
+        class_for_no_label: bool = False,
+    ):
+        super().__init__(class_for_no_label=class_for_no_label)
         self.current_hop = 0
         self.max_hop = 0
         # no need for this to be ordered
