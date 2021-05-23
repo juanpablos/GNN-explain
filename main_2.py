@@ -426,7 +426,8 @@ def main(
     test_batch = 1024
 
     if name is None:
-        name = f"{selector}-{labeler}-{test_selector}"
+        test_selector_name = "CV" if crossfold_config else str(test_selector)
+        name = f"{selector}-{labeler}-{test_selector_name}"
 
     hid = "+".join([f"{l}L{val}" for l, val in enumerate(hidden_layers, start=1)])
     msg = f"{name}-{hid}-{train_batch}b-{lr}lr"
