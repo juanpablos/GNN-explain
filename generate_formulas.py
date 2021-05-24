@@ -12,7 +12,11 @@ import torch
 
 from src.data.datasets import GraphDataset
 from src.data.formula_index import FormulaMapping
-from src.data.sampler import PreloadedDataSampler, SubsetSampler
+from src.data.sampler import (
+    PreloadedDataSampler,
+    SubsetSampler,
+    PreloadedDataSamplerWithBalancer,
+)
 from src.generate_graphs import (
     graph_data_stream,
     graph_data_stream_pregenerated_graphs_test,
@@ -86,12 +90,24 @@ def run_experiment(
         test_data_pool = GraphDataset(test_stream, limit=None)
 
         logger.debug("Initializing subsampler")
-        data_sampler = PreloadedDataSampler(
-            train_dataset=train_stream,
-            test_dataset=test_data_pool,
-            n_elements_per_distribution=15,
-            seed=seed,
-        )
+        if data_config.get("balance_training") is not None:
+            logger.info("Using autobalancer preloaded data sampler")
+            balanced_config = data_config["balance_training"]
+            data_sampler = PreloadedDataSamplerWithBalancer(
+                train_dataset=train_stream,
+                test_dataset=test_data_pool,
+                train_size=balanced_config["train_size"],
+                positive_percent=balanced_config["positive_percent"],
+                seed=seed,
+            )
+        else:
+            logger.info("Using standard preloaded data sampler")
+            data_sampler = PreloadedDataSampler(
+                train_dataset=train_stream,
+                test_dataset=test_data_pool,
+                n_elements_per_distribution=15,
+                seed=seed,
+            )
     else:
         stream = graph_data_stream(**data_config)
 
@@ -224,11 +240,12 @@ def run_experiment(
 
 def main(use_formula: FOC):
     seed = random.randint(1, 1 << 30)
-    # seed = 42
+    seed = 0
     seed_everything(seed)
 
     # n_models = 5000
-    n_models = 500
+    # n_models = 500
+    n_models = 20
     model_name = "acgnn"
 
     input_dim = 4
@@ -257,6 +274,10 @@ def main(use_formula: FOC):
     use_preloaded_graphs = True
     data_config = {
         "use_preloaded_graphs": use_preloaded_graphs,
+        "balance_training": {
+            "train_size": 5000,
+            "positive_percent": 0.1,
+        },
         "generator_fn": "random",
         "min_nodes": 10,
         "max_nodes": 60,
@@ -271,7 +292,7 @@ def main(use_formula: FOC):
         "m": 4,
     }
 
-    save_path = f"data/gnns_v4/{model_config_hash}"
+    save_path = f"data/uniform_sampler_15_64/{model_config_hash}"
     # ! manual operation
     os.makedirs(save_path, exist_ok=True)
     # * model_name - number of models - model hash - formula hash
@@ -294,7 +315,7 @@ def main(use_formula: FOC):
     # how many graphs are selected for the testing
     test_size = 500 if not use_preloaded_graphs else -1
     # the size of the training batch
-    batch_size = 16
+    batch_size = 64
     test_batch_size = 20_000
     # if true, the test set is generated only one time and all models are
     # tested against that

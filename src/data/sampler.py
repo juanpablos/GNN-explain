@@ -148,6 +148,117 @@ class PreloadedDataSampler(SubsetSampler[T]):
         return NoLabelSubset(self.train_dataset, train_indices), self.test_dataset
 
 
+class PreloadedDataSamplerWithBalancer(SubsetSampler[T]):
+    def __init__(
+        self,
+        train_dataset: Generator[Tuple[Tuple[float, ...], T], None, None],
+        test_dataset: NoLabelDataset[T],
+        train_size: int,
+        positive_percent: float,
+        seed: Any,
+    ):
+        (
+            self.negative_indices,
+            self.positive_indices,
+            self.train_dataset,
+        ) = self._group_graphs(train_dataset, positive_percent=positive_percent)
+
+        self.train_size = train_size
+
+        positive_size = len(self.positive_indices)
+        negative_size = len(self.negative_indices)
+
+        low_n_positives = False
+        low_n_negatives = False
+
+        if negative_size + positive_size < self.train_size:
+            raise ValueError("Not enough elements for each distribution")
+
+        if positive_size < self.train_size / 2.0:
+            logger.info(
+                f"Only {positive_size} positive samples for a "
+                f"{self.train_size} train size. "
+                "Dataset will be unbalanced and with the same positive samples"
+            )
+            low_n_positives = True
+        elif positive_size < self.train_size:
+            logger.info(
+                f"Only {positive_size} positive samples for a "
+                f"{self.train_size} train size. "
+                "Dataset will be have frequently the same positive samples"
+            )
+        if negative_size < self.train_size / 2.0:
+            logger.info(
+                f"Only {negative_size} negative samples for a "
+                f"{self.train_size} train size. "
+                "Dataset will be unbalanced and with the same positive samples"
+            )
+            low_n_negatives = True
+        elif negative_size < self.train_size:
+            logger.info(
+                f"Only {negative_size} negative samples for a "
+                f"{self.train_size} train size. "
+                "Dataset will be have frequently the same negative samples"
+            )
+
+        self.rand = np.random.default_rng(seed)
+
+        self.test_dataset = test_dataset
+
+        self._set_train_sizes(
+            positive_size=positive_size,
+            negative_size=negative_size,
+            low_n_negatives=low_n_negatives,
+            low_n_positives=low_n_positives,
+        )
+
+    def _group_graphs(self, dataset, positive_percent: float):
+        negatives_indices = []
+        positives_indices = []
+        cleaned_dataset = []
+        for i, (_, data) in enumerate(dataset):
+            if data.y.mean() >= positive_percent:
+                positives_indices.append(i)
+            else:
+                negatives_indices.append(i)
+            cleaned_dataset.append(data)
+        return (
+            negatives_indices,
+            positives_indices,
+            NoLabelDataset(dataset=cleaned_dataset),
+        )
+
+    def _set_train_sizes(
+        self, positive_size, negative_size, low_n_positives, low_n_negatives
+    ):
+        if low_n_positives:
+            # less than half of the required size
+            self.positive_size = positive_size
+            # negative_size will be larger than half
+            self.negative_size = self.train_size - positive_size
+        elif low_n_negatives:
+            # less than half of the required size
+            self.negative_size = negative_size
+            # negative_size will be larger than half
+            self.positive_size = self.train_size - negative_size
+        else:
+            # balanced case
+            self.positive_size = self.train_size // 2
+            self.negative_size = self.train_size - positive_size
+
+    def __call__(self):
+
+        positive_indices = self.rand.choice(
+            self.positive_indices, size=self.positive_size, replace=False
+        )
+        negative_indices = self.rand.choice(
+            self.negative_indices, size=self.negative_size, replace=False
+        )
+
+        train_indices = np.concatenate([positive_indices, negative_indices])
+        return NoLabelSubset(self.train_dataset, train_indices), self.test_dataset
+
+
 class NetworkDatasetCrossFoldSampler(Generic[T]):
     def __init__(
         self,
