@@ -292,7 +292,7 @@ def main(use_formula: FOC):
         "m": 4,
     }
 
-    save_path = f"data/uniform_sampler_15_64/{model_config_hash}"
+    save_path = f"data/balancer_sampler_5000_01_16/{model_config_hash}"
     # ! manual operation
     os.makedirs(save_path, exist_ok=True)
     # * model_name - number of models - model hash - formula hash
@@ -315,7 +315,7 @@ def main(use_formula: FOC):
     # how many graphs are selected for the testing
     test_size = 500 if not use_preloaded_graphs else -1
     # the size of the training batch
-    batch_size = 64
+    batch_size = 16
     test_batch_size = 20_000
     # if true, the test set is generated only one time and all models are
     # tested against that

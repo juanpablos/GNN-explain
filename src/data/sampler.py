@@ -217,7 +217,7 @@ class PreloadedDataSamplerWithBalancer(SubsetSampler[T]):
         positives_indices = []
         cleaned_dataset = []
         for i, (_, data) in enumerate(dataset):
-            if data.y.mean() >= positive_percent:
+            if data.y.float().mean() >= positive_percent:
                 positives_indices.append(i)
             else:
                 negatives_indices.append(i)
@@ -235,16 +235,16 @@ class PreloadedDataSamplerWithBalancer(SubsetSampler[T]):
             # less than half of the required size
             self.positive_size = positive_size
             # negative_size will be larger than half
-            self.negative_size = self.train_size - positive_size
+            self.negative_size = self.train_size - self.positive_size
         elif low_n_negatives:
             # less than half of the required size
             self.negative_size = negative_size
             # negative_size will be larger than half
-            self.positive_size = self.train_size - negative_size
+            self.positive_size = self.train_size - self.negative_size
         else:
             # balanced case
             self.positive_size = self.train_size // 2
-            self.negative_size = self.train_size - positive_size
+            self.negative_size = self.train_size - self.positive_size
 
     def __call__(self):
 
