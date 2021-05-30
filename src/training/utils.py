@@ -145,13 +145,13 @@ class MetricLogger:
             metric_values.append(last_value)
 
         if tocsv:
-            return ",".join([f"{value:.6f}" for value in metric_values])
+            return ",".join([f"{value:.8f}" for value in metric_values])
         else:
             msg = [
-                f"{name} {value:<10.6f}"
+                f"{name} {value:.8f}"
                 for name, value in zip(metric_names, metric_values)
             ]
-            return "".join(msg)
+            return " ".join(msg)
 
     def __select_logger(self, tocsv: bool = False, **kwargs):
         metric_names: List[str] = []
@@ -175,10 +175,10 @@ class MetricLogger:
                     self.warned = True
 
         if tocsv:
-            return ",".join([f"{value:.6f}" for value in metric_values])
+            return ",".join([f"{value:.8f}" for value in metric_values])
         else:
             msg = [
-                f"{name} {value:<10.6f}"
+                f"{name} {value:.8f}"
                 for name, value in zip(metric_names, metric_values)
             ]
-            return "".join(msg)
+            return " ".join(msg)

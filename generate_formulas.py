@@ -198,8 +198,8 @@ def run_experiment(
 
             models.append((weights, metrics["test_macro"], metrics["test_micro"]))
 
-            stats["macro"][str(round(metrics["test_macro"], 6))] += 1
-            stats["micro"][str(round(metrics["test_micro"], 6))] += 1
+            stats["macro"][str(round(metrics["test_macro"], 8))] += 1
+            stats["micro"][str(round(metrics["test_micro"], 8))] += 1
 
     except KeyboardInterrupt:
         logger.info("Manually Interrumpted")
@@ -281,7 +281,7 @@ def main(use_formula: FOC):
         "balance_training": {
             "train_size": 25000,
             "positive_graph_threshold": 0.1,
-            "positive_distribution_threshold": 0.8,
+            "positive_distribution_threshold": 1.0,
         },
         "generator_fn": "random",
         "min_nodes": 10,
@@ -297,7 +297,7 @@ def main(use_formula: FOC):
         "m": 4,
     }
 
-    save_path = f"data/balanced_sampler_25k_01_08_8/{model_config_hash}"
+    save_path = f"data/balanced_sampler_25k_01_10_32/{model_config_hash}"
     # ! manual operation
     os.makedirs(save_path, exist_ok=True)
     # * model_name - number of models - model hash - formula hash
@@ -320,7 +320,7 @@ def main(use_formula: FOC):
     # how many graphs are selected for the testing
     test_size = 500 if not use_preloaded_graphs else -1
     # the size of the training batch
-    batch_size = 8
+    batch_size = 32
     test_batch_size = 20_000
     # if true, the test set is generated only one time and all models are
     # tested against that
