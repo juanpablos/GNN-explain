@@ -273,19 +273,21 @@ class PreloadedDataSamplerWithBalancer(SubsetSampler[T]):
             and negative_distribution_graphs >= balancing_size
         ):
             # all positive, distribute negative
-            negative_per_distribution = balancing_size // negative_distribution_number
-
-            self._add_to_per_iteration_distribution_graphs(
-                negative_distributions.keys(),
-                graph_number=negative_per_distribution,
-            )
-
             for distribution, graph_indices in positive_distributions:
                 self._add_to_per_iteration_distribution_graphs(
                     [distribution],
                     graph_number=len(graph_indices),
                 )
             positive_per_distribution = 1  # just to by-pass check
+
+            # chooce from (TOTAL - positives) // number_of_negative_distributions
+            negative_per_distribution = (
+                expected_train_size - positive_distribution_graphs
+            ) // negative_distribution_number
+            self._add_to_per_iteration_distribution_graphs(
+                negative_distributions.keys(),
+                graph_number=negative_per_distribution,
+            )
 
             logger.warning(
                 "Unbalanced training set. "
@@ -300,19 +302,21 @@ class PreloadedDataSamplerWithBalancer(SubsetSampler[T]):
             and negative_distribution_graphs < balancing_size
         ):
             # all negative, distribute positive
-            positive_per_distribution = balancing_size // positive_distribution_number
-
-            self._add_to_per_iteration_distribution_graphs(
-                positive_distributions.keys(),
-                graph_number=positive_per_distribution,
-            )
-
             for distribution, graph_indices in negative_distributions:
                 self._add_to_per_iteration_distribution_graphs(
                     [distribution],
                     graph_number=len(graph_indices),
                 )
             negative_per_distribution = 1  # just to by-pass check
+
+            # chooce from (TOTAL - negative) // number_of_positive_distributions
+            positive_per_distribution = (
+                expected_train_size - negative_distribution_graphs
+            ) // positive_distribution_number
+            self._add_to_per_iteration_distribution_graphs(
+                positive_distributions.keys(),
+                graph_number=positive_per_distribution,
+            )
 
             logger.warning(
                 "Unbalanced training set. "
