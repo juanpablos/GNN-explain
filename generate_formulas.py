@@ -97,7 +97,10 @@ def run_experiment(
                 train_dataset=train_stream,
                 test_dataset=test_data_pool,
                 train_size=balanced_config["train_size"],
-                positive_percent=balanced_config["positive_percent"],
+                positive_graph_threshold=balanced_config["positive_graph_threshold"],
+                positive_distribution_threshold=balanced_config[
+                    "positive_distribution_threshold"
+                ],
                 seed=seed,
             )
         else:
@@ -274,9 +277,11 @@ def main(use_formula: FOC):
     use_preloaded_graphs = True
     data_config = {
         "use_preloaded_graphs": use_preloaded_graphs,
+        # "balance_training": None,
         "balance_training": {
-            "train_size": 5000,
-            "positive_percent": 0.1,
+            "train_size": 25000,
+            "positive_graph_threshold": 0.1,
+            "positive_distribution_threshold": 0.8,
         },
         "generator_fn": "random",
         "min_nodes": 10,
@@ -292,7 +297,7 @@ def main(use_formula: FOC):
         "m": 4,
     }
 
-    save_path = f"data/balancer_sampler_5000_01_16/{model_config_hash}"
+    save_path = f"data/balanced_sampler_25k_01_08_8/{model_config_hash}"
     # ! manual operation
     os.makedirs(save_path, exist_ok=True)
     # * model_name - number of models - model hash - formula hash
@@ -315,7 +320,7 @@ def main(use_formula: FOC):
     # how many graphs are selected for the testing
     test_size = 500 if not use_preloaded_graphs else -1
     # the size of the training batch
-    batch_size = 16
+    batch_size = 8
     test_batch_size = 20_000
     # if true, the test set is generated only one time and all models are
     # tested against that

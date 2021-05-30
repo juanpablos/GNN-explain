@@ -1,6 +1,6 @@
 import logging
 from collections import defaultdict
-from typing import Any, Dict, Generator, Generic, List, Tuple
+from typing import Any, Dict, Generator, Generic, Iterable, List, Tuple
 
 import numpy as np
 from sklearn.model_selection import KFold, StratifiedKFold
@@ -154,108 +154,197 @@ class PreloadedDataSamplerWithBalancer(SubsetSampler[T]):
         train_dataset: Generator[Tuple[Tuple[float, ...], T], None, None],
         test_dataset: NoLabelDataset[T],
         train_size: int,
-        positive_percent: float,
+        positive_graph_threshold: float,
+        positive_distribution_threshold: float,
         seed: Any,
     ):
+
         (
-            self.negative_indices,
-            self.positive_indices,
+            positive_distributions,
+            negative_distributions,
+            self.distribution_graph_mapping,
             self.train_dataset,
-        ) = self._group_graphs(train_dataset, positive_percent=positive_percent)
+        ) = self._calculate_distributions(
+            dataset=train_dataset,
+            positive_graph_threshold=positive_graph_threshold,
+            positive_distribution_threshold=positive_distribution_threshold,
+        )
 
-        self.train_size = train_size
+        self.per_iteration_distribution_graphs = {}
 
-        positive_size = len(self.positive_indices)
-        negative_size = len(self.negative_indices)
-
-        low_n_positives = False
-        low_n_negatives = False
-
-        if negative_size + positive_size < self.train_size:
-            raise ValueError("Not enough elements for each distribution")
-
-        if positive_size < self.train_size / 2.0:
-            logger.info(
-                f"Only {positive_size} positive samples for a "
-                f"{self.train_size} train size. "
-                "Dataset will be unbalanced and with the same positive samples"
-            )
-            low_n_positives = True
-        elif positive_size < self.train_size:
-            logger.info(
-                f"Only {positive_size} positive samples for a "
-                f"{self.train_size} train size. "
-                "Dataset will be have frequently the same positive samples"
-            )
-        if negative_size < self.train_size / 2.0:
-            logger.info(
-                f"Only {negative_size} negative samples for a "
-                f"{self.train_size} train size. "
-                "Dataset will be unbalanced and with the same positive samples"
-            )
-            low_n_negatives = True
-        elif negative_size < self.train_size:
-            logger.info(
-                f"Only {negative_size} negative samples for a "
-                f"{self.train_size} train size. "
-                "Dataset will be have frequently the same negative samples"
-            )
+        self._calculate_sizes(
+            expected_train_size=train_size,
+            positive_distributions=positive_distributions,
+            negative_distributions=negative_distributions,
+        )
 
         self.rand = np.random.default_rng(seed)
 
         self.test_dataset = test_dataset
 
-        self._set_train_sizes(
-            positive_size=positive_size,
-            negative_size=negative_size,
-            low_n_negatives=low_n_negatives,
-            low_n_positives=low_n_positives,
-        )
-
-    def _group_graphs(self, dataset, positive_percent: float):
-        negatives_indices = []
-        positives_indices = []
+    def _calculate_distributions(
+        self,
+        dataset,
+        positive_graph_threshold: float,
+        positive_distribution_threshold: float,
+    ):
         cleaned_dataset = []
-        for i, (_, data) in enumerate(dataset):
-            if data.y.float().mean() >= positive_percent:
-                positives_indices.append(i)
-            else:
-                negatives_indices.append(i)
+        distribution_mapping = defaultdict(list)
+        distribution_positive_graph_count = defaultdict(int)
+        for i, (distribution, data) in enumerate(dataset):
+            if data.y.float().mean() >= positive_graph_threshold:
+                distribution_positive_graph_count[distribution] += 1
+            distribution_mapping[distribution].append(i)
             cleaned_dataset.append(data)
+
+        positive_distributions = {}
+        negative_distributions = {}
+        for distribution, distribution_indices in distribution_mapping.items():
+            positive_count = distribution_positive_graph_count[distribution]
+            if (
+                float(positive_count) / len(distribution_indices)
+                >= positive_distribution_threshold
+            ):
+                positive_distributions[distribution] = distribution_indices
+            else:
+                negative_distributions[distribution] = distribution_indices
         return (
-            negatives_indices,
-            positives_indices,
+            positive_distributions,
+            negative_distributions,
+            distribution_mapping,
             NoLabelDataset(dataset=cleaned_dataset),
         )
 
-    def _set_train_sizes(
-        self, positive_size, negative_size, low_n_positives, low_n_negatives
+    @staticmethod
+    def __sum_dictionary_sizes(list_dict: Dict[Any, List]) -> int:
+        return sum(len(value) for value in list_dict.values())
+
+    def _add_to_per_iteration_distribution_graphs(
+        self, distributions: Iterable[Any], graph_number: int
     ):
-        if low_n_positives:
-            # less than half of the required size
-            self.positive_size = positive_size
-            # negative_size will be larger than half
-            self.negative_size = self.train_size - self.positive_size
-        elif low_n_negatives:
-            # less than half of the required size
-            self.negative_size = negative_size
-            # negative_size will be larger than half
-            self.positive_size = self.train_size - self.negative_size
+        for distribution in distributions:
+            self.per_iteration_distribution_graphs[distribution] = graph_number
+
+    def _calculate_sizes(
+        self,
+        expected_train_size: int,
+        positive_distributions: Dict[Any, List[int]],
+        negative_distributions: Dict[Any, List[int]],
+    ):
+        balancing_size = expected_train_size // 2
+
+        positive_distribution_number = len(positive_distributions)
+        negative_distribution_number = len(negative_distributions)
+
+        positive_distribution_graphs = self.__sum_dictionary_sizes(
+            positive_distributions
+        )
+        negative_distribution_graphs = self.__sum_dictionary_sizes(
+            negative_distributions
+        )
+
+        if (
+            positive_distribution_graphs >= balancing_size
+            and negative_distribution_graphs >= balancing_size
+        ):
+            # normal distribute
+            # at least 1 graph per distribution
+            positive_per_distribution = balancing_size // positive_distribution_number
+            negative_per_distribution = balancing_size // negative_distribution_number
+
+            self._add_to_per_iteration_distribution_graphs(
+                positive_distributions.keys(),
+                graph_number=positive_per_distribution,
+            )
+            self._add_to_per_iteration_distribution_graphs(
+                negative_distributions.keys(),
+                graph_number=negative_per_distribution,
+            )
+
+            logger.debug(
+                "Balanced training set. "
+                f"{positive_per_distribution} graphs sampled from "
+                f"{positive_distribution_number} positive distributions. "
+                f"{negative_per_distribution} graphs sampled from "
+                f"{negative_distribution_number} negative distributions"
+            )
+        elif (
+            positive_distribution_graphs < balancing_size
+            and negative_distribution_graphs >= balancing_size
+        ):
+            # all positive, distribute negative
+            negative_per_distribution = balancing_size // negative_distribution_number
+
+            self._add_to_per_iteration_distribution_graphs(
+                negative_distributions.keys(),
+                graph_number=negative_per_distribution,
+            )
+
+            for distribution, graph_indices in positive_distributions:
+                self._add_to_per_iteration_distribution_graphs(
+                    [distribution],
+                    graph_number=len(graph_indices),
+                )
+            positive_per_distribution = 1  # just to by-pass check
+
+            logger.warning(
+                "Unbalanced training set. "
+                f"All {positive_distribution_graphs} graphs "
+                f"from all {positive_distribution_number} positive distributions. "
+                f"{negative_per_distribution} graphs sampled from "
+                f"{negative_distribution_number} negative distributions"
+            )
+
+        elif (
+            positive_distribution_graphs >= balancing_size
+            and negative_distribution_graphs < balancing_size
+        ):
+            # all negative, distribute positive
+            positive_per_distribution = balancing_size // positive_distribution_number
+
+            self._add_to_per_iteration_distribution_graphs(
+                positive_distributions.keys(),
+                graph_number=positive_per_distribution,
+            )
+
+            for distribution, graph_indices in negative_distributions:
+                self._add_to_per_iteration_distribution_graphs(
+                    [distribution],
+                    graph_number=len(graph_indices),
+                )
+            negative_per_distribution = 1  # just to by-pass check
+
+            logger.warning(
+                "Unbalanced training set. "
+                f"All {negative_distribution_graphs} graphs "
+                f"from all {negative_distribution_number} negative distributions. "
+                f"{positive_per_distribution} graphs sampled from "
+                f"{positive_distribution_number} positive distributions"
+            )
+
         else:
-            # balanced case
-            self.positive_size = self.train_size // 2
-            self.negative_size = self.train_size - self.positive_size
+            raise ValueError(
+                "Not enough graphs to distribute. "
+                f"Total number of {positive_distribution_graphs + negative_distribution_graphs} "
+                f"graphs, but {expected_train_size} were requested por iteration."
+            )
+
+        if positive_per_distribution <= 0 or negative_per_distribution <= 0:
+            raise ValueError(
+                "Per iteration graph count per distribution is less than 1"
+            )
 
     def __call__(self):
+        indices = []
+        for (
+            distribution,
+            take,
+        ) in self.per_iteration_distribution_graphs.items():
+            available_indices = self.distribution_graph_mapping[distribution]
+            ind = self.rand.choice(available_indices, size=take, replace=False)
+            indices.append(ind)
 
-        positive_indices = self.rand.choice(
-            self.positive_indices, size=self.positive_size, replace=False
-        )
-        negative_indices = self.rand.choice(
-            self.negative_indices, size=self.negative_size, replace=False
-        )
-
-        train_indices = np.concatenate([positive_indices, negative_indices])
+        train_indices = np.concatenate(indices)
         return NoLabelSubset(self.train_dataset, train_indices), self.test_dataset
 
 
