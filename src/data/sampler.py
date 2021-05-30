@@ -273,7 +273,7 @@ class PreloadedDataSamplerWithBalancer(SubsetSampler[T]):
             and negative_distribution_graphs >= balancing_size
         ):
             # all positive, distribute negative
-            for distribution, graph_indices in positive_distributions:
+            for distribution, graph_indices in positive_distributions.items():
                 self._add_to_per_iteration_distribution_graphs(
                     [distribution],
                     graph_number=len(graph_indices),
@@ -302,7 +302,7 @@ class PreloadedDataSamplerWithBalancer(SubsetSampler[T]):
             and negative_distribution_graphs < balancing_size
         ):
             # all negative, distribute positive
-            for distribution, graph_indices in negative_distributions:
+            for distribution, graph_indices in negative_distributions.items():
                 self._add_to_per_iteration_distribution_graphs(
                     [distribution],
                     graph_number=len(graph_indices),
