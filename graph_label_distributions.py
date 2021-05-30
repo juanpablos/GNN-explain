@@ -73,6 +73,7 @@ for formula_hash in all_hashes:
     percent_10up = 0
     percent_20up = 0
 
+    all_distributions = set()
     relevant_distributions10 = defaultdict(int)
     relevant_distributions20 = defaultdict(int)
     for distribution, distribution_labels in train_labels.items():
@@ -89,6 +90,8 @@ for formula_hash in all_hashes:
                 relevant_distributions10[str(distribution)] += int(relevant10)
             if relevant20:
                 relevant_distributions20[str(distribution)] += int(relevant20)
+
+        all_distributions.add(str(distribution))
         total += len(distribution_labels)
 
     stats_mapping[formula_hash] = {
@@ -105,8 +108,12 @@ for formula_hash in all_hashes:
     percent_10[formula_hash] = percent_10up
     percent_20[formula_hash] = percent_20up
 
-    relevant_count_10up = list(relevant_distributions10.values())
-    relevant_count_20up = list(relevant_distributions20.values())
+    relevant_count_10up = [
+        relevant_distributions10[distribution] for distribution in all_distributions
+    ]
+    relevant_count_20up = [
+        relevant_distributions20[distribution] for distribution in all_distributions
+    ]
 
     n, bins, patches = ax1.hist(relevant_count_10up, 30, facecolor="g")
     ax1.set_title(
