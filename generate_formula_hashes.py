@@ -1,8 +1,9 @@
 import hashlib
-import json
 import itertools
-from src.graphs.foc import *
+import json
 import random
+
+from src.graphs.foc import *
 
 color_names = ["RED", "BLUE", "GREEN", "BLACK"]
 formulas = []
@@ -24,6 +25,17 @@ def generate_pair_formulas(pairs, operator):
     return combinations
 
 
+def generate_gt_exist_all_bases(bases, nested, lower, upper):
+    exists = []
+    for base in bases:
+        for inner in nested:
+            for i in range(lower, upper + 1):
+                f = AND(base, Exist(AND(Role("EDGE"), inner), lower=i))
+                exists.append(f)
+
+    return exists
+
+
 def generate_gt_exist_random_base(bases, nested, lower, upper):
     exists = []
     for inner in nested:
@@ -37,6 +49,18 @@ def generate_gt_exist_random_base(bases, nested, lower, upper):
     return exists
 
 
+def generate_lt_exist_all_bases(bases, nested, lower, upper):
+    exists = []
+    for base in bases:
+        for inner in nested:
+            for i in range(lower, upper + 1):
+                f = AND(base, Exist(AND(Role("EDGE"), inner), upper=i))
+
+                exists.append(f)
+
+    return exists
+
+
 def generate_lt_exist_random_base(bases, nested, lower, upper):
     exists = []
     for inner in nested:
@@ -46,6 +70,18 @@ def generate_lt_exist_random_base(bases, nested, lower, upper):
             f = AND(base, Exist(AND(Role("EDGE"), inner), upper=i))
 
             exists.append(f)
+
+    return exists
+
+
+def generate_gtlt_exist_all_bases(bases, nested, restriction_pairs):
+    exists = []
+    for base in bases:
+        for inner in nested:
+            for lower, upper in restriction_pairs:
+                f = AND(base, Exist(AND(Role("EDGE"), inner), lower=lower, upper=upper))
+
+                exists.append(f)
 
     return exists
 
@@ -91,35 +127,53 @@ formulas.extend(or_pairs)
 
 
 # at lest N
-color_gt_exist = generate_gt_exist_random_base(
+color_gt_exist = generate_gt_exist_all_bases(
     bases=color_bases, nested=color_bases, lower=1, upper=5
 )
+# color_gt_exist = generate_gt_exist_random_base(
+#     bases=color_bases, nested=color_bases, lower=1, upper=5
+# )
 # at most N
-color_lt_exist = generate_lt_exist_random_base(
+color_lt_exist = generate_lt_exist_all_bases(
     bases=color_bases, nested=color_bases, lower=1, upper=5
 )
+# color_lt_exist = generate_lt_exist_random_base(
+#     bases=color_bases, nested=color_bases, lower=1, upper=5
+# )
 formulas.extend(color_gt_exist + color_lt_exist)
 
 
 and_or_pairs = or_pairs
 # at lest N, + AND/OR
-operation_gt_exist = generate_gt_exist_random_base(
+operation_gt_exist = generate_gt_exist_all_bases(
     bases=and_or_pairs, nested=color_bases, lower=1, upper=5
 )
+# operation_gt_exist = generate_gt_exist_random_base(
+#     bases=and_or_pairs, nested=color_bases, lower=1, upper=5
+# )
 # at most N, + AND/OR
-operation_lt_exist = generate_lt_exist_random_base(
+operation_lt_exist = generate_lt_exist_all_bases(
     bases=and_or_pairs, nested=color_bases, lower=1, upper=5
 )
+# operation_lt_exist = generate_lt_exist_random_base(
+#     bases=and_or_pairs, nested=color_bases, lower=1, upper=5
+# )
 formulas.extend(operation_gt_exist + operation_lt_exist)
 
 # between N and M, + AND/OR/*
 restrictions = list(itertools.combinations_with_replacement([1, 2, 3, 4, 5], r=2))
-operation_gtlt_exist_1 = generate_gtlt_exist_random_base(
+operation_gtlt_exist_1 = generate_gtlt_exist_all_bases(
     bases=and_or_pairs + color_bases, nested=color_bases, restriction_pairs=restrictions
 )
-operation_gtlt_exist_2 = generate_gtlt_exist_random_base(
+# operation_gtlt_exist_1 = generate_gtlt_exist_random_base(
+#     bases=and_or_pairs + color_bases, nested=color_bases, restriction_pairs=restrictions
+# )
+operation_gtlt_exist_2 = generate_gtlt_exist_all_bases(
     bases=and_or_pairs + color_bases, nested=color_bases, restriction_pairs=restrictions
 )
+# operation_gtlt_exist_2 = generate_gtlt_exist_random_base(
+#     bases=and_or_pairs + color_bases, nested=color_bases, restriction_pairs=restrictions
+# )
 formulas.extend(operation_gtlt_exist_1 + operation_gtlt_exist_2)
 
-write(formula_file="data/formulas_v3.json", n_splits=6)
+write(formula_file="data/all_formulas.json", n_splits=0)
