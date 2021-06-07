@@ -1,8 +1,11 @@
 import os
+import re
 
 import torch
 
 from src.data.gnn.utils import prepare_files
+
+gnn_number_pattern = re.compile(r"-n[0-9]+-")
 
 # remove gnns that do not reach perfect training
 
@@ -31,9 +34,12 @@ with open(os.path.join(path, log_file)) as f:
         if current_formula_hash != _current_formula_hash:
             if current_formula_hash is not None:
                 # save what we have and reset
-                formula_file_cleaned = formula_hash_to_file[
-                    current_formula_hash
-                ].replace("-n500-", f"-n{str(len(cleaned_formulas))}-")
+                current_file = formula_hash_to_file[current_formula_hash]
+                number_pattern = gnn_number_pattern.search(current_file)[0]
+                formula_file_cleaned = current_file.replace(
+                    number_pattern, f"-n{str(len(cleaned_formulas))}-"
+                )
+
                 print(f"saving formula {current_formula_hash}")
                 torch.save(
                     cleaned_formulas, os.path.join(cleaned_path, formula_file_cleaned)
@@ -55,17 +61,22 @@ with open(os.path.join(path, log_file)) as f:
         if "Training model" in line:
             current_gnn_index = int(line.split("Training model ")[1].split("/")[0]) - 1
 
-        if (
-            "src.run_logic INFO" in line
-            and "test_macro 1.000000  test_micro 1.000000" in line
-        ):
+        # hardcoded max 15 iterations
+        # no need to check for macro/micro, it should have ended before
+        # if it had reached the expected result.
+        # also, INFO 15 is still allowed if DEBUG 15 does not exist
+        # this also avoids the change on avg precision
+        if """src.run_logic DEBUG " 15""" in line:
             print(f"Adding gnn {current_gnn_index} - on hash {current_formula_hash}")
             cleaned_formulas.append(current_formulas[current_gnn_index])
 
     if cleaned_formulas and current_formula_hash is not None:
         # when finished, save what is left
-        formula_file_cleaned = formula_hash_to_file[current_formula_hash].replace(
-            "-n500-", f"-n{str(len(cleaned_formulas))}-"
+        current_file = formula_hash_to_file[current_formula_hash]
+        number_pattern = gnn_number_pattern.search(current_file)[0]
+        formula_file_cleaned = current_file.replace(
+            number_pattern, f"-n{str(len(cleaned_formulas))}-"
         )
+
         print(f"saving formula {current_formula_hash}")
         torch.save(cleaned_formulas, os.path.join(cleaned_path, formula_file_cleaned))
