@@ -1,7 +1,7 @@
 import os
 
 
-def prepare_files(path: str, model_hash: str = None):
+def find_duplicates(path: str, model_hash: str = None):
     files = set()
     duplicated = set()
     # reproducibility, always sorted files
@@ -22,6 +22,7 @@ data_path = "data"
 gnn_path = "gnns_v4"
 model_hash = "40e65407aa"
 
-# formula_path = os.path.join(data_path, "delete")
-formula_path = os.path.join(data_path, gnn_path, model_hash)
-print(prepare_files(formula_path))
+formula_path = os.path.join(data_path, gnn_path, model_hash, "cleaned")
+duplicates = find_duplicates(formula_path)
+print(len(duplicates))
+print("\n".join(duplicates))
