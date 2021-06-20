@@ -80,7 +80,9 @@ def _run_experiment(
 
     _, train_distribution = get_label_distribution(train_data)
     test_label_count, test_distribution = get_label_distribution(test_data)
+    logger.debug(f"Train dataset size {len(train_data)}")
     logger.debug(f"Train dataset distribution {train_distribution}")
+    logger.debug(f"Test dataset size {len(test_data)}")
     logger.debug(f"Test dataset distribution {test_distribution}")
 
     input_shape = get_input_dim(train_data)
@@ -259,6 +261,8 @@ def run_experiment(
     )
 
     if isinstance(datasets, NetworkDatasetCrossFoldSampler):
+        logger.info(f"Total Dataset size: {datasets.dataset_size}")
+
         n_splits = datasets.n_splits
         for i, (train_data, test_data, data_reconstruction) in enumerate(
             datasets, start=1
@@ -312,6 +316,8 @@ def run_experiment(
                 stratify=stratify,
                 multilabel=multilabel,
             )
+
+        logger.info(f"Total Dataset size: {len(train_data) + len(test_data)}")
 
         _run_experiment(
             train_data=train_data,
@@ -382,26 +388,26 @@ def main(
     # test_selector = FilterApply(condition="or")
     # test_selector.add(AtomicOnlyFilter(atomic="all"))
     # test_selector.add(RestrictionFilter(lower=4, upper=None))
-    test_selector = SelectFilter(
-        hashes=[
-            "548c9f191e",
-            "f0c2c63b89",
-            "2d69688180",
-            "ac7a72db0f",
-            "da7c072589",
-            "ddc0cfc54b",
-            "eecfedc45d",
-        ]
-    )
-    # test_selector = NullFilter()
+    # test_selector = SelectFilter(
+    #     hashes=[
+    #         "548c9f191e",
+    #         "f0c2c63b89",
+    #         "2d69688180",
+    #         "ac7a72db0f",
+    #         "da7c072589",
+    #         "ddc0cfc54b",
+    #         "eecfedc45d",
+    #     ]
+    # )
+    test_selector = NullFilter()
     # * /test_filters
 
     # * labelers
-    # label_logic = BinaryAtomicLabeler(atomic="BLACK", hop=1)
+    label_logic = BinaryAtomicLabeler(atomic="RED", hop=0)
     # label_logic = BinaryHopLabeler(hop=1)
     # label_logic = BinaryRestrictionLabeler(lower=None, upper=4)
     # label_logic = MultiLabelAtomicLabeler()
-    label_logic = MultilabelRestrictionLabeler(mode="upper", class_for_no_label=True)
+    # label_logic = MultilabelRestrictionLabeler(mode="upper", class_for_no_label=True)
     labeler = LabelerApply(labeler=label_logic)
     # * /labelers
     data_config: NetworkDataConfig = {
@@ -436,7 +442,7 @@ def main(
     hid = "+".join([f"{l}L{val}" for l, val in enumerate(hidden_layers, start=1)])
     msg = f"{name}-{hid}-{train_batch}b-{lr}lr"
 
-    results_path = f"./results/v4/crossfold/{model_hash}"
+    results_path = f"./results/v4/crossfold_raw/{model_hash}"
     plot_file = None
     if make_plots:
         plot_file = msg

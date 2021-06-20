@@ -1,5 +1,6 @@
 import logging
 from collections import defaultdict
+from functools import cached_property
 from typing import Any, Dict, Generator, Generic, Iterable, List, Tuple
 
 import numpy as np
@@ -412,6 +413,13 @@ class NetworkDatasetCrossFoldSampler(Generic[T]):
     @property
     def n_splits(self) -> int:
         return self.kfold.n_splits
+
+    @cached_property
+    def dataset_size(self):
+        size = 0
+        for dataset in self.datasets:
+            size += len(dataset)
+        return size
 
     def get_folds(self) -> Dict[int, Dict[str, List[Dict[str, str]]]]:
         return self.folds
