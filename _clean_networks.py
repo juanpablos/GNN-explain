@@ -10,7 +10,7 @@ gnn_number_pattern = re.compile(r"-n[0-9]+-")
 # remove gnns that do not reach perfect training
 
 path = "./data/gnns_v4/"
-log_file = "formulas_v3.json.2.log.1"
+log_file = "formulas_v4.json.5.log"
 model_hash = "40e65407aa"
 
 formula_path = os.path.join(path, model_hash)
@@ -24,9 +24,11 @@ current_formulas = []
 current_gnn_index = 0
 cleaned_formulas = []
 
+max_iteration_reached = False
+
 skip_hashes = set()
 
-with open(os.path.join(path, log_file)) as f:
+with open(os.path.join(path, "logs", log_file)) as f:
     for line in f:
         _current_formula_hash = line[:10]
         if _current_formula_hash in skip_hashes:
@@ -60,15 +62,23 @@ with open(os.path.join(path, log_file)) as f:
 
         if "Training model" in line:
             current_gnn_index = int(line.split("Training model ")[1].split("/")[0]) - 1
+            max_iteration_reached = False
 
         # hardcoded max 15 iterations
         # no need to check for macro/micro, it should have ended before
-        # if it had reached the expected result.
+        # if it had had reached the expected result.
         # also, INFO 15 is still allowed if DEBUG 15 does not exist
         # this also avoids the change on avg precision
         if """src.run_logic DEBUG " 15""" in line:
+            max_iteration_reached = True
+
+        # basically if DEBUG 15 exists, then the trainig stopped for iteration limit
+        # no for condition check
+        if """src.run_logic INFO""" in line and not max_iteration_reached:
             print(f"Adding gnn {current_gnn_index} - on hash {current_formula_hash}")
             cleaned_formulas.append(current_formulas[current_gnn_index])
+
+            max_iteration_reached = False
 
     if cleaned_formulas and current_formula_hash is not None:
         # when finished, save what is left
