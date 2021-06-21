@@ -10,6 +10,7 @@ from .filter import (
 from .labeler import (
     BinaryAtomicLabeler,
     BinaryHopLabeler,
+    BinaryORHopLabeler,
     BinaryRestrictionLabeler,
     LabelerApply,
     MulticlassOpenQuantifierLabeler,

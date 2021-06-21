@@ -116,6 +116,35 @@ class BinaryHopLabeler(BinaryCategoricalLabeler):
         return f"BinaryHop({self.target_hop},{self.negate})"
 
 
+class BinaryORHopLabeler(BinaryCategoricalLabeler):
+    def __init__(self, hop: int):
+        if hop < 0:
+            raise ValueError("Hop must be greater or equal to 0.")
+        super().__init__()
+        self.current_hop = 0
+        self.target_hop = hop
+
+        self.classes[1] = f"OR in hop {hop}"
+
+    def _visit_Exist(self, node: Exist):
+        self.current_hop += 1
+        super()._visit_Exist(node)
+        self.current_hop -= 1
+
+    def _visit_OR(self, node: OR):
+        # or is present in hop N
+        if self.current_hop == self.target_hop:
+            self.result = 1
+        super()._visit_OR(node)
+
+    def reset(self):
+        super().reset()
+        self.current_hop = 0
+
+    def __str__(self):
+        return f"BinaryORHopLabeler({self.target_hop})"
+
+
 class BinaryRestrictionLabeler(BinaryCategoricalLabeler):
     def __init__(
         self, lower: Optional[int], upper: Optional[int], negate: bool = False
