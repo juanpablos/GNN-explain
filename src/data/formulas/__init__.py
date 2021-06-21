@@ -12,6 +12,7 @@ from .labeler import (
     BinaryHopLabeler,
     BinaryRestrictionLabeler,
     LabelerApply,
+    MulticlassRestrictionLabeler,
     MultiLabelAtomicLabeler,
     MultilabelRestrictionLabeler,
     SequenceLabelerApply,

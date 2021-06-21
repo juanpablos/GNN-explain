@@ -178,6 +178,31 @@ class SequentialCategoricalLabeler(CategoricalLabeler[int, int]):
         return "Sequential()"
 
 
+class MulticlassRestrictionLabeler(CategoricalLabeler[int, int]):
+    def __init__(self, quantifier_tuples: List[Tuple[Optional[int], Optional[int]]]):
+        super().__init__()
+        self.quantifier_classes = {}
+        self.classes[0] = "Other"
+
+        for i, (lower, upper) in enumerate(quantifier_tuples, start=1):
+            self.classes[i] = f"Exist({lower},{upper})"
+            self.quantifier_classes[(lower, upper)] = i
+
+    def reset(self):
+        self.result = 0
+
+    def _visit_Exist(self, node: Exist):
+        restriction = (node.lower, node.upper)
+        if restriction in self.quantifier_classes:
+            self.result = self.quantifier_classes[restriction]
+        else:
+            self.result = 0  # Other
+        super()._visit_Exist(node)
+
+    def __str__(self):
+        return f"MulticlassRestrictionLabeler({list(self.quantifier_classes.keys())})"
+
+
 # *----- multilabel
 
 
