@@ -203,6 +203,31 @@ class MulticlassRestrictionLabeler(CategoricalLabeler[int, int]):
         return f"MulticlassRestrictionLabeler({list(self.quantifier_classes.keys())})"
 
 
+class MulticlassOpenQuantifierLabeler(CategoricalLabeler[int, int]):
+    def __init__(self):
+        super().__init__()
+        self.classes[0] = "No Quantifier"
+        self.classes[1] = "No Open"
+        self.classes[2] = "Lower Open"
+        self.classes[3] = "Upper Open"
+
+    def reset(self):
+        self.result = 0
+
+    def _visit_Exist(self, node: Exist):
+        if node.lower is None:
+            self.result = 2
+        elif node.upper is None:
+            self.result = 3
+        else:
+            self.result = 1
+        # if no exist -> result = 0
+        super()._visit_Exist(node)
+
+    def __str__(self):
+        return "MulticlassOpenQuantifierLabeler()"
+
+
 # *----- multilabel
 
 
