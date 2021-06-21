@@ -378,6 +378,39 @@ class MultilabelRestrictionLabeler(MultiLabelCategoricalLabeler):
         return f"MultiLabelRestriction({modes})"
 
 
+class MultilabelQuantifierLabeler(MultiLabelCategoricalLabeler):
+    """
+    Labels are for compound Exist operations:
+    Exist(..., 2, 3) -> UPPER + LOWER
+    Exist(..., 2, None) -> LOWER
+
+    RED -> No quantifier
+    """
+
+    def __init__(
+        self,
+    ):
+        super().__init__()
+        self.classes[0] = "No Quantifier"
+        self.classes[1] = "Lower Limit"
+        self.classes[2] = "Upper Limit"
+
+    def _visit_Exist(self, node: Exist):
+        if node.upper is not None:
+            self.current_result.append(2)
+        if node.lower is not None:
+            self.current_result.append(1)
+        super()._visit_Exist(node)
+
+    def process(self, formula: Element):
+        if not self.current_result:
+            self.current_result.append(0)
+        super().process(formula=formula)
+
+    def __str__(self):
+        return f"MultilabelQuantifierLabeler()"
+
+
 # *----- text sequential
 
 
