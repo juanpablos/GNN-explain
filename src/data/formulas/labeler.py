@@ -130,19 +130,19 @@ class BinaryRestrictionLabeler(BinaryCategoricalLabeler):
 
         if self.lower == -1:
             self.lower_checker = lambda _: True
-            lower_str = "ANY"
+            self.lower_str = "ANY"
         else:
             self.lower_checker = lambda lower: lower == self.lower
-            lower_str = str(self.lower)
+            self.lower_str = str(self.lower)
 
         if self.upper == -1:
             self.upper_checker = lambda _: True
-            upper_str = "ANY"
+            self.upper_str = "ANY"
         else:
             self.upper_checker = lambda upper: upper == self.upper
-            upper_str = str(self.upper)
+            self.upper_str = str(self.upper)
 
-        txt = f"restriction({lower_str},{upper_str})"
+        txt = f"restriction({self.lower_str},{self.upper_str})"
         if negate:
             txt = f"NEG({txt})"
         # possitive class
@@ -154,7 +154,7 @@ class BinaryRestrictionLabeler(BinaryCategoricalLabeler):
         super()._visit_Exist(node)
 
     def __str__(self):
-        return f"BinaryRestriction({self.lower},{self.upper},{self.negate})"
+        return f"BinaryRestriction({self.lower_str},{self.upper_str},{self.negate})"
 
 
 # *----- multiclass
