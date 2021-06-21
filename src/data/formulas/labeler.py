@@ -122,23 +122,34 @@ class BinaryRestrictionLabeler(BinaryCategoricalLabeler):
     ):
         if lower is None and upper is None:
             raise ValueError("Can't have both open intervals.")
-        if lower is not None and upper is not None:
-            if lower < 0 or upper < 0:
-                raise ValueError(
-                    "`lower` and `upper` must be greater than 0 when both set"
-                )
+        if lower is not None and upper is not None and lower < 0 and upper < 0:
+            raise ValueError("Can't have both intervals as ANY")
         super().__init__(negate=negate)
         self.lower = lower
         self.upper = upper
 
-        txt = f"restriction({lower},{upper})"
+        if self.lower == -1:
+            self.lower_checker = lambda _: True
+            lower_str = "ANY"
+        else:
+            self.lower_checker = lambda lower: lower == self.lower
+            lower_str = str(self.lower)
+
+        if self.upper == -1:
+            self.upper_checker = lambda _: True
+            upper_str = "ANY"
+        else:
+            self.upper_checker = lambda upper: upper == self.upper
+            upper_str = str(self.upper)
+
+        txt = f"restriction({lower_str},{upper_str})"
         if negate:
             txt = f"NEG({txt})"
         # possitive class
         self.classes[1] = txt
 
     def _visit_Exist(self, node: Exist):
-        if self.lower == node.lower and self.upper == node.upper:
+        if self.lower_checker(node.lower) and self.upper_checker(node.upper):
             self.result = 1
         super()._visit_Exist(node)
 

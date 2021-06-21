@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 from functools import reduce
+from typing import Optional
 
 import networkx as nx
 import numpy as np
@@ -156,8 +157,8 @@ class Exist(Element):
     def __init__(
         self,
         expression: Element,
-        lower: int = None,
-        upper: int = None,
+        lower: Optional[int] = None,
+        upper: Optional[int] = None,
         *,
         variable: str = None,
     ):
