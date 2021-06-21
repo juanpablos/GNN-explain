@@ -92,6 +92,7 @@ def _run_experiment(
     model_config["output_dim"] = n_classes
 
     # --- metrics logger
+    logger_metrics.handlers = []
     os.makedirs(os.path.join(results_path, "info"), exist_ok=True)
     fh = logging.FileHandler(
         os.path.join(results_path, "info", f"{info_filename}.log"), mode="w"
@@ -403,11 +404,13 @@ def main(
     # * /test_filters
 
     # * labelers
-    label_logic = BinaryAtomicLabeler(atomic="RED", hop=0)
+    # label_logic = BinaryAtomicLabeler(atomic="RED", hop=1)
     # label_logic = BinaryHopLabeler(hop=1)
-    # label_logic = BinaryRestrictionLabeler(lower=None, upper=4)
+    # label_logic = BinaryRestrictionLabeler(lower=4, upper=-1)
+    label_logic = MulticlassRestrictionLabeler([(None, 4), (4, None)])
     # label_logic = MultiLabelAtomicLabeler()
-    # label_logic = MultilabelRestrictionLabeler(mode="upper", class_for_no_label=True)
+    # label_logic = MultilabelRestrictionLabeler(mode="both", class_for_no_label=False)
+    # label_logic = MultilabelRestrictionLabeler(mode="lower", class_for_no_label=True)
     labeler = LabelerApply(labeler=label_logic)
     # * /labelers
     data_config: NetworkDataConfig = {
@@ -417,7 +420,7 @@ def main(
         "labeler": labeler,
         "formula_mapping": FormulaMapping("./data/formulas.json"),
         "test_selector": test_selector,
-        "load_aggregated": "aggregated.pt",
+        "load_aggregated": "aggregated_raw.pt",
         "force_preaggregated": True,
     }
     crossfold_config: CrossFoldConfiguration = {
@@ -432,8 +435,8 @@ def main(
         "stay": 5,
     }
 
-    iterations = 30
-    test_batch = 1024
+    iterations = 50
+    test_batch = 2048
 
     if name is None:
         test_selector_name = "CV" if crossfold_config else str(test_selector)
