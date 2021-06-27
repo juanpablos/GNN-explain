@@ -186,6 +186,27 @@ class BinaryRestrictionLabeler(BinaryCategoricalLabeler):
         return f"BinaryRestriction({self.lower_str},{self.upper_str},{self.negate})"
 
 
+class BinaryDuplicatedAtomicLabeler(BinaryCategoricalLabeler):
+    def __init__(self):
+        super().__init__()
+        # possitive class
+        self.classes[1] = "has duplicated atomic"
+
+        self.seen_atomic = set()
+
+    def _visit_Property(self, node: Property):
+        if node.name in self.seen_atomic:
+            self.result = 1
+        self.seen_atomic.add(node.name)
+
+    def reset(self):
+        super().reset()
+        self.seen_atomic.clear()
+
+    def __str__(self):
+        return f"BinaryDuplicatedAtomicLabeler()"
+
+
 # *----- multiclass
 
 

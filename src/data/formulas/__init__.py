@@ -9,6 +9,7 @@ from .filter import (
 )
 from .labeler import (
     BinaryAtomicLabeler,
+    BinaryDuplicatedAtomicLabeler,
     BinaryHopLabeler,
     BinaryORHopLabeler,
     BinaryRestrictionLabeler,

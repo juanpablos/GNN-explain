@@ -404,11 +404,29 @@ def main(
     # * /test_filters
 
     # * labelers
+    # --- binary
     # label_logic = BinaryAtomicLabeler(atomic="RED", hop=1)
     # label_logic = BinaryHopLabeler(hop=1)
     # label_logic = BinaryRestrictionLabeler(lower=4, upper=-1)
-    label_logic = MulticlassRestrictionLabeler([(None, 4), (4, None)])
+    # label_logic = BinaryORHopLabeler(hop=0)
+    label_logic = BinaryDuplicatedAtomicLabeler()
+    # --- multiclass
+    # label_logic = MulticlassRestrictionLabeler(
+    #     [
+    #         (1, None),
+    #         (2, None),
+    #         (3, None),
+    #         (4, None),
+    #         (None, 1),
+    #         (None, 2),
+    #         (None, 3),
+    #         (None, 4),
+    #     ]
+    # )
+    # label_logic = MulticlassOpenQuantifierLabeler()
+    # --- multilabel
     # label_logic = MultiLabelAtomicLabeler()
+    # label_logic = MultilabelQuantifierLabeler()
     # label_logic = MultilabelRestrictionLabeler(mode="both", class_for_no_label=False)
     # label_logic = MultilabelRestrictionLabeler(mode="lower", class_for_no_label=True)
     labeler = LabelerApply(labeler=label_logic)
