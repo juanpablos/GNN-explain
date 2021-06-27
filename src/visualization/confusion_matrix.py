@@ -134,6 +134,9 @@ def plot_multilabel_confusion_matrix(
             horizontalalignment="right",
         )
 
+        recall_disp.im_.set_clim(0, 1)
+        precision_disp.im_.set_clim(0, 1)
+
         ax1.set_title(f"Recall")
         ax2.set_title(f"Precision")
 
