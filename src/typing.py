@@ -88,6 +88,7 @@ class CrossFoldConfiguration(TypedDict):
     n_splits: int
     shuffle: bool
     random_state: int
+    defer_loading: bool
 
 
 class MetricHistory(Protocol):

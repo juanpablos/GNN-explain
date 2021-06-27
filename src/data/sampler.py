@@ -368,6 +368,9 @@ class NetworkDatasetCrossFoldSampler(Generic[T]):
             logger.debug("Using stratified KFold")
             kfold_strategy = StratifiedKFold
 
+        self.waiting_loading = crossfold_config["defer_loading"]
+        self.on_demand = not crossfold_config.pop("defer_loading", False)
+
         self.kfold = kfold_strategy(**crossfold_config)
 
         self.datasets = datasets
@@ -375,7 +378,45 @@ class NetworkDatasetCrossFoldSampler(Generic[T]):
 
         self.folds = {}
 
-    def __iter__(self):
+        # train|test -> hash -> network dataset
+        self.loaded_fold_mappings: List[
+            Dict[str, Dict[str, NetworkDataset[Tensor]]]
+        ] = []
+
+    def load_precalculated_folds(
+        self,
+        fold_dict: Dict[str, Dict[str, List[Dict[str, str]]]],
+    ):
+        formula_hash_to_network_data = {
+            network_data._formula_hash: network_data for network_data in self.datasets
+        }
+
+        # fold format:
+        # fold_index -> train|test -> List[hash->hash, formula->formula]
+        for fold_index in range(len(fold_dict)):
+            fold_data = fold_dict[str(fold_index)]
+
+            loaded_fold: Dict[str, Dict[str, NetworkDataset[Tensor]]] = {}
+
+            train_fold: Dict[str, NetworkDataset[Tensor]] = {}
+            for formula_data in fold_data["train"]:
+                formula_hash = formula_data["hash"]
+                train_fold[formula_hash] = formula_hash_to_network_data[formula_hash]
+
+            test_fold: Dict[str, NetworkDataset[Tensor]] = {}
+            for formula_data in fold_data["test"]:
+                formula_hash = formula_data["hash"]
+                test_fold[formula_hash] = formula_hash_to_network_data[formula_hash]
+
+            loaded_fold["train"] = train_fold
+            loaded_fold["test"] = test_fold
+
+            self.loaded_fold_mappings.append(loaded_fold)
+
+        assert len(self.loaded_fold_mappings) > 0, "Loaded fold must be more than 0"
+        self.waiting_loading = False
+
+    def __on_demand_split(self):
         for i, (train_index, test_index) in enumerate(
             self.kfold.split(X=self.datasets, y=self.labels), start=1
         ):
@@ -409,6 +450,32 @@ class NetworkDatasetCrossFoldSampler(Generic[T]):
             }
 
             yield train_dataset, test_dataset, reconstruction_mapping
+
+    def __preloaded_splits(self):
+        for fold in self.loaded_fold_mappings:
+            train_datasets = list(fold["train"].values())
+            test_datasets = list(fold["test"].values())
+
+            train_dataset = LabeledDataset.from_iterable(
+                train_datasets, multilabel=self.multilabel
+            )
+            test_dataset = LabeledDataset.from_iterable(
+                test_datasets, multilabel=self.multilabel
+            )
+
+            reconstruction_mapping = NetworkDatasetCollectionWrapper(test_datasets)
+
+            yield train_dataset, test_dataset, reconstruction_mapping
+
+    def __iter__(self):
+        if self.on_demand:
+            yield from self.__on_demand_split()
+        else:
+            if self.waiting_loading:
+                raise RuntimeError(
+                    "Defer loading is active, waiting for concrete settings"
+                )
+            yield from self.__preloaded_splits()
 
     @property
     def n_splits(self) -> int:

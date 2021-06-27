@@ -215,6 +215,7 @@ def _run_experiment(
             title=plot_title,
             use_selected=False,
         )
+    return ext
 
 
 def run_experiment(
@@ -264,6 +265,7 @@ def run_experiment(
     if isinstance(datasets, NetworkDatasetCrossFoldSampler):
         logger.info(f"Total Dataset size: {datasets.dataset_size}")
 
+        file_ext = ""
         n_splits = datasets.n_splits
         for i, (train_data, test_data, data_reconstruction) in enumerate(
             datasets, start=1
@@ -274,7 +276,7 @@ def run_experiment(
             cf_plot_filename = f"{plot_filename}_cf{i}"
             cf_info_filename = f"{info_filename}_cf{i}"
 
-            _run_experiment(
+            file_ext = _run_experiment(
                 train_data=train_data,
                 test_data=test_data,
                 class_mapping=class_mapping,
@@ -299,7 +301,7 @@ def run_experiment(
                 multilabel=multilabel,
             )
 
-        folds_file = os.path.join(results_path, "info", f"{model_name}.folds")
+        folds_file = os.path.join(results_path, "info", f"{model_name}{file_ext}.folds")
         with open(folds_file, "w", encoding="utf-8") as f:
             json.dump(datasets.get_folds(), f, ensure_ascii=False, indent=2)
     else:
@@ -409,7 +411,7 @@ def main(
     # label_logic = BinaryHopLabeler(hop=1)
     # label_logic = BinaryRestrictionLabeler(lower=4, upper=-1)
     # label_logic = BinaryORHopLabeler(hop=0)
-    label_logic = BinaryDuplicatedAtomicLabeler()
+    # label_logic = BinaryDuplicatedAtomicLabeler()
     # --- multiclass
     # label_logic = MulticlassRestrictionLabeler(
     #     [
@@ -428,7 +430,8 @@ def main(
     # label_logic = MultiLabelAtomicLabeler()
     # label_logic = MultilabelQuantifierLabeler()
     # label_logic = MultilabelRestrictionLabeler(mode="both", class_for_no_label=False)
-    # label_logic = MultilabelRestrictionLabeler(mode="lower", class_for_no_label=True)
+    # label_logic = MultilabelRestrictionLabeler(mode="upper", class_for_no_label=True)
+    label_logic = MultilabelFormulaElementLabeler()
     labeler = LabelerApply(labeler=label_logic)
     # * /labelers
     data_config: NetworkDataConfig = {
@@ -445,6 +448,7 @@ def main(
         "n_splits": 5,
         "shuffle": True,
         "random_state": seed,
+        "defer_loading": False,
     }
 
     early_stopping: StopFormat = {
