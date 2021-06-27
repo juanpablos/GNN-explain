@@ -432,6 +432,65 @@ class MultilabelQuantifierLabeler(MultiLabelCategoricalLabeler):
         return f"MultilabelQuantifierLabeler()"
 
 
+class MultilabelFormulaElementLabeler(MultiLabelCategoricalLabeler):
+    """
+    Quantifier labels:
+    Exist(..., 2, 3) -> UPPER + LOWER
+    Exist(..., 2, None) -> LOWER
+
+    Colors + if has quantifier or not
+    """
+
+    def __init__(
+        self,
+    ):
+        super().__init__()
+        self.classes[0] = "No Quantifier"
+        self.classes[1] = "Has Quantifier"
+        self.classes[2] = "Lower Limit"
+        self.classes[3] = "Upper Limit"
+
+        self.has_quantifier = False
+
+        self.current_counter = len(self.classes)
+
+        self.atomic_classes = {}
+
+    def _visit_Exist(self, node: Exist):
+        if node.upper is not None:
+            # 2: Lower Limit
+            self.current_result.append(2)
+        if node.lower is not None:
+            # 3: Upper Limit
+            self.current_result.append(3)
+
+        # 1: Has Quantifier
+        self.current_result.append(1)
+        self.has_quantifier = True
+        super()._visit_Exist(node)
+
+    def _visit_Property(self, node: Property):
+        if node.name not in self.atomic_classes:
+            self.classes[self.current_counter] = node.name
+            self.atomic_classes[node.name] = self.current_counter
+            self.current_counter += 1
+
+        self.current_result.append(self.atomic_classes[node.name])
+
+    def process(self, formula: Element):
+        if not self.has_quantifier:
+            # 0: No Quantifier
+            self.current_result.append(0)
+        super().process(formula=formula)
+
+    def reset(self):
+        super().reset()
+        self.has_quantifier = False
+
+    def __str__(self):
+        return f"MultilabelFormulaElementLabeler()"
+
+
 # *----- text sequential
 
 

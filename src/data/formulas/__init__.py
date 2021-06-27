@@ -17,6 +17,7 @@ from .labeler import (
     MulticlassOpenQuantifierLabeler,
     MulticlassRestrictionLabeler,
     MultiLabelAtomicLabeler,
+    MultilabelFormulaElementLabeler,
     MultilabelQuantifierLabeler,
     MultilabelRestrictionLabeler,
     SequenceLabelerApply,
