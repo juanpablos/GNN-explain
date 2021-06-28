@@ -1,7 +1,6 @@
 import logging
 import os
-from src.data.sampler import NetworkDatasetCrossFoldSampler
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 import torch
 
@@ -24,6 +23,7 @@ from src.data.formulas.labeler import (
     SequenceLabelerApply,
 )
 from src.data.gnn.utils import prepare_files
+from src.data.sampler import NetworkDatasetCrossFoldSampler
 from src.data.utils import label_idx2tensor
 from src.typing import CrossFoldConfiguration, S, T
 
@@ -97,6 +97,7 @@ def categorical_loader(
     load_aggregated: str = None,
     force_preaggregated: bool = False,
     cross_fold_configuration: CrossFoldConfiguration = None,
+    labeler_stored_state: Optional[Dict] = None,
     _legacy_load_without_batch: bool = False,
 ):
 
@@ -121,6 +122,8 @@ def categorical_loader(
     #   single label: formula_hash -> label_id
     #   multilabel: formula_hash -> List[label_id]
     # classes is a dictionary label_id -> label_name
+    if labeler_stored_state is not None:
+        labeler.load_labeler_data(data=labeler_stored_state)
     selected_labels, classes = labeler(selected_formulas)
     serialized_labeler = labeler.serialize()
     n_labels = len(classes)
