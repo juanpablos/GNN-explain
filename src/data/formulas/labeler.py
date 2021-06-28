@@ -19,8 +19,6 @@ S = TypeVar("S")
 T_co = TypeVar("T_co", covariant=True)
 S_co = TypeVar("S_co", covariant=True)
 
-LabelerType = TypeVar("LabelerType", bound="CategoricalLabeler")
-
 
 class CategoricalLabeler(Visitor[T_co], Generic[T_co, S_co]):
     def __init__(self):
