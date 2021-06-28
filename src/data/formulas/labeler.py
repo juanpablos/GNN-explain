@@ -19,10 +19,21 @@ S = TypeVar("S")
 T_co = TypeVar("T_co", covariant=True)
 S_co = TypeVar("S_co", covariant=True)
 
+LabelerType = TypeVar("LabelerType", bound="CategoricalLabeler")
+
 
 class CategoricalLabeler(Visitor[T_co], Generic[T_co, S_co]):
     def __init__(self):
         self.classes: OrderedDict[S_co, str] = OrderedDict()
+
+    def serialize(self) -> Dict:
+        return {"classes": self.classes.copy()}
+
+    @classmethod
+    def load(cls, data: Dict):
+        obj = cls()
+        obj.classes = data["classes"]
+        return obj
 
 
 # *----- binary
@@ -43,6 +54,11 @@ class BinaryCategoricalLabeler(CategoricalLabeler[int, int]):
         if self.negate:
             # because the values are 0-1, we can do it like this
             self.result = (self.result + 1) % 2
+
+    def serialize(self) -> Dict:
+        serialized_labeler = super().serialize()
+        serialized_labeler["negate"] = self.negate
+        return serialized_labeler
 
 
 class BinaryAtomicLabeler(BinaryCategoricalLabeler):
@@ -81,6 +97,22 @@ class BinaryAtomicLabeler(BinaryCategoricalLabeler):
     def __str__(self):
         return f"BinaryAtomic({self.selected},{self.target_hop},{self.negate})"
 
+    def serialize(self) -> Dict:
+        serialized_labeler = super().serialize()
+        serialized_labeler["selected"] = self.selected
+        serialized_labeler["hop"] = self.target_hop
+        return serialized_labeler
+
+    @classmethod
+    def load(cls, data: Dict):
+        obj = cls(
+            atomic=data["selected"],
+            hop=data["hop"],
+            negate=data["negate"],
+        )
+        obj.classes = data["classes"]
+        return obj
+
 
 class BinaryHopLabeler(BinaryCategoricalLabeler):
     def __init__(self, hop: int, negate: bool = False):
@@ -115,6 +147,20 @@ class BinaryHopLabeler(BinaryCategoricalLabeler):
     def __str__(self):
         return f"BinaryHop({self.target_hop},{self.negate})"
 
+    def serialize(self) -> Dict:
+        serialized_labeler = super().serialize()
+        serialized_labeler["hop"] = self.target_hop
+        return serialized_labeler
+
+    @classmethod
+    def load(cls, data: Dict):
+        obj = cls(
+            hop=data["hop"],
+            negate=data["negate"],
+        )
+        obj.classes = data["classes"]
+        return obj
+
 
 class BinaryORHopLabeler(BinaryCategoricalLabeler):
     def __init__(self, hop: int):
@@ -143,6 +189,17 @@ class BinaryORHopLabeler(BinaryCategoricalLabeler):
 
     def __str__(self):
         return f"BinaryORHopLabeler({self.target_hop})"
+
+    def serialize(self) -> Dict:
+        serialized_labeler = super().serialize()
+        serialized_labeler["hop"] = self.target_hop
+        return serialized_labeler
+
+    @classmethod
+    def load(cls, data: Dict):
+        obj = cls(hop=data["hop"])
+        obj.classes = data["classes"]
+        return obj
 
 
 class BinaryRestrictionLabeler(BinaryCategoricalLabeler):
@@ -185,6 +242,22 @@ class BinaryRestrictionLabeler(BinaryCategoricalLabeler):
     def __str__(self):
         return f"BinaryRestriction({self.lower_str},{self.upper_str},{self.negate})"
 
+    def serialize(self) -> Dict:
+        serialized_labeler = super().serialize()
+        serialized_labeler["lower"] = self.lower
+        serialized_labeler["upper"] = self.upper
+        return serialized_labeler
+
+    @classmethod
+    def load(cls, data: Dict):
+        obj = cls(
+            lower=data["lower"],
+            upper=data["upper"],
+            negate=data["negate"],
+        )
+        obj.classes = data["classes"]
+        return obj
+
 
 class BinaryDuplicatedAtomicLabeler(BinaryCategoricalLabeler):
     def __init__(self):
@@ -205,6 +278,18 @@ class BinaryDuplicatedAtomicLabeler(BinaryCategoricalLabeler):
 
     def __str__(self):
         return f"BinaryDuplicatedAtomicLabeler()"
+
+    def serialize(self) -> Dict:
+        serialized_labeler = super().serialize()
+        serialized_labeler["atomic_memory"] = list(self.seen_atomic)
+        return serialized_labeler
+
+    @classmethod
+    def load(cls, data: Dict):
+        obj = cls()
+        obj.seen_atomic = set(data["atomic_memory"])
+        obj.classes = data["classes"]
+        return obj
 
 
 # *----- multiclass
@@ -252,6 +337,18 @@ class MulticlassRestrictionLabeler(CategoricalLabeler[int, int]):
     def __str__(self):
         return f"MulticlassRestrictionLabeler({list(self.quantifier_classes.keys())})"
 
+    def serialize(self) -> Dict:
+        serialized_labeler = super().serialize()
+        serialized_labeler["quantifier_classes"] = self.quantifier_classes
+        return serialized_labeler
+
+    @classmethod
+    def load(cls, data: Dict):
+        obj = cls(quantifier_tuples=[])
+        obj.quantifier_classes = data["quantifier_classes"]
+        obj.classes = data["classes"]
+        return obj
+
 
 class MulticlassOpenQuantifierLabeler(CategoricalLabeler[int, int]):
     def __init__(self):
@@ -276,6 +373,12 @@ class MulticlassOpenQuantifierLabeler(CategoricalLabeler[int, int]):
 
     def __str__(self):
         return "MulticlassOpenQuantifierLabeler()"
+
+    @classmethod
+    def load(cls, data: Dict):
+        obj = cls()
+        obj.classes = data["classes"]
+        return obj
 
 
 # *----- multilabel
@@ -306,6 +409,12 @@ class MultiLabelCategoricalLabeler(CategoricalLabeler[Tuple[int, ...], int]):
         # ** we do not care about the order of the output
         self.result = tuple(set(self.current_result))
 
+    def serialize(self) -> Dict:
+        serialized_labeler = super().serialize()
+        serialized_labeler["class_for_no_label"] = self.class_for_no_label
+        serialized_labeler["current_counter"] = self.current_counter
+        return serialized_labeler
+
 
 class MultiLabelAtomicLabeler(MultiLabelCategoricalLabeler):
     def __init__(self, class_for_no_label: bool = False):
@@ -324,6 +433,19 @@ class MultiLabelAtomicLabeler(MultiLabelCategoricalLabeler):
 
     def __str__(self):
         return "MultiLabelAtomic()"
+
+    def serialize(self) -> Dict:
+        serialized_labeler = super().serialize()
+        serialized_labeler["inverse_classes"] = self.inverse_classes
+        return serialized_labeler
+
+    @classmethod
+    def load(cls, data: Dict):
+        obj = cls(class_for_no_label=data["class_for_no_label"])
+        obj.current_counter = data["current_counter"]
+        obj.inverse_classes = data["inverse_classes"]
+        obj.classes = data["classes"]
+        return obj
 
 
 class MultilabelRestrictionLabeler(MultiLabelCategoricalLabeler):
@@ -346,6 +468,7 @@ class MultilabelRestrictionLabeler(MultiLabelCategoricalLabeler):
         # no need for this to be ordered
         self.pairs: Dict[Tuple[Optional[int], Optional[int]], int] = {}
 
+        self._mode = mode
         if mode == "both":
             self.mode = ["lower", "upper"]
         else:
@@ -398,6 +521,29 @@ class MultilabelRestrictionLabeler(MultiLabelCategoricalLabeler):
         modes = ",".join(self.mode)
         return f"MultiLabelRestriction({modes})"
 
+    def serialize(self) -> Dict:
+        serialized_labeler = super().serialize()
+        serialized_labeler["mode"] = self._mode
+
+        encoded_pairs = [
+            {"key": list(tuple_pair), "value": value}
+            for tuple_pair, value in self.pairs.items()
+        ]
+        serialized_labeler["encoded_pairs"] = encoded_pairs
+        return serialized_labeler
+
+    @classmethod
+    def load(cls, data: Dict):
+        obj = cls(mode=data["mode"], class_for_no_label=data["class_for_no_label"])
+        obj.current_counter = data["current_counter"]
+
+        pairs = {
+            tuple(encoded["key"]): encoded["value"] for encoded in data["encoded_pairs"]
+        }
+        obj.pairs = pairs
+        obj.classes = data["classes"]
+        return obj
+
 
 class MultilabelQuantifierLabeler(MultiLabelCategoricalLabeler):
     """
@@ -430,6 +576,13 @@ class MultilabelQuantifierLabeler(MultiLabelCategoricalLabeler):
 
     def __str__(self):
         return f"MultilabelQuantifierLabeler()"
+
+    @classmethod
+    def load(cls, data: Dict):
+        obj = cls()
+        obj.current_counter = data["current_counter"]
+        obj.classes = data["classes"]
+        return obj
 
 
 class MultilabelFormulaElementLabeler(MultiLabelCategoricalLabeler):
@@ -489,6 +642,20 @@ class MultilabelFormulaElementLabeler(MultiLabelCategoricalLabeler):
 
     def __str__(self):
         return f"MultilabelFormulaElementLabeler()"
+
+    def serialize(self) -> Dict:
+        serialized_labeler = super().serialize()
+        serialized_labeler["atomic_classes"] = self.atomic_classes
+        return serialized_labeler
+
+    @classmethod
+    def load(cls, data: Dict):
+        obj = cls()
+        obj.current_counter = data["current_counter"]
+
+        obj.atomic_classes = data["atomic_classes"]
+        obj.classes = data["classes"]
+        return obj
 
 
 # *----- text sequential
@@ -587,6 +754,12 @@ class LabelerApply(Generic[T, S]):
 
     def __str__(self):
         return str(self.labeler)
+
+    def serialize(self) -> Dict:
+        return self.labeler.serialize()
+
+    def load_labeler_data(self, data: Dict):
+        self.labeler = self.labeler.load(data=data)
 
 
 class SequenceLabelerApply:
