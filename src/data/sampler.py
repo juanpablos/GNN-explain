@@ -391,10 +391,12 @@ class NetworkDatasetCrossFoldSampler(Generic[T]):
             network_data._formula_hash: network_data for network_data in self.datasets
         }
 
+        folds = list(map(str, sorted(map(int, fold_dict.keys()))))
+
         # fold format:
         # fold_index -> train|test -> List[hash->hash, formula->formula]
-        for fold_index in range(len(fold_dict)):
-            fold_data = fold_dict[str(fold_index)]
+        for fold_index in folds:
+            fold_data = fold_dict[fold_index]
 
             loaded_fold: Dict[str, Dict[str, NetworkDataset[Tensor]]] = {}
 
@@ -415,6 +417,9 @@ class NetworkDatasetCrossFoldSampler(Generic[T]):
 
         assert len(self.loaded_fold_mappings) > 0, "Loaded fold must be more than 0"
         self.waiting_loading = False
+        self.folds = {
+            int(fold_index): fold_data for fold_index, fold_data in fold_dict.items()
+        }
 
     def __on_demand_split(self):
         for i, (train_index, test_index) in enumerate(
@@ -479,7 +484,10 @@ class NetworkDatasetCrossFoldSampler(Generic[T]):
 
     @property
     def n_splits(self) -> int:
-        return self.kfold.n_splits
+        if self.on_demand:
+            return self.kfold.n_splits
+        else:
+            return len(self.loaded_fold_mappings)
 
     @cached_property
     def dataset_size(self):

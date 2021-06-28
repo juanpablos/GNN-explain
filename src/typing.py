@@ -87,7 +87,7 @@ class LSTMConfig(LSTMConfigBase, total=False):
 class CrossFoldConfiguration(TypedDict):
     n_splits: int
     shuffle: bool
-    random_state: int
+    random_state: Optional[int]
     defer_loading: bool
 
 
