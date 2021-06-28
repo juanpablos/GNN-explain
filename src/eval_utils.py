@@ -38,6 +38,10 @@ def evaluate_model(
         test_data, batch_size=1024, pin_memory=False, shuffle=False, num_workers=0
     )
 
+    #!########
+    model = model.eval()
+    #!########
+
     y_true = []
     y_pred = []
     for x, y in data_loader:
