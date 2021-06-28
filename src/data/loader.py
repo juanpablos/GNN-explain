@@ -122,6 +122,7 @@ def categorical_loader(
     #   multilabel: formula_hash -> List[label_id]
     # classes is a dictionary label_id -> label_name
     selected_labels, classes = labeler(selected_formulas)
+    serialized_labeler = labeler.serialize()
     n_labels = len(classes)
 
     # * if multilabel, selected_labels is remapped to
@@ -204,6 +205,7 @@ def categorical_loader(
         selected_formulas,
         selected_labels,
         NetworkDatasetCollectionWrapper(datasets),
+        serialized_labeler,
     )
 
 

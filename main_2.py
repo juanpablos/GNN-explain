@@ -250,12 +250,14 @@ def run_experiment(
     #   single label: formula_hash -> label_id
     #   multilabel: formula_hash -> List[label_id]
     # data_reconstruction: point_index -> formula_object
+    # serialized_labeler: arbitrary dict of a serialized labeler classes and internals
     (
         datasets,
         class_mapping,
         hash_formula,
         hash_label,
         data_reconstruction,
+        serialized_labeler,
     ) = categorical_loader(
         **data_config,
         cross_fold_configuration=crossfold_config,
@@ -322,7 +324,7 @@ def run_experiment(
 
         logger.info(f"Total Dataset size: {len(train_data) + len(test_data)}")
 
-        _run_experiment(
+        file_ext = _run_experiment(
             train_data=train_data,
             test_data=test_data,
             class_mapping=class_mapping,
@@ -346,6 +348,15 @@ def run_experiment(
             binary_labels=binary_labels,
             multilabel=multilabel,
         )
+
+    labeler_data_path = os.path.join(results_path, "labelers")
+    os.makedirs(labeler_data_path, exist_ok=True)
+    with open(
+        os.path.join(labeler_data_path, f"{model_name}{file_ext}.labeler"),
+        "w",
+        encoding="utf-8",
+    ) as f:
+        json.dump(serialized_labeler, f, ensure_ascii=False, indent=2)
 
 
 def main(
