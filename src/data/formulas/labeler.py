@@ -656,6 +656,92 @@ class MultilabelFormulaElementLabeler(MultiLabelCategoricalLabeler):
         return obj
 
 
+class MultilabelFormulaElementWithAtomicPositionLabeler(MultiLabelCategoricalLabeler):
+    """
+    Quantifier labels:
+    Exist(..., 2, 3) -> UPPER + LOWER
+    Exist(..., 2, None) -> LOWER
+
+    Colors in positions + if has quantifier or not
+    """
+
+    def __init__(
+        self,
+    ):
+        super().__init__()
+        self.classes[0] = "No Quantifier"
+        self.classes[1] = "Has Quantifier"
+        self.classes[2] = "Lower Limit"
+        self.classes[3] = "Upper Limit"
+
+        self.has_quantifier = False
+
+        self.current_counter = len(self.classes)
+
+        self.current_hop = 0
+        self.atomic_position_classes = {}
+
+    def _visit_Exist(self, node: Exist):
+        if node.upper is not None:
+            # 2: Lower Limit
+            self.current_result.append(2)
+        if node.lower is not None:
+            # 3: Upper Limit
+            self.current_result.append(3)
+
+        # 1: Has Quantifier
+        self.current_result.append(1)
+        self.has_quantifier = True
+
+        self.current_hop += 1
+        super()._visit_Exist(node)
+        self.current_hop -= 1
+
+    def _visit_Property(self, node: Property):
+        atomic_id = (node.name, self.current_hop)
+        if atomic_id not in self.atomic_position_classes:
+            self.classes[self.current_counter] = f"{node.name}:{self.current_hop}"
+            self.atomic_position_classes[atomic_id] = self.current_counter
+            self.current_counter += 1
+
+        self.current_result.append(self.atomic_position_classes[atomic_id])
+
+    def process(self, formula: Element):
+        if not self.has_quantifier:
+            # 0: No Quantifier
+            self.current_result.append(0)
+        super().process(formula=formula)
+
+    def reset(self):
+        super().reset()
+        self.has_quantifier = False
+        self.current_hop = 0
+
+    def __str__(self):
+        return f"MultilabelFormulaElementWithAtomicPositionLabeler()"
+
+    def serialize(self) -> Dict:
+        serialized_labeler = super().serialize()
+        encoded_atomic_positions = [
+            {"key": list(tuple_pair), "value": value}
+            for tuple_pair, value in self.atomic_position_classes.items()
+        ]
+        serialized_labeler["encoded_atomic_positions"] = encoded_atomic_positions
+        return serialized_labeler
+
+    @classmethod
+    def load(cls, data: Dict):
+        obj = cls()
+        obj.current_counter = data["current_counter"]
+        atomic_positions = {
+            tuple(encoded["key"]): encoded["value"]
+            for encoded in data["encoded_atomic_positions"]
+        }
+        obj.atomic_position_classes = atomic_positions
+        obj.classes = data["classes"]
+        return obj
+
+
 # *----- text sequential
 
 

@@ -18,6 +18,7 @@ from .labeler import (
     MulticlassRestrictionLabeler,
     MultiLabelAtomicLabeler,
     MultilabelFormulaElementLabeler,
+    MultilabelFormulaElementWithAtomicPositionLabeler,
     MultilabelQuantifierLabeler,
     MultilabelRestrictionLabeler,
     SequenceLabelerApply,
