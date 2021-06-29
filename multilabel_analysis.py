@@ -61,8 +61,9 @@ def _get_multilabel_analysis(y_true, y_pred, class_mapping):
             percentage,
             float(f"{float(len(true_id)) / trues_per_label[label_id].item():.4f}"),
             len(true_id),
-            int(trues_per_label[label_id].item()),
+            float(f"{float(all_0) / trues_per_label[label_id].item():.4f}"),
             int(all_0),
+            int(trues_per_label[label_id].item()),
         ]
 
     mistakes_data_header = [
@@ -73,8 +74,9 @@ def _get_multilabel_analysis(y_true, y_pred, class_mapping):
         ],
         "% mistakes",
         "N mistakes",
+        "% All 0s",
+        "N All 0s",
         "Total Trues",
-        "All 0s",
     ]
     mistakes_data_list = []
     for class_index, mistake_data in per_class_mistakes.items():
@@ -83,7 +85,10 @@ def _get_multilabel_analysis(y_true, y_pred, class_mapping):
                 f"{class_mapping[class_index]} ({class_index})",
                 *[f"{v:.2%}" for v in mistake_data[0].tolist()],
                 f"{mistake_data[1]:.0%}",
-                *mistake_data[2:],
+                f"{mistake_data[2]}",
+                f"{mistake_data[3]:.0%}",
+                f"{mistake_data[4]}",
+                f"{mistake_data[5]}",
             ]
         )
 
@@ -275,7 +280,8 @@ def main():
     # label_logic = MultilabelQuantifierLabeler()
     # label_logic = MultilabelRestrictionLabeler(mode="both", class_for_no_label=False)
     # label_logic = MultilabelRestrictionLabeler(mode="upper", class_for_no_label=True)
-    label_logic = MultilabelFormulaElementLabeler()
+    # label_logic = MultilabelFormulaElementLabeler()
+    label_logic = MultilabelFormulaElementWithAtomicPositionLabeler()
     labeler = LabelerApply(labeler=label_logic)
     # * /labelers
 
@@ -312,7 +318,7 @@ def main():
         model_hash,
         "models",
     )
-    base_model_filename = "NoFilter()-MultilabelFormulaElementLabeler()-CV-1L256+2L256+3L256-32b-0.0005lr_cf{}.pt"
+    base_model_filename = "NoFilter()-MultilabelFormulaElementWithAtomicPositionLabeler()-CV-1L256+2L256+3L256-32b-0.0005lr_cf{}.pt"
 
     crossfold_path = os.path.join(
         "results",
@@ -321,7 +327,7 @@ def main():
         model_hash,
         "info",
     )
-    crossfold_filename = "NoFilter()-MultilabelFormulaElementLabeler()-CV-1L256+2L256+3L256-32b-0.0005lr.folds"
+    crossfold_filename = "NoFilter()-MultilabelFormulaElementWithAtomicPositionLabeler()-CV-1L256+2L256+3L256-32b-0.0005lr.folds"
 
     labeler_path = os.path.join(
         "results",
@@ -330,7 +336,7 @@ def main():
         model_hash,
         "labelers",
     )
-    labeler_filename = "NoFilter()-MultilabelFormulaElementLabeler()-CV-1L256+2L256+3L256-32b-0.0005lr.labeler"
+    labeler_filename = "NoFilter()-MultilabelFormulaElementWithAtomicPositionLabeler()-CV-1L256+2L256+3L256-32b-0.0005lr.labeler"
 
     analysis_path = os.path.join(
         "results",
@@ -340,7 +346,7 @@ def main():
         "analysis",
     )
     os.makedirs(analysis_path, exist_ok=True)
-    analysis_filename = crossfold_filename.split(".")[0] + ".txt"
+    analysis_filename = crossfold_filename.split(".folds")[0] + ".txt"
 
     start = timer()
     analyze_crossfolds(
