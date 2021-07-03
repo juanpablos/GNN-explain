@@ -440,9 +440,10 @@ def main(
     # --- multilabel
     # label_logic = MultiLabelAtomicLabeler()
     # label_logic = MultilabelQuantifierLabeler()
-    # label_logic = MultilabelRestrictionLabeler(mode="both", class_for_no_label=False)
+    label_logic = MultilabelRestrictionLabeler(mode="both", class_for_no_label=False)
     # label_logic = MultilabelRestrictionLabeler(mode="upper", class_for_no_label=True)
-    label_logic = MultilabelFormulaElementLabeler()
+    # label_logic = MultilabelFormulaElementLabeler()
+    # label_logic = MultilabelFormulaElementWithAtomicPositionLabeler()
     labeler = LabelerApply(labeler=label_logic)
     # * /labelers
     data_config: NetworkDataConfig = {
