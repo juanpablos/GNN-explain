@@ -753,8 +753,12 @@ class TextSequenceLabeler(Visitor[List[int]]):
     def reset(self):
         self.result = []
 
-    def preload_vocabulary(self, vocabulary: Dict[str, int]):
+    def preload_vocabulary(self, vocabulary: Dict[str, int]) -> "TextSequenceLabeler":
         self.vocabulary.load_vocab(vocabulary)
+        return self
+
+    def serialize(self) -> Dict[str, int]:
+        return self.vocabulary.token2id.copy()
 
     def _visit_AND(self, node: AND):
         token_id = self.vocabulary.add_or_get("AND")
@@ -815,11 +819,11 @@ class TextSequenceLabeler(Visitor[List[int]]):
         if not self.result:
             raise ValueError(f"Current formula don't have any result: {formula}")
 
-        self.result = (
-            [self.vocabulary.start_token_id]
-            + self.result
-            + [self.vocabulary.end_token_id]
-        )
+        self.result = [
+            self.vocabulary.start_token_id,
+            *self.result,
+            self.vocabulary.end_token_id,
+        ]
 
     def __str__(self):
         return "TextSequenceAtomic()"
@@ -856,3 +860,9 @@ class SequenceLabelerApply:
 
     def __str__(self):
         return str(self.labeler)
+
+    def serialize(self) -> Dict[str, int]:
+        return self.labeler.serialize()
+
+    def load_labeler_data(self, data: Dict):
+        self.labeler = self.labeler.preload_vocabulary(vocabulary=data)

@@ -28,7 +28,7 @@ class Vocabulary:
         return self.id2token[token_id]
 
     def load_vocab(self, vocab: Dict[str, int]):
-        self.token2id = vocab
+        self.token2id = vocab.copy()
         self.id2token = {v: k for k, v in vocab.items()}
 
     @property
