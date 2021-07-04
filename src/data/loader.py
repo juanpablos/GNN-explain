@@ -23,7 +23,10 @@ from src.data.formulas.labeler import (
     SequenceLabelerApply,
 )
 from src.data.gnn.utils import prepare_files
-from src.data.sampler import NetworkDatasetCrossFoldSampler
+from src.data.sampler import (
+    NetworkDatasetCrossFoldSampler,
+    TextNetworkDatasetCrossFoldSampler,
+)
 from src.data.utils import label_idx2tensor
 from src.typing import CrossFoldConfiguration, S, T
 
@@ -222,6 +225,8 @@ def text_sequence_loader(
     graph_config: Dict[str, Any],
     load_aggregated: str = None,
     force_preaggregated: bool = False,
+    cross_fold_configuration: CrossFoldConfiguration = None,
+    labeler_stored_state: Optional[Dict] = None,
     _legacy_load_without_batch: bool = False,
 ):
 
@@ -245,7 +250,10 @@ def text_sequence_loader(
     # mapping from the selected
     #   formula_hash -> List[token_id]
     # vocabulary is a Vocabulary object holding the tokens and their id mapping
+    if labeler_stored_state is not None:
+        labeler.load_labeler_data(data=labeler_stored_state)
     selected_labels, vocabulary = labeler(selected_formulas)
+    serialized_labeler = labeler.serialize()
     # ! vocabulary is joint for train and test, there is no <unk> token
 
     # contains all formulas in use in the experiment
@@ -270,6 +278,7 @@ def text_sequence_loader(
             dataset = NetworkDataset.text_sequence(
                 label=label,
                 formula=formula_object,
+                formula_hash=formula_hash,
                 file=file_path,
                 vocabulary=vocabulary,
                 _legacy_load_without_batch=_legacy_load_without_batch,
@@ -279,6 +288,7 @@ def text_sequence_loader(
             dataset = NetworkDataset.text_sequence(
                 label=label,
                 formula=formula_object,
+                formula_hash=formula_hash,
                 preloaded=preloaded[formula_hash],
                 vocabulary=vocabulary,
             )
@@ -294,16 +304,23 @@ def text_sequence_loader(
         datasets.append(dataset)
         total_samples += len(dataset)
 
-    dataset_all = TextSequenceDataset.from_iterable(datasets, vocabulary=vocabulary)
-
-    if testing_selected_formulas:
-        assert len(test_dataset) > 0, "test_dataset is empty"
-        return_dataset = (
-            LabeledSubset(dataset=dataset_all, indices=train_dataset),
-            LabeledSubset(dataset=dataset_all, indices=test_dataset),
+    if cross_fold_configuration is not None:
+        return_dataset = TextNetworkDatasetCrossFoldSampler(
+            datasets=datasets,
+            crossfold_config=cross_fold_configuration,
+            vocabulary=vocabulary,
         )
     else:
-        return_dataset = dataset_all
+        dataset_all = TextSequenceDataset.from_iterable(datasets, vocabulary=vocabulary)
+
+        if testing_selected_formulas:
+            assert len(test_dataset) > 0, "test_dataset is empty"
+            return_dataset = (
+                LabeledSubset(dataset=dataset_all, indices=train_dataset),
+                LabeledSubset(dataset=dataset_all, indices=test_dataset),
+            )
+        else:
+            return_dataset = dataset_all
 
     return (
         return_dataset,
@@ -312,4 +329,5 @@ def text_sequence_loader(
         selected_labels,
         NetworkDatasetCollectionWrapper(datasets),
         FormulaAppliedDatasetWrapper(datasets, **graph_config),
+        serialized_labeler,
     )

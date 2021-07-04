@@ -14,7 +14,9 @@ from src.data.datasets import (
     NetworkDataset,
     NoLabelDataset,
     NoLabelSubset,
+    TextSequenceDataset,
 )
+from src.data.vocabulary import Vocabulary
 from src.typing import CrossFoldConfiguration, T
 
 logger = logging.getLogger(__name__)
@@ -513,3 +515,23 @@ class NetworkDatasetCrossFoldSampler(BaseNetworkDatasetCrossFoldSampler[T]):
 
     def build_output_dataset(self, dataset_data):
         return LabeledDataset.from_iterable(dataset_data, multilabel=self.multilabel)
+
+
+class TextNetworkDatasetCrossFoldSampler(BaseNetworkDatasetCrossFoldSampler[Tensor]):
+    def __init__(
+        self,
+        datasets: List[NetworkDataset[Tensor]],
+        crossfold_config: CrossFoldConfiguration,
+        vocabulary: Vocabulary,
+    ):
+        super().__init__(
+            datasets=datasets,
+            crossfold_config=crossfold_config,
+            use_stratified_kfold=False,
+        )
+        self.vocabulary = vocabulary
+
+    def build_output_dataset(self, dataset_data):
+        return TextSequenceDataset.from_iterable(
+            dataset_data, vocabulary=self.vocabulary
+        )
