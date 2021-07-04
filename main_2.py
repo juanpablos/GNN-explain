@@ -440,10 +440,10 @@ def main(
     # --- multilabel
     # label_logic = MultiLabelAtomicLabeler()
     # label_logic = MultilabelQuantifierLabeler()
-    label_logic = MultilabelRestrictionLabeler(mode="both", class_for_no_label=False)
+    # label_logic = MultilabelRestrictionLabeler(mode="both", class_for_no_label=False)
     # label_logic = MultilabelRestrictionLabeler(mode="upper", class_for_no_label=True)
     # label_logic = MultilabelFormulaElementLabeler()
-    # label_logic = MultilabelFormulaElementWithAtomicPositionLabeler()
+    label_logic = MultilabelFormulaElementWithAtomicPositionLabeler()
     labeler = LabelerApply(labeler=label_logic)
     # * /labelers
     data_config: NetworkDataConfig = {
@@ -479,7 +479,7 @@ def main(
     hid = "+".join([f"{l}L{val}" for l, val in enumerate(hidden_layers, start=1)])
     msg = f"{name}-{hid}-{train_batch}b-{lr}lr"
 
-    results_path = f"./results/v4/crossfold_raw/{model_hash}"
+    results_path = f"./results/v4/crossfold_raw/{model_hash}/classification"
     plot_file = None
     if make_plots:
         plot_file = msg
@@ -539,7 +539,7 @@ if __name__ == "__main__":
     #         main(seed=42, train_batch=__batch, lr=__lr, hidden_layers=__layers)
     main(
         seed=0,
-        train_batch=32,
+        train_batch=128,
         lr=5e-4,
         hidden_layers=__layers,
         save_model=True,

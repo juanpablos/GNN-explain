@@ -473,7 +473,7 @@ class RecurrentTrainer(Trainer):
             data = {
                 "encoder": self.encoder.state_dict(),
                 "decoder": self.decoder.state_dict(),
-                "vocabulary": self.vocabulary,
+                "vocabulary": self.vocabulary.token2id,
             }
             name = f"{self.checkpoints_name}_{self._internal_epoch}.pt"
             torch.save(data, os.path.join(self.checkpoints_path, name))

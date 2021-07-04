@@ -1,5 +1,4 @@
 import logging
-from collections import Counter
 from multiprocessing import Pool
 from typing import List, Literal, Optional, Tuple, overload
 
@@ -150,13 +149,6 @@ class SequenceMetrics:
         # compile the formula into a FOC object
         formulas, correct = self.formula_reconstruction.batch2expression(predictions)
 
-        with open("acc.txt", "a") as f:
-            import json
-
-            _formulas = Counter(formulas)
-            json.dump({repr(k): v for k, v in _formulas.items()}, f, indent=2)
-            f.write("\n")
-
         if not run_all:
             self.cached_formulas = formulas
             self.cached_indices = subset_indices
@@ -189,9 +181,9 @@ class SequenceMetrics:
             tp_sum = (matching_select == 1).sum()
 
             # positives
-            true_sum = (correct == 1).sum()  # type: ignore
+            true_sum = (correct == 1).sum()
             # predicted positives
-            pred_sum = (pred == 1).sum()  # type: ignore
+            pred_sum = (pred == 1).sum()
 
             fp = pred_sum - tp_sum
             fn = true_sum - tp_sum
@@ -206,6 +198,9 @@ class SequenceMetrics:
         try:
             return a / b
         except BaseException:
+            # returns 0 because it will always be
+            # a / (a + x), so if a+x=b=0, then a is also 0
+            # when a and x are positive numbers
             return 0.0
 
     def semantic_validation(

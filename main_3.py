@@ -29,7 +29,6 @@ from src.typing import (
     LSTMConfig,
     MinModelConfig,
     NetworkDataConfig,
-    S,
 )
 from src.utils import prepare_info_dir, write_result_info_text, write_train_data
 from src.visualization.curve_plot import plot_training
@@ -86,7 +85,8 @@ def inference(
     model_weights = torch.load(f"{results_path}/models/{model_name_to_load}.pt")
     encoder_weights = model_weights["encoder"]
     decoder_weights = model_weights["decoder"]
-    vocabulary = model_weights["vocabulary"]
+    vocabulary = Vocabulary()
+    vocabulary.load_vocab(model_weights["vocabulary"])
 
     # load the model in the trainer
     trainer = RecurrentTrainer(
@@ -206,7 +206,7 @@ def _run_experiment(
     os.makedirs(f"{results_path}/models/{model_name}", exist_ok=True)
     trainer = RecurrentTrainer(
         seed=seed,
-        subset_size=0.05,
+        subset_size=0.2,  # semantic evaluate with only N%
         logging_variables="all",
         vocabulary=vocabulary,
         target_apply_mapping=formula_target,
@@ -554,7 +554,7 @@ def main(
 
     msg = f"{name}-{encoder}-{decoder}-{train_batch}b-{lr}lr"
 
-    results_path = f"./results/v4/crossfold_raw/{model_hash}"
+    results_path = f"./results/v4/crossfold_raw/{model_hash}/text"
 
     plot_file = None
     if make_plots:
