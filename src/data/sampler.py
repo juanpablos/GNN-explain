@@ -1,4 +1,5 @@
 import logging
+from abc import ABC, abstractmethod
 from collections import defaultdict
 from functools import cached_property
 from typing import Any, Dict, Generator, Generic, Iterable, List, Tuple
@@ -353,20 +354,20 @@ class PreloadedDataSamplerWithBalancer(SubsetSampler[T]):
         return NoLabelSubset(self.train_dataset, train_indices), self.test_dataset
 
 
-class NetworkDatasetCrossFoldSampler(Generic[T]):
+class BaseNetworkDatasetCrossFoldSampler(ABC, Generic[T]):
     def __init__(
         self,
         datasets: List[NetworkDataset[Tensor]],
         crossfold_config: CrossFoldConfiguration,
+        use_stratified_kfold: bool,
     ):
-        self.multilabel = datasets[0].multilabel
 
-        if self.multilabel:
-            logger.debug("Using regular KFold")
-            kfold_strategy = KFold
-        else:
+        if use_stratified_kfold:
             logger.debug("Using stratified KFold")
             kfold_strategy = StratifiedKFold
+        else:
+            logger.debug("Using regular KFold")
+            kfold_strategy = KFold
 
         self.waiting_loading = crossfold_config["defer_loading"]
         self.on_demand = not crossfold_config.pop("defer_loading", False)
@@ -421,6 +422,10 @@ class NetworkDatasetCrossFoldSampler(Generic[T]):
             int(fold_index): fold_data for fold_index, fold_data in fold_dict.items()
         }
 
+    @abstractmethod
+    def build_output_dataset(self, dataset_data):
+        ...
+
     def __on_demand_split(self):
         for i, (train_index, test_index) in enumerate(
             self.kfold.split(X=self.datasets, y=self.labels), start=1
@@ -428,12 +433,8 @@ class NetworkDatasetCrossFoldSampler(Generic[T]):
             train_datasets = [self.datasets[i] for i in train_index]
             test_datasets = [self.datasets[i] for i in test_index]
 
-            train_dataset = LabeledDataset.from_iterable(
-                train_datasets, multilabel=self.multilabel
-            )
-            test_dataset = LabeledDataset.from_iterable(
-                test_datasets, multilabel=self.multilabel
-            )
+            train_dataset = self.build_output_dataset(dataset_data=train_datasets)
+            test_dataset = self.build_output_dataset(dataset_data=test_datasets)
 
             reconstruction_mapping = NetworkDatasetCollectionWrapper(test_datasets)
 
@@ -461,12 +462,8 @@ class NetworkDatasetCrossFoldSampler(Generic[T]):
             train_datasets = list(fold["train"].values())
             test_datasets = list(fold["test"].values())
 
-            train_dataset = LabeledDataset.from_iterable(
-                train_datasets, multilabel=self.multilabel
-            )
-            test_dataset = LabeledDataset.from_iterable(
-                test_datasets, multilabel=self.multilabel
-            )
+            train_dataset = self.build_output_dataset(dataset_data=train_datasets)
+            test_dataset = self.build_output_dataset(dataset_data=test_datasets)
 
             reconstruction_mapping = NetworkDatasetCollectionWrapper(test_datasets)
 
@@ -498,3 +495,21 @@ class NetworkDatasetCrossFoldSampler(Generic[T]):
 
     def get_folds(self) -> Dict[int, Dict[str, List[Dict[str, str]]]]:
         return self.folds
+
+
+class NetworkDatasetCrossFoldSampler(BaseNetworkDatasetCrossFoldSampler[T]):
+    def __init__(
+        self,
+        datasets: List[NetworkDataset[Tensor]],
+        crossfold_config: CrossFoldConfiguration,
+    ):
+        self.multilabel = datasets[0].multilabel
+
+        super().__init__(
+            datasets=datasets,
+            crossfold_config=crossfold_config,
+            use_stratified_kfold=not self.multilabel,
+        )
+
+    def build_output_dataset(self, dataset_data):
+        return LabeledDataset.from_iterable(dataset_data, multilabel=self.multilabel)
