@@ -433,6 +433,7 @@ def main(
     train_batch: int = 32,
     lr: float = 0.001,
     mlp_hidden_layers: List[int] = None,
+    encoder_output_size: int = 1024,
     save_model: bool = True,
     write_train_data: bool = True,
     make_plots: bool = True,
@@ -444,18 +445,17 @@ def main(
 
     mlp_hidden_layers = [128] if mlp_hidden_layers is None else mlp_hidden_layers
 
-    encoder_output = 1024
     mlp_config: MinModelConfig = {
         "num_layers": 3,
         "input_dim": None,
         "hidden_dim": 128,
         "hidden_layers": mlp_hidden_layers,
-        "output_dim": encoder_output,
+        "output_dim": encoder_output_size,
         "use_batch_norm": True,
     }
     lstm_config: LSTMConfig = {
         "name": "lstmcell",
-        "encoder_dim": encoder_output,
+        "encoder_dim": encoder_output_size,
         "embedding_dim": 4,
         "hidden_dim": 256,
         "vocab_size": None,
@@ -539,7 +539,7 @@ def main(
         "defer_loading": False,
     }
 
-    iterations = 50
+    iterations = 20
     test_batch = 2048
 
     if name is None:
@@ -549,7 +549,7 @@ def main(
     encoder, decoder = get_model_name(
         hidden_layers=mlp_hidden_layers,
         lstm_config=lstm_config,
-        encoder_output=encoder_output,
+        encoder_output=encoder_output_size,
     )
 
     msg = f"{name}-{encoder}-{decoder}-{train_batch}b-{lr}lr"
@@ -668,6 +668,7 @@ if __name__ == "__main__":
         train_batch=32,
         lr=5e-4,
         mlp_hidden_layers=__layers,
+        encoder_output_size=256,
         save_model=True,
         make_plots=True,
     )

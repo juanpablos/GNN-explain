@@ -25,6 +25,8 @@ class FormulaReconstruction:
             _, lower, upper, *_ = re.split(r",|\(|\)", token)
             self.exist_values[exist_ind] = (lower, upper)
 
+        self.cached_compilation: Dict[str, FOC] = {}
+
     def get_ids(self, tokens):
         token_ids: Set[int] = set()
         for token in tokens:
@@ -102,8 +104,15 @@ class FormulaReconstruction:
         n_compiled = 0
         for sample in batch_data:
             try:
-                formula = self.tokens2expression(sample)
-                expressions.append(FOC(eval(formula)))
+                formula_repr = self.tokens2expression(sample)
+
+                if formula_repr in self.cached_compilation:
+                    expressions.append(self.cached_compilation[formula_repr])
+                else:
+                    compiled_formula = FOC(eval(formula_repr))
+                    self.cached_compilation[formula_repr] = compiled_formula
+                    expressions.append(compiled_formula)
+
                 n_compiled += 1
             except ValueError:
                 expressions.append(None)

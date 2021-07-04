@@ -1,5 +1,4 @@
 import logging
-from multiprocessing import Pool
 from typing import List, Literal, Optional, Tuple, overload
 
 import numpy as np
@@ -13,6 +12,46 @@ from src.graphs.foc import FOC
 from src.training.check_formulas import FormulaReconstruction
 
 logger = logging.getLogger(__name__)
+
+
+def _single_validation(index, formula, formula_mapping, cached_formula_evaluations):
+    assert formula_mapping is not None, "Formula mapping cannot be None"
+    correct = formula_mapping[index]
+
+    tp: float = 0.0
+    tn: float = 0.0
+    fp: float = 0.0
+    fn: float = 0.0
+
+    if formula is not None:
+        formula_str = repr(formula)
+        if formula_str in cached_formula_evaluations:
+            pred = cached_formula_evaluations[formula_str]
+        else:
+            # run the formula over the predefined set of graphs
+            # ! this takes ~0.01 sec per formula
+            pred = formula_mapping.run_formula(formula)
+            cached_formula_evaluations[formula_str] = pred
+
+        # get the matching indices
+        matching = correct == pred
+        matching_select = correct[matching]
+
+        # positive matching
+        tp_sum = (matching_select == 1).sum()
+
+        # positives
+        true_sum = (correct == 1).sum()
+        # predicted positives
+        pred_sum = (pred == 1).sum()
+
+        fp = pred_sum - tp_sum
+        fn = true_sum - tp_sum
+        tp = tp_sum
+        tn = correct.shape[0] - tp - fp - fn
+
+    # metric for valid formulas. Invalid formulas are not considered
+    return tp, tn, fp, fn
 
 
 class SequenceMetrics:
@@ -35,6 +74,10 @@ class SequenceMetrics:
 
         self.cached_formulas = None
         self.cached_indices = None
+
+        # self.shared_memory_manager = Manager()
+        # self.cached_formula_evaluations = self.shared_memory_manager.dict()
+        self.cached_formula_evaluations = {}
 
     def token_accuracy(self, scores, targets, k, lengths):
         # scores: logits (batch, L, vocab) with padding
@@ -159,40 +202,6 @@ class SequenceMetrics:
             return valid_syntax, formulas
         return valid_syntax
 
-    def _single_validation(self, index, formula):
-        assert self.formula_mapping is not None, "Formula mapping cannot be None"
-        correct = self.formula_mapping[index]
-
-        tp: float = 0.0
-        tn: float = 0.0
-        fp: float = 0.0
-        fn: float = 0.0
-
-        if formula is not None:
-            # run the formula over the predefined set of graphs
-            # ! this takes ~0.01 sec per formula
-            pred = self.formula_mapping.run_formula(formula)
-
-            # get the matching indices
-            matching = correct == pred
-            matching_select = correct[matching]
-
-            # positive matching
-            tp_sum = (matching_select == 1).sum()
-
-            # positives
-            true_sum = (correct == 1).sum()
-            # predicted positives
-            pred_sum = (pred == 1).sum()
-
-            fp = pred_sum - tp_sum
-            fn = true_sum - tp_sum
-            tp = tp_sum
-            tn = correct.shape[0] - tp - fp - fn
-
-        # metric for valid formulas. Invalid formulas are not considered
-        return tp, tn, fp, fn
-
     @staticmethod
     def _div(a: float, b: float):
         try:
@@ -227,22 +236,40 @@ class SequenceMetrics:
             indices
         ), "formulas and indices dont have the same length"
 
-        with Pool(4) as p:
-            indicators = p.starmap(
-                self._single_validation,
-                zip(indices, formulas),
-                chunksize=len(formulas) // 4,
-            )
-
         tp: float = 0.0
         tn: float = 0.0
         fp: float = 0.0
         fn: float = 0.0
-        for _tp, _tn, _fp, _fn in indicators:
+        for a, b in zip(indices, formulas):
+            _tp, _tn, _fp, _fn = _single_validation(
+                a, b, self.formula_mapping, self.cached_formula_evaluations
+            )
+
             tp += _tp
             tn += _tn
             fp += _fp
             fn += _fn
+        # with Pool(4) as p:
+        #     indicators = p.starmap(
+        #         _single_validation,
+        #         zip(
+        #             indices,
+        #             formulas,
+        #             repeat(self.formula_mapping),
+        #             repeat(self.cached_formula_evaluations),
+        #         ),
+        #         chunksize=len(formulas) // 4,
+        #     )
+
+        # tp: float = 0.0
+        # tn: float = 0.0
+        # fp: float = 0.0
+        # fn: float = 0.0
+        # for _tp, _tn, _fp, _fn in indicators:
+        #     tp += _tp
+        #     tn += _tn
+        #     fp += _fp
+        #     fn += _fn
 
         precision = self._div(tp, tp + fp)
         recall = self._div(tp, tp + fn)
