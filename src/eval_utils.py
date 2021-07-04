@@ -123,7 +123,7 @@ def evaluate_text_model(
     data_loader = trainer.init_dataloader(
         data=test_data,
         mode=None,
-        batch_size=1024,
+        batch_size=2048,
         pin_memory=False,
         shuffle=False,
         num_workers=0,

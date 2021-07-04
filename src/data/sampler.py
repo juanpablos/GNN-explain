@@ -10,6 +10,7 @@ from torch.functional import Tensor
 
 from src.data.auxiliary import NetworkDatasetCollectionWrapper
 from src.data.datasets import (
+    BaseLabeledDataset,
     LabeledDataset,
     NetworkDataset,
     NoLabelDataset,
@@ -359,7 +360,7 @@ class PreloadedDataSamplerWithBalancer(SubsetSampler[T]):
 class BaseNetworkDatasetCrossFoldSampler(ABC, Generic[T]):
     def __init__(
         self,
-        datasets: List[NetworkDataset[Tensor]],
+        datasets: List[NetworkDataset[T]],
         crossfold_config: CrossFoldConfiguration,
         use_stratified_kfold: bool,
     ):
@@ -382,9 +383,7 @@ class BaseNetworkDatasetCrossFoldSampler(ABC, Generic[T]):
         self.folds = {}
 
         # train|test -> hash -> network dataset
-        self.loaded_fold_mappings: List[
-            Dict[str, Dict[str, NetworkDataset[Tensor]]]
-        ] = []
+        self.loaded_fold_mappings: List[Dict[str, Dict[str, NetworkDataset[T]]]] = []
 
     def load_precalculated_folds(
         self,
@@ -401,14 +400,14 @@ class BaseNetworkDatasetCrossFoldSampler(ABC, Generic[T]):
         for fold_index in folds:
             fold_data = fold_dict[fold_index]
 
-            loaded_fold: Dict[str, Dict[str, NetworkDataset[Tensor]]] = {}
+            loaded_fold: Dict[str, Dict[str, NetworkDataset[T]]] = {}
 
-            train_fold: Dict[str, NetworkDataset[Tensor]] = {}
+            train_fold: Dict[str, NetworkDataset[T]] = {}
             for formula_data in fold_data["train"]:
                 formula_hash = formula_data["hash"]
                 train_fold[formula_hash] = formula_hash_to_network_data[formula_hash]
 
-            test_fold: Dict[str, NetworkDataset[Tensor]] = {}
+            test_fold: Dict[str, NetworkDataset[T]] = {}
             for formula_data in fold_data["test"]:
                 formula_hash = formula_data["hash"]
                 test_fold[formula_hash] = formula_hash_to_network_data[formula_hash]
@@ -425,7 +424,9 @@ class BaseNetworkDatasetCrossFoldSampler(ABC, Generic[T]):
         }
 
     @abstractmethod
-    def build_output_dataset(self, dataset_data):
+    def build_output_dataset(
+        self, dataset_data: List[NetworkDataset[T]]
+    ) -> BaseLabeledDataset[Tensor, T]:
         ...
 
     def __on_demand_split(self):
@@ -502,7 +503,7 @@ class BaseNetworkDatasetCrossFoldSampler(ABC, Generic[T]):
 class NetworkDatasetCrossFoldSampler(BaseNetworkDatasetCrossFoldSampler[T]):
     def __init__(
         self,
-        datasets: List[NetworkDataset[Tensor]],
+        datasets: List[NetworkDataset[T]],
         crossfold_config: CrossFoldConfiguration,
     ):
         self.multilabel = datasets[0].multilabel
@@ -513,7 +514,9 @@ class NetworkDatasetCrossFoldSampler(BaseNetworkDatasetCrossFoldSampler[T]):
             use_stratified_kfold=not self.multilabel,
         )
 
-    def build_output_dataset(self, dataset_data):
+    def build_output_dataset(
+        self, dataset_data: List[NetworkDataset[T]]
+    ) -> LabeledDataset[Tensor, T]:
         return LabeledDataset.from_iterable(dataset_data, multilabel=self.multilabel)
 
 
@@ -531,7 +534,9 @@ class TextNetworkDatasetCrossFoldSampler(BaseNetworkDatasetCrossFoldSampler[Tens
         )
         self.vocabulary = vocabulary
 
-    def build_output_dataset(self, dataset_data):
+    def build_output_dataset(
+        self, dataset_data: List[NetworkDataset[Tensor]]
+    ) -> TextSequenceDataset[Tensor]:
         return TextSequenceDataset.from_iterable(
             dataset_data, vocabulary=self.vocabulary
         )
