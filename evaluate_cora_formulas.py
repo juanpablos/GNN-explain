@@ -5,39 +5,51 @@ import numpy as np
 import torch
 from sklearn.metrics import classification_report, precision_score, recall_score
 from torch_geometric.utils import to_networkx
-from src.models.ac_gnn import ACGNN
+
 from src.graphs.foc import *
+from src.models.ac_gnn import ACGNN
 
+model_hash = "40e65407aa"
+model_name = "NoFilter()-TextSequenceAtomic()-CV-1L512+2L512+3L512-emb4-lstmcellIN512-lstmH256-initTrue-catTrue-drop0-compFalse-d256-32b-0.0005lr_cf1"
+cora_method = "svd"
 
-cora_dataset = "original_original_reduced_cora_l0_gnn"
+cora_data_path = os.path.join("data", "cora_data")
+cora_dataset_path = os.path.join(cora_data_path, cora_method)
+cora_model_path = os.path.join(cora_data_path, model_hash)
 
-data_path = os.path.join("data", "cora_data")
-model_path = os.path.join("data", "gnns_v3", "40e65407aa")
-inference_path = os.path.join(
+cora_dataset_name = "processed_cora_l0_svd_agglomerative_d500"
+cora_model_name = f"{cora_method}_{cora_dataset_name}_gnn"
+
+formula_inference_path = os.path.join(
     "results",
-    "v3",
-    "testing",
-    "40e65407aa",
+    "v4",
+    "crossfold_raw",
+    model_hash,
+    "text",
     "inference",
-    "NoFilter()-TextSequenceAtomic()-NullFilter()-1L1024+2L1024+3L1024-emb4-lstmcellIN1024-lstmH256-initTrue-catTrue-drop0-compFalse-d256-512b-0.005lr",
+    model_name,
 )
 
-data = torch.load(os.path.join(data_path, f"{cora_dataset}.pt"))
-models = torch.load(os.path.join(model_path, f"{cora_dataset}.pt"))
-inference_file = os.path.join(inference_path, f"{cora_dataset}.txt")
-inference_comparison_file = os.path.join(inference_path, f"{cora_dataset}_eval.txt")
-with open(inference_file, "r") as f:
+
+cora_dataset = torch.load(os.path.join(cora_dataset_path, f"{cora_dataset_name}.pt"))
+cora_models = torch.load(os.path.join(cora_model_path, f"{cora_model_name}.pt"))
+
+inference_file = os.path.join(formula_inference_path, f"{cora_model_name}.txt")
+inference_comparison_file = os.path.join(
+    formula_inference_path, f"{cora_model_name}_eval.txt"
+)
+
+with open(inference_file) as f:
     inference_formulas = [eval(formula) for formula in f.readlines()]
 
-
-properties = torch.argmax(data.x, dim=1)
-data.properties = properties
-graph = to_networkx(data, to_undirected=True, node_attrs=["properties", "y"])
+properties = torch.argmax(cora_dataset.x, dim=1)
+cora_dataset.properties = properties
+graph = to_networkx(cora_dataset, to_undirected=True, node_attrs=["properties", "y"])
 
 true_expected = np.array(list(nx.get_node_attributes(graph, "y").values()))
 
 base_model = ACGNN(
-    input_dim=data.num_features,
+    input_dim=cora_dataset.num_features,
     hidden_dim=8,
     output_dim=2,
     aggregate_type="add",
@@ -50,7 +62,7 @@ base_model = ACGNN(
 ).cuda()
 
 reports = []
-for i, (model_weights, formula) in enumerate(zip(models, inference_formulas)):
+for i, (model_weights, formula) in enumerate(zip(cora_models, inference_formulas)):
     if formula is None:
         print(f"model {i} is gave None as answer")
         continue
@@ -60,8 +72,8 @@ for i, (model_weights, formula) in enumerate(zip(models, inference_formulas)):
     with torch.no_grad():
         gnn_pred = (
             model(
-                x=data.x.cuda(),
-                edge_index=data.edge_index.cuda(),
+                x=cora_dataset.x.cuda(),
+                edge_index=cora_dataset.edge_index.cuda(),
                 batch=None,
             )
             .max(1)[1]
@@ -94,13 +106,3 @@ for i, (model_weights, formula) in enumerate(zip(models, inference_formulas)):
 with open(inference_comparison_file, "w", encoding="utf-8") as f:
     for report in reports:
         f.write(report)
-
-# formula = AND(
-#     Property("RED"), Exist(AND(Role("EDGE"), Property("RED")), lower=1, upper=None)
-# )
-# formula = AND(
-#     OR(Property("RED"), Property("BLACK")),
-#     Exist(AND(Role("EDGE"), Property("GREEN")), lower=None, upper=3),
-# )
-# formula = OR(Property("BLUE"), Property("BLACK"))
-# formula = Property("BLACK")
