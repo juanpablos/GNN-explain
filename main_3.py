@@ -127,9 +127,12 @@ def inference(
     )
 
     logger.info("Writing results")
-    inference_path = f"{results_path}/inference/{model_name_to_load}"
+
+    inference_path = os.path.join(results_path, "inference", model_name_to_load)
     os.makedirs(inference_path, exist_ok=True)
-    with open(f"{inference_path}/{inference_filename}", "w", encoding="utf-8") as out:
+    with open(
+        os.path.join(inference_path, inference_filename), "w", encoding="utf-8"
+    ) as out:
         for formula in generated_formulas:
             f = repr(formula) if write_representation else str(formula)
             out.write(f"{f}\n")
@@ -622,12 +625,12 @@ def main(
 
 
 def main_inference():
-    encoder_output = 1024
+    encoder_output = 512
     mlp_config: MinModelConfig = {
         "num_layers": 3,
         "input_dim": None,
         "hidden_dim": 128,
-        "hidden_layers": [1024, 1024, 1024],
+        "hidden_layers": [512, 512, 512],
         "output_dim": encoder_output,
         "use_batch_norm": True,
     }
@@ -649,19 +652,15 @@ def main_inference():
     }
 
     model_hash = "40e65407aa"
-    results_path = f"./results/v3/testing/{model_hash}"
+    results_path = os.path.join("results", "v4", "crossfold_raw", model_hash, "text")
 
-    model_name = "NoFilter()-TextSequenceAtomic()-NullFilter()-1L1024+2L1024+3L1024-emb4-lstmcellIN1024-lstmH256-initTrue-catTrue-drop0-compFalse-d256-512b-0.005lr/model_6"
+    model_name = "NoFilter()-TextSequenceAtomic()-CV-1L512+2L512+3L512-emb4-lstmcellIN512-lstmH256-initTrue-catTrue-drop0-compFalse-d256-32b-0.0005lr_cf1"
 
-    formula_hash = "8b21f3f718"
-    # formula_hash = "svd_processed_cora_l4_svd_agglomerative_d500_gnn"
+    cora_path = os.path.join("data", "cora_data", model_hash)
+    formula_filename = "svd_processed_cora_l0_svd_agglomerative_d500_gnn"
+    inference_data_file = os.path.join(cora_path, f"{formula_filename}.pt")
 
-    # inference_data_file = f"./data/full_gnn/{model_hash}/{formula_hash}.pt"
-
-    inference_data_file = (
-        f"./data/manual/{model_hash}/acgnn-n20-{model_hash}-{formula_hash}.pt"
-    )
-    inference_filename = f"{formula_hash}.txt"
+    inference_filename = f"{formula_filename}.txt"
 
     inference(
         encoder_config=mlp_config,
@@ -689,15 +688,15 @@ if __name__ == "__main__":
 
     logger.addHandler(ch)
 
-    __layers = [256, 256, 256]
-    main(
-        seed=0,
-        train_batch=32,
-        lr=5e-4,
-        mlp_hidden_layers=__layers,
-        encoder_output_size=256,
-        save_model=True,
-        make_plots=True,
-    )
+    # __layers = [256, 256, 256]
+    # main(
+    #     seed=0,
+    #     train_batch=32,
+    #     lr=5e-4,
+    #     mlp_hidden_layers=__layers,
+    #     encoder_output_size=256,
+    #     save_model=True,
+    #     make_plots=True,
+    # )
 
-    # main_inference()
+    main_inference()

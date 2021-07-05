@@ -181,6 +181,7 @@ def main():
         "shuffle": True,  # not used
         "random_state": None,  # not used
         "defer_loading": True,
+        "required_train_hashes": [],
     }
 
     data_config: NetworkDataConfig = {
