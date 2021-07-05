@@ -540,3 +540,15 @@ class TextNetworkDatasetCrossFoldSampler(BaseNetworkDatasetCrossFoldSampler[Tens
         return TextSequenceDataset.from_iterable(
             dataset_data, vocabulary=self.vocabulary
         )
+
+    def _grouped_formulas(
+        self, cv_fold
+    ) -> Generator[Tuple[str, TextSequenceDataset[Tensor]], None, None]:
+        for formula_hash, network_dataset in cv_fold["test"].items():
+            yield formula_hash, self.build_output_dataset(
+                dataset_data=[network_dataset]
+            )
+
+    def group_test_formulas(self):
+        for fold in self.loaded_fold_mappings:
+            yield self._grouped_formulas(fold)

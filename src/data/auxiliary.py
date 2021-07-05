@@ -51,6 +51,7 @@ class FormulaAppliedDatasetWrapper:
         configs: List[Dict[str, int]],
         n_properties: int = 4,
         seed: int = 0,
+        _ignore: bool = False,
     ):
         if len(datasets) < 1:
             raise ValueError("datasets cannot be an empty sequence")
@@ -70,7 +71,8 @@ class FormulaAppliedDatasetWrapper:
         self.n_graphs = len(self.graphs)
         self.n_nodes = sum(len(g) for g in self.graphs)
 
-        self._run_formulas()
+        if not _ignore:
+            self._run_formulas()
 
     def __len__(self):
         return self.cumulative_sizes[-1]
