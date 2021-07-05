@@ -29,6 +29,7 @@ from src.typing import (
     LSTMConfig,
     MinModelConfig,
     NetworkDataConfig,
+    StopFormat,
 )
 from src.utils import prepare_info_dir, write_result_info_text, write_train_data
 from src.visualization.curve_plot import plot_training
@@ -157,6 +158,7 @@ def _run_experiment(
     batch_size: int = 64,
     test_batch_size: int = 512,
     lr: float = 0.01,
+    early_stopping: StopFormat = None,
     run_train_test: bool = False,
     results_path: str = "./results",
     model_name: str = None,
@@ -206,7 +208,7 @@ def _run_experiment(
     os.makedirs(f"{results_path}/models/{model_name}", exist_ok=True)
     trainer = RecurrentTrainer(
         seed=seed,
-        subset_size=0.2,  # semantic evaluate with only N%
+        subset_size=1.0,  # semantic evaluate with only N%
         logging_variables="all",
         vocabulary=vocabulary,
         target_apply_mapping=formula_target,
@@ -243,6 +245,7 @@ def _run_experiment(
         iterations=iterations,
         gpu_num=gpu_num,
         lr=lr,
+        stop_when=early_stopping,
         run_train_test=run_train_test,
     )
 
@@ -302,6 +305,7 @@ def run_experiment(
     batch_size: int = 64,
     test_batch_size: int = 512,
     lr: float = 0.01,
+    early_stopping: StopFormat = None,
     run_train_test: bool = False,
     results_path: str = "./results",
     model_name: str = None,
@@ -348,6 +352,7 @@ def run_experiment(
             cf_model_name = f"{model_name}_cf{i}"
             cf_plot_filename = f"{plot_filename}_cf{i}"
             cf_info_filename = f"{info_filename}_cf{i}"
+            cf_train_file = f"{train_file}_cf{i}"
 
             file_ext = _run_experiment(
                 train_data=train_data,
@@ -364,12 +369,13 @@ def run_experiment(
                 batch_size=batch_size,
                 test_batch_size=test_batch_size,
                 lr=lr,
+                early_stopping=early_stopping,
                 run_train_test=run_train_test,
                 results_path=results_path,
                 model_name=cf_model_name,
                 plot_filename=cf_plot_filename,
                 plot_title=plot_title,
-                train_file=train_file,
+                train_file=cf_train_file,
                 info_filename=cf_info_filename,
             )
 
@@ -408,6 +414,7 @@ def run_experiment(
             batch_size=batch_size,
             test_batch_size=test_batch_size,
             lr=lr,
+            early_stopping=early_stopping,
             run_train_test=run_train_test,
             results_path=results_path,
             model_name=model_name,
@@ -539,6 +546,12 @@ def main(
         "defer_loading": False,
     }
 
+    early_stopping: StopFormat = {
+        "operation": "early",
+        "conditions": {"test_loss": 0.001},
+        "stay": 5,
+    }
+
     iterations = 20
     test_batch = 2048
 
@@ -581,6 +594,7 @@ def main(
         batch_size=train_batch,
         test_batch_size=test_batch,
         lr=lr,
+        early_stopping=early_stopping,
         run_train_test=True,
         results_path=results_path,
         model_name=model_name,
@@ -662,13 +676,13 @@ if __name__ == "__main__":
 
     logger.addHandler(ch)
 
-    __layers = [256, 256, 256]
+    __layers = [1024, 1024, 1024]
     main(
         seed=0,
         train_batch=32,
         lr=5e-4,
         mlp_hidden_layers=__layers,
-        encoder_output_size=256,
+        encoder_output_size=1024,
         save_model=True,
         make_plots=True,
     )

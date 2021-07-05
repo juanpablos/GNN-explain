@@ -539,7 +539,7 @@ if __name__ == "__main__":
     #         main(seed=42, train_batch=__batch, lr=__lr, hidden_layers=__layers)
     main(
         seed=0,
-        train_batch=128,
+        train_batch=32,
         lr=5e-4,
         hidden_layers=__layers,
         save_model=True,
