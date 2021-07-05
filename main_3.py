@@ -544,12 +544,25 @@ def main(
         "shuffle": True,
         "random_state": seed,
         "defer_loading": False,
+        "required_train_hashes": [
+            # all basic no quantifier formula (single colors + single with ORs)
+            "dc670b1bec",
+            "4805042859",
+            "688d12b701",
+            "652c706f1b",
+            "56dc8827b8",
+            "a8c2c67eea",
+            "c439b78825",
+            "a2d4a80c8d",
+            "9564eab880",
+            "98e4690a6c",
+        ],
     }
 
     early_stopping: StopFormat = {
         "operation": "early",
         "conditions": {"test_loss": 0.001},
-        "stay": 5,
+        "stay": 3,
     }
 
     iterations = 20
@@ -676,13 +689,13 @@ if __name__ == "__main__":
 
     logger.addHandler(ch)
 
-    __layers = [1024, 1024, 1024]
+    __layers = [256, 256, 256]
     main(
         seed=0,
         train_batch=32,
         lr=5e-4,
         mlp_hidden_layers=__layers,
-        encoder_output_size=1024,
+        encoder_output_size=256,
         save_model=True,
         make_plots=True,
     )

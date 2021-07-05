@@ -89,6 +89,7 @@ class CrossFoldConfiguration(TypedDict):
     shuffle: bool
     random_state: Optional[int]
     defer_loading: bool
+    required_train_hashes: List[str]
 
 
 class MetricHistory(Protocol):

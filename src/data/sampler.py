@@ -375,10 +375,16 @@ class BaseNetworkDatasetCrossFoldSampler(ABC, Generic[T]):
         self.waiting_loading = crossfold_config["defer_loading"]
         self.on_demand = not crossfold_config.pop("defer_loading", False)
 
+        self.force_train_hashes = set(crossfold_config.pop("required_train_hashes"))
+
         self.kfold = kfold_strategy(**crossfold_config)
 
         self.datasets = datasets
         self.labels = [dataset.labels[0] for dataset in datasets]
+        self.hashes_data = {
+            dataset.formula_hash: (dataset, labels)
+            for (dataset, labels) in zip(self.datasets, self.labels)
+        }
 
         self.folds = {}
 
@@ -430,11 +436,23 @@ class BaseNetworkDatasetCrossFoldSampler(ABC, Generic[T]):
         ...
 
     def __on_demand_split(self):
+        datasets: List[NetworkDataset[T]] = []
+        labels = []
+
+        force_train_datasets: List[NetworkDataset[T]] = []
+
+        for formula_hash, (dataset, label) in self.hashes_data.items():
+            if formula_hash in self.force_train_hashes:
+                force_train_datasets.append(dataset)
+            else:
+                datasets.append(dataset)
+                labels.append(label)
+
         for i, (train_index, test_index) in enumerate(
-            self.kfold.split(X=self.datasets, y=self.labels), start=1
+            self.kfold.split(X=datasets, y=labels), start=1
         ):
-            train_datasets = [self.datasets[i] for i in train_index]
-            test_datasets = [self.datasets[i] for i in test_index]
+            train_datasets = [datasets[i] for i in train_index] + force_train_datasets
+            test_datasets = [datasets[i] for i in test_index]
 
             train_dataset = self.build_output_dataset(dataset_data=train_datasets)
             test_dataset = self.build_output_dataset(dataset_data=test_datasets)
