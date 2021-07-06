@@ -60,3 +60,18 @@ def graph_data_to_labeled_data(
 
 def graph_data_to_graph(graph_data: Data) -> nx.Graph:
     return to_networkx(graph_data, node_attrs=["properties"], to_undirected=True)
+
+
+def graph_labeled_data_to_graph(graph_data: Data) -> nx.Graph:
+    G = nx.Graph()
+    G.add_nodes_from(range(graph_data.num_nodes))
+
+    for u, v in graph_data.edge_index.t().tolist():
+        if v > u:
+            continue
+        G.add_edge(u, v)
+
+    properties = graph_data["x"].int().argmax(1).tolist()
+    nx.set_node_attributes(G, dict(zip(G, properties)), name="properties")
+
+    return G

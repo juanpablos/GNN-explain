@@ -1,13 +1,15 @@
 import bisect
 import logging
 import random
-from typing import Dict, List, Optional, Sequence, overload
+from typing import Dict, Generator, List, Optional, Sequence, overload
 
 import numpy as np
 import torch
 from torch_geometric.data import InMemoryDataset
+from torch_geometric.data.data import Data
 
 from src.data.datasets import NetworkDataset
+from src.data.graph_transform import graph_labeled_data_to_graph
 from src.generate_graphs import graph_object_stream
 from src.graphs.foc import FOC, Element
 
@@ -163,6 +165,47 @@ class FormulaAppliedDatasetWrapper:
             "formulas": self.formulas,
             "total": float(sum(each_positive)) / len(each_positive),
         }
+
+
+class PreloadedSingleFormulaEvaluationWrapper:
+    def __init__(
+        self,
+        formula: FOC,
+        graphs_data: Generator[Data, None, None],
+    ):
+        self.graphs = []
+        self.cached_expected_result = self._extract_graphs_and_labels(
+            graphs_data=graphs_data
+        )
+
+        self.formula = formula
+
+    def _extract_graphs_and_labels(self, graphs_data):
+        logger.debug("Converting data to graphs")
+
+        labels = []
+
+        for graph_data in graphs_data:
+            graph = graph_labeled_data_to_graph(graph_data)
+            self.graphs.append(graph)
+
+            graph_labels = graph_data.y.numpy()
+            labels.append(graph_labels)
+
+        logger.debug("Caching graph data labels")
+        return np.concatenate(labels, axis=0)
+
+    def __getitem__(self, index: int) -> np.ndarray:
+        return self.cached_expected_result
+
+    def run_formula(self, formula: FOC):
+        results = []
+        for graph in self.graphs:
+            res = formula(graph)
+
+            results.append(res)
+
+        return np.concatenate(results, axis=0)
 
 
 class AggregatedNetworkDataset:
