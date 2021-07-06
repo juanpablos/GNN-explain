@@ -1,3 +1,4 @@
+import csv
 import json
 import logging
 import os
@@ -5,13 +6,16 @@ from timeit import default_timer as timer
 
 import torch
 
+from src.data.auxiliary import PreloadedSingleFormulaEvaluationWrapper
 from src.data.formula_index import FormulaMapping
 from src.data.formulas import *
 from src.data.loader import text_sequence_loader
 from src.data.sampler import TextNetworkDatasetCrossFoldSampler
 from src.data.utils import get_input_dim
 from src.data.vocabulary import Vocabulary
+from src.generate_graphs import graph_data_stream_pregenerated_graphs_test
 from src.training.check_formulas import FormulaReconstruction
+from src.training.metrics import semantic_evaluation_for_formula
 from src.training.sequence_training import RecurrentTrainer
 from src.typing import (
     CrossFoldConfiguration,
@@ -128,19 +132,45 @@ def evaluate_crossfolds(
                 batch_data=predictions.tolist()
             )
 
+            logger.debug(f"[CV{i}] Loading evaluation graphs")
+            test_stream = graph_data_stream_pregenerated_graphs_test(
+                formula=decoded_expected_formula,
+                graphs_path=os.path.join("data", "graphs"),
+                graphs_filename="test_graphs_v2_10626.pt",
+                pregenerated_labels_file=f"{expected_formula_hash}_labels_test.pt",
+            )
+
+            semantic_formula_evaluator = PreloadedSingleFormulaEvaluationWrapper(
+                formula=decoded_expected_formula, graphs_data=test_stream
+            )
+            cached_semantic_results = {}
+
             with open(
                 os.path.join(
                     cv_evaluation_results_path, expected_formula_hash + ".txt"
                 ),
                 "w",
+                newline="",
             ) as evaluation_file:
                 expected_header = "\n".join(
                     ["-" * 20, repr(decoded_expected_formula), "-" * 20]
                 )
                 evaluation_file.writelines([expected_header, "\n\n"])
 
+                csv_writer = csv.writer(evaluation_file, delimiter=";")
+                csv_writer.writerow(["formula", "precision", "recall", "accuracy"])
+
+                logger.debug(f"[CV{i}] Running evaluation")
                 for generated_formula in generated_formulas:
-                    evaluation_file.writelines([repr(generated_formula), "\n"])
+                    precision, recall, accuracy = semantic_evaluation_for_formula(
+                        formula=generated_formula,
+                        semantic_formula=semantic_formula_evaluator,
+                        cached_evaluation=cached_semantic_results,
+                    )
+
+                    csv_writer.writerow(
+                        [repr(generated_formula), precision, recall, accuracy]
+                    )
 
 
 def main():
