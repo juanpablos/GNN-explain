@@ -1,5 +1,6 @@
 import logging
-from typing import List, Literal, Optional, Tuple, overload
+from src.typing import FormulaSemanticEvaluatorType
+from typing import Dict, List, Literal, Optional, Tuple, overload
 
 import numpy as np
 import torch
@@ -14,7 +15,12 @@ from src.training.check_formulas import FormulaReconstruction
 logger = logging.getLogger(__name__)
 
 
-def _single_validation(index, formula, formula_mapping, cached_formula_evaluations):
+def _single_validation(
+    index: int,
+    formula: Optional[Optional[FOC]],
+    formula_mapping: Optional[FormulaSemanticEvaluatorType],
+    cached_formula_evaluations: Dict[str, np.ndarray],
+) -> Tuple[float, float, float, float]:
     assert formula_mapping is not None, "Formula mapping cannot be None"
     correct = formula_mapping[index]
 
@@ -52,6 +58,34 @@ def _single_validation(index, formula, formula_mapping, cached_formula_evaluatio
 
     # metric for valid formulas. Invalid formulas are not considered
     return tp, tn, fp, fn
+
+
+def _div(a: float, b: float):
+    try:
+        return a / b
+    except BaseException:
+        # returns 0 because it will always be
+        # a / (a + x), so if a+x=b=0, then a is also 0
+        # when a and x are positive numbers
+        return 0.0
+
+
+def semantic_evaluation_for_formula(
+    formula: Optional[FOC],
+    semantic_formula: Optional[FormulaSemanticEvaluatorType],
+    cached_evaluation: Dict[str, np.ndarray],
+) -> Tuple[float, float, float]:
+    tp, tn, fp, fn = _single_validation(
+        index=0,
+        formula=formula,
+        formula_mapping=semantic_formula,
+        cached_formula_evaluations=cached_evaluation,
+    )
+    precision = _div(tp, tp + fp)
+    recall = _div(tp, tp + fn)
+    acc = _div(tp + tn, tp + tn + fp + fn)
+
+    return precision, recall, acc
 
 
 class SequenceMetrics:
@@ -202,16 +236,6 @@ class SequenceMetrics:
             return valid_syntax, formulas
         return valid_syntax
 
-    @staticmethod
-    def _div(a: float, b: float):
-        try:
-            return a / b
-        except BaseException:
-            # returns 0 because it will always be
-            # a / (a + x), so if a+x=b=0, then a is also 0
-            # when a and x are positive numbers
-            return 0.0
-
     def semantic_validation(
         self, predictions, indices, formulas: List[Optional[FOC]] = None
     ):
@@ -240,9 +264,9 @@ class SequenceMetrics:
         tn: float = 0.0
         fp: float = 0.0
         fn: float = 0.0
-        for a, b in zip(indices, formulas):
+        for index, formula in zip(indices, formulas):
             _tp, _tn, _fp, _fn = _single_validation(
-                a, b, self.formula_mapping, self.cached_formula_evaluations
+                index, formula, self.formula_mapping, self.cached_formula_evaluations
             )
 
             tp += _tp
@@ -271,8 +295,8 @@ class SequenceMetrics:
         #     fp += _fp
         #     fn += _fn
 
-        precision = self._div(tp, tp + fp)
-        recall = self._div(tp, tp + fn)
-        acc = self._div(tp + tn, tp + tn + fp + fn)
+        precision = _div(tp, tp + fp)
+        recall = _div(tp, tp + fn)
+        acc = _div(tp + tn, tp + tn + fp + fn)
 
         return {"PRE": precision, "REC": recall, "ACC": acc}

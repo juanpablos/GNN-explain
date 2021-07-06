@@ -12,6 +12,7 @@ from typing import (
     runtime_checkable,
 )
 
+import numpy as np
 
 from src.data.formula_index import FormulaMapping
 from src.data.formulas.filter import Filter
@@ -134,4 +135,12 @@ class DatasetLike(Protocol):
 
     @property
     def labels(self):
+        ...
+
+
+class FormulaSemanticEvaluatorType(Protocol):
+    def __getitem__(self, index: int) -> np.ndarray:
+        ...
+
+    def run_formula(self, formula) -> np.ndarray:
         ...
