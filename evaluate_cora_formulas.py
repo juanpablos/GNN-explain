@@ -64,10 +64,10 @@ base_model = ACGNN(
 reports = []
 for i, (model_weights, formula) in enumerate(zip(cora_models, inference_formulas)):
     if formula is None:
-        print(f"model {i} is gave None as answer")
+        print(f"model {i} gave None as answer")
         continue
     base_model.load_state_dict(model_weights)
-    model = base_model
+    model = base_model.eval()
 
     with torch.no_grad():
         gnn_pred = (
