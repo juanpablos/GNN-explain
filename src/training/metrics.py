@@ -57,7 +57,7 @@ def _single_validation(
         tn = correct.shape[0] - tp - fp - fn
 
     # metric for valid formulas. Invalid formulas are not considered
-    return tp, tn, fp, fn
+    return float(tp), float(tn), float(fp), float(fn)
 
 
 def _div(a: float, b: float):
