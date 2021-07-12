@@ -231,8 +231,6 @@ for i in range(1, 5 + 1):
 
         total_formulas += total_output_formulas
 
-    formula_original_correct_count
-
     (
         original_model_accuracy,
         original_model_semantic_precision,
