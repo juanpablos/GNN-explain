@@ -1,3 +1,4 @@
+import hashlib
 from abc import ABC, abstractmethod
 from functools import reduce
 from typing import Optional
@@ -42,6 +43,9 @@ class Element(ABC):
         if not self.is_1d:
             raise ValueError("Invalid Formula: All Roles must be inside an Exist")
         return self
+
+    def get_hash(self):
+        return hashlib.md5(repr(self).encode()).hexdigest()[:10]
 
 
 class Property(Element):
@@ -273,3 +277,6 @@ class FOC:
 
     def __hash__(self):
         return hash(repr(self.expression))
+
+    def get_hash(self):
+        return self.expression.get_hash()
