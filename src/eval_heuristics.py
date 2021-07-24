@@ -7,6 +7,14 @@ from torch.functional import Tensor
 from src.graphs.foc import *
 from src.graphs.foc import Element
 
+__all__ = [
+    "EvalHeuristic",
+    "SingleFormulaHeuristic",
+    "MaxSumFormulaHeuristic",
+    "MinSumFormulaHeuristic",
+    "MaxDiffSumFormulaHeuristic",
+]
+
 INDEX_TO_PROPERTY = {
     0: Property("RED"),
     1: Property("BLUE"),

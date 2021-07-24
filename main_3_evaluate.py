@@ -13,14 +13,9 @@ from src.data.loader import text_sequence_loader
 from src.data.sampler import TextNetworkDatasetCrossFoldSampler
 from src.data.utils import get_input_dim
 from src.data.vocabulary import Vocabulary
-from src.eval_heuristics import (
-    EvalHeuristic,
-    MaxDiffSumFormulaHeuristic,
-    MaxSumFormulaHeuristic,
-    SingleFormulaHeuristic,
-)
+from src.eval_heuristics import *
 from src.generate_graphs import graph_data_stream_pregenerated_graphs_test
-from src.graphs.foc import FOC, Property
+from src.graphs.foc import *
 from src.training.check_formulas import FormulaReconstruction
 from src.training.metrics import semantic_evaluation_for_formula
 from src.training.sequence_training import RecurrentTrainer
