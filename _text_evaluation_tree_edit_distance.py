@@ -44,7 +44,7 @@ def edit_distance_for_trees(
     try:
         return edit_distance_cache[key]
     except KeyError:
-        edit_distance = simple_distance(tree_a, tree_b)
+        edit_distance: float = simple_distance(tree_a, tree_b)
         edit_distance_cache[key] = edit_distance
         return edit_distance
 
@@ -125,7 +125,7 @@ for i in range(1, 5 + 1):
                     [
                         formula,
                         f"\n\t{count}: {count/total_output_formulas:>12.0%}",
-                        f"\n\tPrecision: {formula_edit_distance}",
+                        f"\n\tEdit distance: {formula_edit_distance}",
                         "\n",
                     ]
                 )
