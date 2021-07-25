@@ -176,4 +176,13 @@ operation_gtlt_exist_2 = generate_gtlt_exist_all_bases(
 # )
 formulas.extend(operation_gtlt_exist_1 + operation_gtlt_exist_2)
 
-write(formula_file="data/all_formulas.json", n_splits=0)
+
+# ! for extended formulas
+all_formula_combinations = list(itertools.combinations(formulas, r=2))
+or_formula_pairs = generate_pair_formulas(all_formula_combinations, OR)
+and_formula_pairs = generate_pair_formulas(all_formula_combinations, AND)
+formulas.extend(or_formula_pairs)
+formulas.extend(and_formula_pairs)
+
+
+write(formula_file="data/extended_formulas.json", n_splits=0)
