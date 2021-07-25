@@ -47,6 +47,9 @@ class Element(ABC):
     def get_hash(self):
         return hashlib.md5(repr(self).encode()).hexdigest()[:10]
 
+    def unfold(self) -> "Element":
+        return self
+
 
 class Property(Element):
     """Returns a 1d vector with the nodes that satisfy the condition"""
@@ -130,6 +133,9 @@ class NEG(Operator):
         first = self.expression(**kwargs)
         return np.logical_not(first)  # type: ignore
 
+    def unfold(self) -> "Element":
+        return NEG(self.expression.unfold())
+
 
 class AND(Operator):
     def __init__(self, first: Element, second: Element, *args: Element):
@@ -143,6 +149,12 @@ class AND(Operator):
         intermediate = [expr(**kwargs) for expr in self.operands]
         return reduce(np.logical_and, intermediate)  # type: ignore
 
+    def unfold(self) -> "Element":
+        unfolded_and = self.operands[0].unfold()
+        for operand in self.operands[1:]:
+            unfolded_and = AND(unfolded_and, operand.unfold())
+        return unfolded_and
+
 
 class OR(Operator):
     def __init__(self, first: Element, second: Element, *args: Element):
@@ -155,6 +167,12 @@ class OR(Operator):
     def __call__(self, **kwargs):
         intermediate = [expr(**kwargs) for expr in self.operands]
         return reduce(np.logical_or, intermediate)  # type: ignore
+
+    def unfold(self) -> "Element":
+        unfolded_or = self.operands[0].unfold()
+        for operand in self.operands[1:]:
+            unfolded_or = OR(unfolded_or, operand.unfold())
+        return unfolded_or
 
 
 class Exist(Element):
@@ -220,6 +238,25 @@ class Exist(Element):
         per_node = np.sum(res, axis=1)
         return (per_node >= lower) & (per_node <= upper)
 
+    def unfold(self) -> "Element":
+        lower = None
+        upper = None
+
+        unfolded_inner = self.expression.unfold()
+
+        if self.lower is not None:
+            lower = Exist(unfolded_inner, lower=self.lower, upper=None)
+        if self.upper is not None:
+            upper = Exist(unfolded_inner, lower=None, upper=self.upper)
+
+        if lower is not None and upper is not None:
+            return AND(lower, upper)
+        elif lower is None and upper is not None:
+            return upper
+        elif lower is not None and upper is None:
+            return lower
+        raise RuntimeError("'Exist' cannot have lower and upper bound as None")
+
 
 class ForAll(Element):
     def __init__(self, expression: Element, *, variable: str = None):
@@ -280,3 +317,6 @@ class FOC:
 
     def get_hash(self):
         return self.expression.get_hash()
+
+    def unfold(self) -> "FOC":
+        return FOC(self.expression.unfold())
