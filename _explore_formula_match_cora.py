@@ -14,15 +14,17 @@ with open(os.path.join("data", "formulas.json")) as f:
 
 # try to find the formula that the GNN is representing
 
-
+gpu_num = 0
 cora_label = 6
 
+model_hash = "40e65407aa"
 cora_base_path = os.path.join(
     "data",
     "cora_data",
 )
 
-eval_dir = os.path.join(cora_base_path, "evaluation", "svd")
+
+eval_dir = os.path.join("results", "cora", "formula_search", model_hash, "svd")
 os.makedirs(eval_dir, exist_ok=True)
 
 cora_dataset_filename = f"processed_cora_l{cora_label}_svd_agglomerative_d500.pt"
@@ -42,7 +44,7 @@ cora_data = torch.load(
 model_weights = torch.load(
     os.path.join(
         cora_base_path,
-        "40e65407aa",
+        model_hash,
         model_filename,
     )
 )[0]
@@ -50,6 +52,8 @@ model_weights = torch.load(
 properties = torch.argmax(cora_data.x, dim=1)
 cora_data.properties = properties
 graph = to_networkx(cora_data, to_undirected=True, node_attrs=["properties"])
+
+device = torch.device(f"cuda:{gpu_num}")
 
 model = (
     ACGNN(
@@ -64,7 +68,7 @@ model = (
         task="node",
         use_batch_norm=False,
     )
-    .cuda()
+    .to(device)
     .eval()
 )
 model.load_state_dict(model_weights)
@@ -73,8 +77,8 @@ with torch.no_grad():
     # try to find a formula that could explain what the gnn is doing
     gnn_pred = (
         model(
-            x=cora_data.x.cuda(),
-            edge_index=cora_data.edge_index.cuda(),
+            x=cora_data.x.to(device),
+            edge_index=cora_data.edge_index.to(device),
             batch=None,
         )
         .max(1)[1]
@@ -91,7 +95,10 @@ gnn_formulas_evaluation = []
 
 for i, (formula_hash, formula) in enumerate(formulas.items(), start=1):
     formula = eval(formula)
-    print(f"{i}/{len(formulas)}, {formula_hash}: {formula}")
+
+    if i % 1000 == 0:
+        print(f"{i}/{len(formulas)}, {formula_hash}: {formula}")
+
     attempt_labels_for_cora_graph = FOC(formula)(graph=graph)
 
     gnn_precision, gnn_recall, gnn_f1, _ = precision_recall_fscore_support(
