@@ -99,7 +99,7 @@ def categorical_loader(
     test_selector: Filter,
     load_aggregated: str = None,
     force_preaggregated: bool = False,
-    cross_fold_configuration: CrossFoldConfiguration = None,
+    cross_fold_configuration: Optional[CrossFoldConfiguration] = None,
     labeler_stored_state: Optional[Dict] = None,
     _legacy_load_without_batch: bool = False,
 ):
