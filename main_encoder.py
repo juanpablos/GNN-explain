@@ -14,7 +14,7 @@ from src.data.datasets import LabeledDataset, LabeledSubset
 from src.data.formula_index import FormulaMapping
 from src.data.formulas import *
 from src.data.loader import categorical_loader
-from src.data.utils import get_input_dim, get_label_distribution, train_test_dataset
+from src.data.utils import get_input_dim, train_test_dataset
 from src.graphs.foc import Element
 from src.run_logic import run, seed_everything
 from src.training.encoder_training import EncoderTrainer
@@ -47,6 +47,7 @@ def _run_experiment(
     batch_size: int = 64,
     test_batch_size: int = 512,
     lr: float = 0.01,
+    seed: int = None,
     early_stopping: StopFormat = None,
     run_train_test: bool = False,
     results_path: str = "./results",
@@ -64,8 +65,6 @@ def _run_experiment(
     #   multilabel: formula_hash -> List[label_id]
     # data_reconstruction: point_index -> formula_object
 
-    _, train_distribution = get_label_distribution(train_data)
-    test_label_count, test_distribution = get_label_distribution(test_data)
     logger.debug(f"Train dataset size {len(train_data)}")
     logger.debug(f"Test dataset size {len(test_data)}")
 
@@ -135,6 +134,25 @@ def _run_experiment(
 
     if plot_filename is not None:
         trainer.move_model_to_device()
+
+        logger.debug("Generating Embedding for train set")
+        embedding, labels = trainer.get_embedding_with_label(
+            train_data,
+            batch_size=test_batch_size,
+            pin_memory=False,
+            shuffle=False,
+            num_workers=data_workers,
+        )
+        logger.debug("Plotting Embedding for train set")
+        plot_embedding_2d(
+            embedding,
+            labels,
+            save_path=results_path,
+            filename=plot_filename + "_train" + ext,
+            seed=seed,
+        )
+
+        logger.debug("Generating Embedding for test set")
         embedding, labels = trainer.get_embedding_with_label(
             test_data,
             batch_size=test_batch_size,
@@ -142,11 +160,13 @@ def _run_experiment(
             shuffle=False,
             num_workers=data_workers,
         )
+        logger.debug("Plotting Embedding for test set")
         plot_embedding_2d(
             embedding,
             labels,
             save_path=results_path,
-            filename=plot_filename + ext,
+            filename=plot_filename + "_test" + ext,
+            seed=seed,
         )
 
         metrics = trainer.metric_logger
@@ -232,6 +252,7 @@ def run_experiment(
                 batch_size=batch_size,
                 test_batch_size=test_batch_size,
                 lr=lr,
+                seed=seed,
                 early_stopping=early_stopping,
                 run_train_test=run_train_test,
                 results_path=results_path,
@@ -276,6 +297,7 @@ def run_experiment(
             batch_size=batch_size,
             test_batch_size=test_batch_size,
             lr=lr,
+            seed=seed,
             early_stopping=early_stopping,
             run_train_test=run_train_test,
             results_path=results_path,
@@ -367,19 +389,20 @@ def main(
         "load_aggregated": "aggregated_raw.pt",
         "force_preaggregated": True,
     }
-    crossfold_config = None
-    # crossfold_config: CrossFoldConfiguration = {
-    #     "n_splits": 5,
-    #     "shuffle": True,
-    #     "random_state": seed,
-    #     "defer_loading": False,
-    #     "required_train_hashes": [],
-    # }
+    # crossfold_config = None
+    crossfold_config: CrossFoldConfiguration = {
+        "n_splits": 5,
+        "shuffle": True,
+        "random_state": seed,
+        "defer_loading": False,
+        "required_train_hashes": [],
+        "use_stratified": False,
+    }
 
     early_stopping: StopFormat = {
         "operation": "early",
         "conditions": {"test_loss": 0.001},
-        "stay": 5,
+        "stay": 10,
     }
 
     iterations = 50
@@ -442,8 +465,9 @@ if __name__ == "__main__":
 
     main(
         seed=0,
-        train_batch=32,
-        lr=5e-4,
+        train_batch=64,
+        lr=1e-3,
+        # lr=5e-4,
         save_model=True,
         make_plots=True,
     )

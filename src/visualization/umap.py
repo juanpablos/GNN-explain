@@ -16,7 +16,6 @@ def plot_embedding_2d(
     mapper = umap.UMAP(random_state=seed).fit(embedding)
     umap.plot.points(mapper, labels=labels, ax=ax)
 
-    plt.tight_layout()
     os.makedirs(f"{save_path}/embedding/", exist_ok=True)
     plt.savefig(f"{save_path}/embedding/{filename}.png")
     plt.close()
