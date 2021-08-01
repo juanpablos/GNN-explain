@@ -560,6 +560,7 @@ def main(
             "9564eab880",
             "98e4690a6c",
         ],
+        "use_stratified": None,
     }
 
     early_stopping: StopFormat = {

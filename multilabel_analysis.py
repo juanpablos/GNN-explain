@@ -298,6 +298,7 @@ def main():
         "shuffle": True,  # not used
         "random_state": None,  # not used
         "defer_loading": True,
+        "use_stratified": None,
     }
 
     data_config: NetworkDataConfig = {

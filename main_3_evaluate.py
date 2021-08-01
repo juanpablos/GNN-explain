@@ -300,6 +300,7 @@ def main():
         "random_state": None,  # not used
         "defer_loading": True,
         "required_train_hashes": [],
+        "use_stratified": None,
     }
 
     data_config: NetworkDataConfig = {
@@ -392,6 +393,7 @@ def main_heuristic():
         "random_state": None,  # not used
         "defer_loading": True,
         "required_train_hashes": [],
+        "use_stratified": None,
     }
 
     data_config: NetworkDataConfig = {

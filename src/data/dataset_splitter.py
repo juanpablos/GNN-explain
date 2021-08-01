@@ -364,8 +364,9 @@ class BaseNetworkDatasetCrossFoldSplitter(ABC, Generic[T]):
         crossfold_config: CrossFoldConfiguration,
         use_stratified_kfold: bool,
     ):
+        use_stratified = crossfold_config.pop("use_stratified", None)
 
-        if use_stratified_kfold:
+        if (use_stratified is None and use_stratified_kfold) or use_stratified:
             logger.debug("Using stratified KFold")
             kfold_strategy = StratifiedKFold
         else:

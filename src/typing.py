@@ -91,6 +91,7 @@ class CrossFoldConfiguration(TypedDict):
     random_state: Optional[int]
     defer_loading: bool
     required_train_hashes: List[str]
+    use_stratified: Optional[bool]
 
 
 class MetricHistory(Protocol):

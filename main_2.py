@@ -462,6 +462,7 @@ def main(
         "random_state": seed,
         "defer_loading": False,
         "required_train_hashes": [],
+        "use_stratified": None,
     }
 
     early_stopping: StopFormat = {
