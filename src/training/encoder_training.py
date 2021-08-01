@@ -6,6 +6,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from pytorch_metric_learning import losses
+from sklearn.neighbors import KNeighborsClassifier
 from torch.utils.data import DataLoader
 
 from src.models import MLP
@@ -25,7 +26,9 @@ class EncoderTrainer(Trainer):
 
     available_metrics = [
         "train_loss",
+        "train_acc",
         "test_loss",
+        "test_acc",
     ]
 
     def __init__(
@@ -128,15 +131,21 @@ class EncoderTrainer(Trainer):
         #!########
 
         if use_train_data:
+            self.metric_logger.update(train_acc=0)
             return
 
         loader = self.test_loader
 
         accum_loss = []
+        _embeddings = []
+        _labels = []
 
         for x, y in loader:
             x = x.to(self.device)
             y = y.to(self.device)
+
+            if x.size(0) == 1:
+                continue
 
             with torch.no_grad():
                 embedding = self.model(x)
@@ -144,9 +153,20 @@ class EncoderTrainer(Trainer):
             loss = self.loss(embedding, y)
             accum_loss.append(loss.detach().cpu().numpy())
 
+            _embeddings.append(embedding.detach().cpu())
+            _labels.append(y.detach().cpu())
+
+        embeddings = torch.cat(_embeddings).detach().cpu().numpy()
+        labels = torch.cat(_labels).numpy()
+
+        evaluator = KNeighborsClassifier(n_neighbors=15, n_jobs=4)
+        evaluator.fit(embeddings, labels)
+        accuracy = evaluator.score(embeddings, labels)
+
         average_loss = np.mean(accum_loss)
 
-        metrics = {"test_loss": average_loss}
+        metrics = {"test_loss": average_loss, "test_acc": accuracy}
+
         self.metric_logger.update(**metrics)
 
         return metrics
