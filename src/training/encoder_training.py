@@ -152,6 +152,10 @@ class EncoderTrainer(Trainer):
         return metrics
 
     def get_embedding_with_label(self, data, **kwargs):
+        #!########
+        self.model.eval()
+        #!########
+
         loader = DataLoader(data, **kwargs)
 
         _embeddings = []
