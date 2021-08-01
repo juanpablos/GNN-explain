@@ -7,8 +7,8 @@ from typing import Dict
 import numpy as np
 from zss import Node, simple_distance
 
-from src.graphs.foc import *
 from src.data.formulas.copy_tree import FOC2Node
+from src.graphs.foc import *
 
 model_hash = "40e65407aa"
 model_name = "NoFilter()-TextSequenceAtomic()-CV-1L256+2L256+3L256-emb4-lstmcellIN256-lstmH256-initTrue-catTrue-drop0-compFalse-d256-32b-0.0005lr"

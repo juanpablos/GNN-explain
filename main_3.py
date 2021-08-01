@@ -12,12 +12,12 @@ from src.data.auxiliary import (
     FormulaAppliedDatasetWrapper,
     NetworkDatasetCollectionWrapper,
 )
+from src.data.dataset_splitter import TextNetworkDatasetCrossFoldSplitter
 from src.data.datasets import LabeledDataset, LabeledSubset, TextSequenceDataset
 from src.data.formula_index import FormulaMapping
 from src.data.formulas import *
 from src.data.gnn.utils import clean_state
 from src.data.loader import text_sequence_loader
-from src.data.sampler import TextNetworkDatasetCrossFoldSampler
 from src.data.utils import get_input_dim, train_test_dataset
 from src.data.vocabulary import Vocabulary
 from src.eval_utils import evaluate_text_model
@@ -342,7 +342,7 @@ def run_experiment(
         _legacy_load_without_batch=_legacy_load_without_batch,
     )
 
-    if isinstance(datasets, TextNetworkDatasetCrossFoldSampler):
+    if isinstance(datasets, TextNetworkDatasetCrossFoldSplitter):
         logger.info(f"Total Dataset size: {datasets.dataset_size}")
 
         file_ext = ""

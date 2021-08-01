@@ -6,10 +6,10 @@ from timeit import default_timer as timer
 import torch
 from tabulate import tabulate
 
+from src.data.dataset_splitter import NetworkDatasetCrossFoldSplitter
 from src.data.formula_index import FormulaMapping
 from src.data.formulas import *
 from src.data.loader import categorical_loader
-from src.data.sampler import NetworkDatasetCrossFoldSampler
 from src.data.utils import get_input_dim
 from src.training.mlp_training import MLPTrainer
 from src.typing import CrossFoldConfiguration, MinModelConfig, NetworkDataConfig
@@ -166,7 +166,7 @@ def analyze_crossfolds(
     #   single label: formula_hash -> label_id
     #   multilabel: formula_hash -> List[label_id]
     # data_reconstruction: point_index -> formula_object
-    (cv_data_sampler, class_mapping, *_) = categorical_loader(
+    (cv_data_splitter, class_mapping, *_) = categorical_loader(
         **data_config,
         cross_fold_configuration=crossfold_config,
         labeler_stored_state=labeler_data,
@@ -175,23 +175,23 @@ def analyze_crossfolds(
 
     print(class_mapping)
 
-    if not isinstance(cv_data_sampler, NetworkDatasetCrossFoldSampler):
-        raise NotImplementedError("Only cross fold sampler is supported")
+    if not isinstance(cv_data_splitter, NetworkDatasetCrossFoldSplitter):
+        raise NotImplementedError("Only cross fold splitter is supported")
 
     with open(os.path.join(folds_file_path, folds_filename)) as f:
         precalculated_folds = json.load(f)
-    cv_data_sampler.load_precalculated_folds(fold_dict=precalculated_folds)
+    cv_data_splitter.load_precalculated_folds(fold_dict=precalculated_folds)
 
     n_classes = len(class_mapping)
     logger.debug(f"{n_classes} classes detected")
 
-    input_shape = get_input_dim(next(iter(cv_data_sampler))[0])
+    input_shape = get_input_dim(next(iter(cv_data_splitter))[0])
     assert len(input_shape) == 1, "The input dimension is different from 1"
 
     model_config["input_dim"] = input_shape[0]
     model_config["output_dim"] = n_classes
 
-    logger.info(f"Total Dataset size: {cv_data_sampler.dataset_size}")
+    logger.info(f"Total Dataset size: {cv_data_splitter.dataset_size}")
 
     trainer = MLPTrainer(
         logging_variables="all",
@@ -202,8 +202,8 @@ def analyze_crossfolds(
 
     with open(os.path.join(analysis_path, analysis_filename), "w") as analysis:
 
-        n_splits = cv_data_sampler.n_splits
-        for i, (_, test_data, _) in enumerate(cv_data_sampler, start=1):
+        n_splits = cv_data_splitter.n_splits
+        for i, (_, test_data, _) in enumerate(cv_data_splitter, start=1):
             logger.info(f"Running eval for crossfold {i}/{n_splits}")
 
             cf_model_name = model_filename.format(i)

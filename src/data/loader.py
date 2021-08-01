@@ -9,6 +9,10 @@ from src.data.auxiliary import (
     FormulaAppliedDatasetWrapper,
     NetworkDatasetCollectionWrapper,
 )
+from src.data.dataset_splitter import (
+    NetworkDatasetCrossFoldSplitter,
+    TextNetworkDatasetCrossFoldSplitter,
+)
 from src.data.datasets import (
     LabeledDataset,
     LabeledSubset,
@@ -23,10 +27,6 @@ from src.data.formulas.labeler import (
     SequenceLabelerApply,
 )
 from src.data.gnn.utils import prepare_files
-from src.data.sampler import (
-    NetworkDatasetCrossFoldSampler,
-    TextNetworkDatasetCrossFoldSampler,
-)
 from src.data.utils import label_idx2tensor
 from src.typing import CrossFoldConfiguration, S, T
 
@@ -190,7 +190,7 @@ def categorical_loader(
         total_samples += len(dataset)
 
     if cross_fold_configuration is not None:
-        return_dataset = NetworkDatasetCrossFoldSampler(
+        return_dataset = NetworkDatasetCrossFoldSplitter(
             datasets=datasets, crossfold_config=cross_fold_configuration
         )
     else:
@@ -305,7 +305,7 @@ def text_sequence_loader(
         total_samples += len(dataset)
 
     if cross_fold_configuration is not None:
-        return_dataset = TextNetworkDatasetCrossFoldSampler(
+        return_dataset = TextNetworkDatasetCrossFoldSplitter(
             datasets=datasets,
             crossfold_config=cross_fold_configuration,
             vocabulary=vocabulary,

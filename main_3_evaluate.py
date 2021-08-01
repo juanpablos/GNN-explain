@@ -7,10 +7,10 @@ from timeit import default_timer as timer
 import torch
 
 from src.data.auxiliary import PreloadedSingleFormulaEvaluationWrapper
+from src.data.dataset_splitter import TextNetworkDatasetCrossFoldSplitter
 from src.data.formula_index import FormulaMapping
 from src.data.formulas import *
 from src.data.loader import text_sequence_loader
-from src.data.sampler import TextNetworkDatasetCrossFoldSampler
 from src.data.utils import get_input_dim
 from src.data.vocabulary import Vocabulary
 from src.eval_heuristics import *
@@ -50,7 +50,7 @@ def evaluate_crossfolds(
     logger.info("Loading Files")
     # vocabulary: object with toked_id-token mappings
     # hash_formula: formula_hash -> formula_object
-    (cv_data_sampler, vocabulary, hash_formula, *_) = text_sequence_loader(
+    (cv_data_splitter, vocabulary, hash_formula, *_) = text_sequence_loader(
         **data_config,
         cross_fold_configuration=crossfold_config,
         labeler_stored_state=labeler_data,
@@ -59,14 +59,14 @@ def evaluate_crossfolds(
     )
     labeler.preload_vocabulary(vocabulary.token2id)
 
-    if not isinstance(cv_data_sampler, TextNetworkDatasetCrossFoldSampler):
-        raise NotImplementedError("Only cross fold sampler is supported")
+    if not isinstance(cv_data_splitter, TextNetworkDatasetCrossFoldSplitter):
+        raise NotImplementedError("Only cross fold splitter is supported")
 
     with open(os.path.join(folds_file_path, folds_filename)) as f:
         precalculated_folds = json.load(f)
-    cv_data_sampler.load_precalculated_folds(fold_dict=precalculated_folds)
+    cv_data_splitter.load_precalculated_folds(fold_dict=precalculated_folds)
 
-    input_shape = get_input_dim(next(iter(cv_data_sampler))[0])
+    input_shape = get_input_dim(next(iter(cv_data_splitter))[0])
     assert len(input_shape) == 1, "The input dimension is different from 1"
 
     vocab_size = len(vocabulary)
@@ -75,7 +75,7 @@ def evaluate_crossfolds(
     encoder_config["input_dim"] = input_shape[0]
     decoder_config["vocab_size"] = vocab_size
 
-    logger.info(f"Total Dataset size: {cv_data_sampler.dataset_size}")
+    logger.info(f"Total Dataset size: {cv_data_splitter.dataset_size}")
 
     trainer = RecurrentTrainer(
         seed=None,
@@ -91,9 +91,9 @@ def evaluate_crossfolds(
     trainer.set_device(device=device)
     trainer.init_trainer(inference=True)
 
-    n_splits = cv_data_sampler.n_splits
+    n_splits = cv_data_splitter.n_splits
     for i, grouped_cv_test_data in enumerate(
-        cv_data_sampler.group_test_formulas(), start=1
+        cv_data_splitter.group_test_formulas(), start=1
     ):
         logger.info(f"Running eval for crossfold {i}/{n_splits}")
 
@@ -185,25 +185,25 @@ def evaluate_crossfolds_heuristics(
 ):
     logger.info("Loading Files")
     # hash_formula: formula_hash -> formula_object
-    (cv_data_sampler, _, hash_formula, *_) = text_sequence_loader(
+    (cv_data_splitter, _, hash_formula, *_) = text_sequence_loader(
         **data_config,
         cross_fold_configuration=crossfold_config,
         graph_config={"configs": [], "_ignore": True},
         _legacy_load_without_batch=True,
     )
 
-    if not isinstance(cv_data_sampler, TextNetworkDatasetCrossFoldSampler):
-        raise NotImplementedError("Only cross fold sampler is supported")
+    if not isinstance(cv_data_splitter, TextNetworkDatasetCrossFoldSplitter):
+        raise NotImplementedError("Only cross fold splitter is supported")
 
     with open(os.path.join(folds_file_path, folds_filename)) as f:
         precalculated_folds = json.load(f)
-    cv_data_sampler.load_precalculated_folds(fold_dict=precalculated_folds)
+    cv_data_splitter.load_precalculated_folds(fold_dict=precalculated_folds)
 
-    logger.info(f"Total Dataset size: {cv_data_sampler.dataset_size}")
+    logger.info(f"Total Dataset size: {cv_data_splitter.dataset_size}")
 
-    n_splits = cv_data_sampler.n_splits
+    n_splits = cv_data_splitter.n_splits
     for i, grouped_cv_test_data in enumerate(
-        cv_data_sampler.group_test_formulas(), start=1
+        cv_data_splitter.group_test_formulas(), start=1
     ):
         logger.info(f"Running eval for crossfold {i}/{n_splits}")
 

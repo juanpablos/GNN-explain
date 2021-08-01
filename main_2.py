@@ -10,6 +10,7 @@ from sklearn.metrics import classification_report
 from torch.functional import Tensor
 
 from src.data.auxiliary import NetworkDatasetCollectionWrapper
+from src.data.dataset_splitter import NetworkDatasetCrossFoldSplitter
 from src.data.datasets import LabeledDataset, LabeledSubset
 from src.data.formula_index import FormulaMapping
 from src.data.formulas import *
@@ -18,7 +19,6 @@ from src.data.formulas.labeler import (
     MultiLabelCategoricalLabeler,
 )
 from src.data.loader import categorical_loader
-from src.data.sampler import NetworkDatasetCrossFoldSampler
 from src.data.utils import get_input_dim, get_label_distribution, train_test_dataset
 from src.eval_utils import evaluate_model
 from src.graphs.foc import Element
@@ -264,7 +264,7 @@ def run_experiment(
         _legacy_load_without_batch=_legacy_load_without_batch,
     )
 
-    if isinstance(datasets, NetworkDatasetCrossFoldSampler):
+    if isinstance(datasets, NetworkDatasetCrossFoldSplitter):
         logger.info(f"Total Dataset size: {datasets.dataset_size}")
 
         file_ext = ""

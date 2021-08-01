@@ -10,13 +10,13 @@ from typing import Any, Dict
 
 import torch
 
+from src.data.dataset_splitter import (
+    PreloadedDataSplitter,
+    PreloadedDataSplitterWithBalancer,
+    SubsetSplitter,
+)
 from src.data.datasets import GraphDataset
 from src.data.formula_index import FormulaMapping
-from src.data.sampler import (
-    PreloadedDataSampler,
-    SubsetSampler,
-    PreloadedDataSamplerWithBalancer,
-)
 from src.generate_graphs import (
     graph_data_stream,
     graph_data_stream_pregenerated_graphs_test,
@@ -89,11 +89,11 @@ def run_experiment(
         logger.debug("Unpacking preloaded test dataset")
         test_data_pool = GraphDataset(test_stream, limit=None)
 
-        logger.debug("Initializing subsampler")
+        logger.debug("Initializing splitter")
         if data_config.get("balance_training") is not None:
-            logger.info("Using autobalancer preloaded data sampler")
+            logger.info("Using autobalancer preloaded data splitter")
             balanced_config = data_config["balance_training"]
-            data_sampler = PreloadedDataSamplerWithBalancer(
+            data_splitter = PreloadedDataSplitterWithBalancer(
                 train_dataset=train_stream,
                 test_dataset=test_data_pool,
                 train_size=balanced_config["train_size"],
@@ -104,8 +104,8 @@ def run_experiment(
                 seed=seed,
             )
         else:
-            logger.info("Using standard preloaded data sampler")
-            data_sampler = PreloadedDataSampler(
+            logger.info("Using standard preloaded data splitter")
+            data_splitter = PreloadedDataSplitter(
                 train_dataset=train_stream,
                 test_dataset=test_data_pool,
                 n_elements_per_distribution=15,
@@ -118,8 +118,8 @@ def run_experiment(
         data_pool = GraphDataset(stream, limit=total_graphs)
         logger.info("Finished pre-generating")
 
-        logger.debug("Initializing subsampler")
-        data_sampler = SubsetSampler(
+        logger.debug("Initializing splitter")
+        data_splitter = SubsetSplitter(
             dataset=data_pool,
             n_elements=n_graphs,
             test_size=test_size,
@@ -136,7 +136,7 @@ def run_experiment(
             logger.info(f"Training model {m}/{n_models}")
 
             logger.debug("Subsampling dataset")
-            train_data, test_data = data_sampler()
+            train_data, test_data = data_splitter()
             logger.debug("Finished Subsampling dataset")
             logger.debug(
                 f"Training with {len(train_data)} graphs, testing with {len(test_data)} graphs"

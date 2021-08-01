@@ -1,9 +1,10 @@
 import os
 import os.path as osp
 import re
-import torch.nn.functional as F
+
 import torch
-from torch_geometric.data import InMemoryDataset, Data, download_url, extract_zip
+import torch.nn.functional as F
+from torch_geometric.data import Data, InMemoryDataset, download_url, extract_zip
 
 try:
     from rdkit import Chem

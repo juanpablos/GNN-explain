@@ -23,9 +23,9 @@ from src.typing import CrossFoldConfiguration, T
 logger = logging.getLogger(__name__)
 
 
-class SubsetSampler(Generic[T]):
+class SubsetSplitter(Generic[T]):
     """
-    A dataset sampler that subsets a dataset by the number required.
+    A dataset splitter that subsets a dataset by the number required.
 
     Args:
         dataset (DatasetLike[T]): a big dataset that is to subset.
@@ -102,7 +102,7 @@ class SubsetSampler(Generic[T]):
         return train_set, test_set
 
 
-class PreloadedDataSampler(SubsetSampler[T]):
+class PreloadedDataSplitter(SubsetSplitter[T]):
     def __init__(
         self,
         train_dataset: Generator[Tuple[Tuple[float, ...], T], None, None],
@@ -153,7 +153,7 @@ class PreloadedDataSampler(SubsetSampler[T]):
         return NoLabelSubset(self.train_dataset, train_indices), self.test_dataset
 
 
-class PreloadedDataSamplerWithBalancer(SubsetSampler[T]):
+class PreloadedDataSplitterWithBalancer(SubsetSplitter[T]):
     def __init__(
         self,
         train_dataset: Generator[Tuple[Tuple[float, ...], T], None, None],
@@ -357,7 +357,7 @@ class PreloadedDataSamplerWithBalancer(SubsetSampler[T]):
         return NoLabelSubset(self.train_dataset, train_indices), self.test_dataset
 
 
-class BaseNetworkDatasetCrossFoldSampler(ABC, Generic[T]):
+class BaseNetworkDatasetCrossFoldSplitter(ABC, Generic[T]):
     def __init__(
         self,
         datasets: List[NetworkDataset[T]],
@@ -518,7 +518,7 @@ class BaseNetworkDatasetCrossFoldSampler(ABC, Generic[T]):
         return self.folds
 
 
-class NetworkDatasetCrossFoldSampler(BaseNetworkDatasetCrossFoldSampler[T]):
+class NetworkDatasetCrossFoldSplitter(BaseNetworkDatasetCrossFoldSplitter[T]):
     def __init__(
         self,
         datasets: List[NetworkDataset[T]],
@@ -538,7 +538,7 @@ class NetworkDatasetCrossFoldSampler(BaseNetworkDatasetCrossFoldSampler[T]):
         return LabeledDataset.from_iterable(dataset_data, multilabel=self.multilabel)
 
 
-class TextNetworkDatasetCrossFoldSampler(BaseNetworkDatasetCrossFoldSampler[Tensor]):
+class TextNetworkDatasetCrossFoldSplitter(BaseNetworkDatasetCrossFoldSplitter[Tensor]):
     def __init__(
         self,
         datasets: List[NetworkDataset[Tensor]],

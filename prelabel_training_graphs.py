@@ -1,6 +1,7 @@
+import json
 import os
 from collections import defaultdict
-import json
+
 import torch
 from torch_geometric.utils import to_networkx
 

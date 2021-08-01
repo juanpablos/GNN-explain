@@ -10,8 +10,8 @@ from typing import Any, Dict
 
 import torch
 
+from src.data.dataset_splitter import SubsetSplitter
 from src.data.datasets import GraphDataset
-from src.data.sampler import SubsetSampler
 from src.generate_graphs import graph_data_stream
 from src.graphs import *
 from src.run_logic import run, seed_everything
@@ -60,8 +60,8 @@ def run_experiment(
     logger.info("Finished pre-generating")
 
     seed = data_config.get("seed", None)
-    logger.debug("Initializing subsampler")
-    data_sampler = SubsetSampler(
+    logger.debug("Initializing splitter")
+    data_splitter = SubsetSplitter(
         dataset=data_pool,
         n_elements=n_graphs,
         test_size=test_size,
@@ -78,7 +78,7 @@ def run_experiment(
             logger.info(f"Training model {m}/{n_models}")
 
             logger.debug("Subsampling dataset")
-            train_data, test_data = data_sampler()
+            train_data, test_data = data_splitter()
             logger.debug("Finished Subsampling dataset")
 
             trainer = GNNTrainer(logging_variables="all")

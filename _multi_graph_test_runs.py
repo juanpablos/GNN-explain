@@ -16,7 +16,6 @@ from torch_geometric.data import DataLoader as GeometricLoader
 from src.models.ac_gnn import ACGNN, ACGNNNoInput
 from src.models.mlp import MLP
 from src.run_logic import seed_everything
-
 from temp_chem import MoleculeNet
 
 seed_everything(42)
