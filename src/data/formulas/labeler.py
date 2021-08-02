@@ -337,13 +337,24 @@ class MulticlassRestrictionLabeler(CategoricalLabeler[int, int]):
 
     def serialize(self) -> Dict:
         serialized_labeler = super().serialize()
-        serialized_labeler["quantifier_classes"] = self.quantifier_classes
+        encoded_pairs = [
+            {"key": list(tuple_pair), "value": value}
+            for tuple_pair, value in self.quantifier_classes.items()
+        ]
+        serialized_labeler["encoded_pairs"] = encoded_pairs
+        serialized_labeler["encoded_quantifier_classes"] = encoded_pairs
         return serialized_labeler
 
     @classmethod
     def load(cls, data: Dict):
         obj = cls(quantifier_tuples=[])
-        obj.quantifier_classes = data["quantifier_classes"]
+
+        pairs = {
+            tuple(encoded["key"]): encoded["value"]
+            for encoded in data["encoded_quantifier_classes"]
+        }
+
+        obj.quantifier_classes = pairs
         obj.classes = data["classes"]
         return obj
 
