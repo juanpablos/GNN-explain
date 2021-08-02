@@ -451,12 +451,13 @@ def main(
         "models",
         encoder_model_name,
     )
+    finetuning_layers = 1
     encoder_configs: EncoderConfigs = {
         "freeze_encoder": freeze_encoder,
         "finetuning_model_configs": {
             "num_layers": 1,
             "input_dim": 256,
-            "hidden_dim": -1,
+            "hidden_dim": 128,
             "output_dim": None,
             "hidden_layers": None,
             "use_batch_norm": True,
@@ -559,7 +560,7 @@ def main(
         name = f"{selector}-{labeler}-{test_selector_name}"
 
     if use_encoder:
-        msg = f"{name}-F({freeze_encoder})-ENC[{short_encoder_name}]-{train_batch}b-{lr}lr"
+        msg = f"{name}-F({freeze_encoder})-ENC[{short_encoder_name}]-FINE[{finetuning_layers}]-{train_batch}b-{lr}lr"
     else:
         hid = "+".join([f"{l}L{val}" for l, val in enumerate(hidden_layers, start=1)])
         msg = f"{name}-{hid}-{train_batch}b-{lr}lr"
