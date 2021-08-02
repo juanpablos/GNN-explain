@@ -3,7 +3,7 @@ import logging
 import os
 import random
 from timeit import default_timer as timer
-from typing import Dict, List, Union
+from typing import Dict, List, Optional, Union
 
 import torch
 from sklearn.metrics import classification_report
@@ -22,10 +22,12 @@ from src.data.loader import categorical_loader
 from src.data.utils import get_input_dim, get_label_distribution, train_test_dataset
 from src.eval_utils import evaluate_model
 from src.graphs.foc import Element
+from src.models.model_utils import init_MLP_model
 from src.run_logic import run, seed_everything
 from src.training.mlp_training import MLPTrainer
 from src.typing import (
     CrossFoldConfiguration,
+    EncoderConfigs,
     MinModelConfig,
     NetworkDataConfig,
     S,
@@ -50,6 +52,8 @@ def _run_experiment(
     hash_label: Dict[str, S],
     data_reconstruction: NetworkDatasetCollectionWrapper,
     model_config: MinModelConfig,
+    encoder_model: Optional[torch.nn.Module],
+    encoder_configs: Optional[EncoderConfigs] = None,
     iterations: int = 100,
     gpu_num: int = 0,
     data_workers: int = 2,
@@ -88,9 +92,6 @@ def _run_experiment(
     input_shape = get_input_dim(train_data)
     assert len(input_shape) == 1, "The input dimension is different from 1"
 
-    model_config["input_dim"] = input_shape[0]
-    model_config["output_dim"] = n_classes
-
     # --- metrics logger
     logger_metrics.handlers = []
     os.makedirs(os.path.join(results_path, "info"), exist_ok=True)
@@ -126,7 +127,17 @@ def _run_experiment(
         num_workers=data_workers,
     )
 
-    trainer.init_model(**model_config)
+    if encoder_model is not None:
+        assert encoder_configs is not None
+        assert model_config["input_dim"] == input_shape[0]
+        encoder_configs["finetuning_model_configs"]["output_dim"] = n_classes
+        trainer.init_model(
+            use_encoder=True, encoder_model=encoder_model, **encoder_configs
+        )
+    else:
+        model_config["input_dim"] = input_shape[0]
+        model_config["output_dim"] = n_classes
+        trainer.init_model(use_encoder=False, **model_config)
 
     logger.debug("Running")
     logger.debug(f"Input size is {input_shape[0]}")
@@ -222,6 +233,7 @@ def run_experiment(
     model_config: MinModelConfig,
     data_config: NetworkDataConfig,
     crossfold_config: CrossFoldConfiguration = None,
+    crossfold_fold_file: Optional[str] = None,
     iterations: int = 100,
     gpu_num: int = 0,
     seed: int = 10,
@@ -240,6 +252,9 @@ def run_experiment(
     info_filename: str = "info",
     binary_labels: bool = True,
     multilabel: bool = True,
+    use_encoder: bool = False,
+    encoder_model_path_name: Optional[str] = None,
+    encoder_configs: Optional[EncoderConfigs] = None,
     _legacy_load_without_batch: bool = False,
 ):
 
@@ -265,6 +280,13 @@ def run_experiment(
     )
 
     if isinstance(datasets, NetworkDatasetCrossFoldSplitter):
+
+        if crossfold_fold_file is not None:
+            logger.info(f"Loading CV folds from file")
+            with open(crossfold_fold_file) as f:
+                precalculated_folds = json.load(f)
+            datasets.load_precalculated_folds(fold_dict=precalculated_folds)
+
         logger.info(f"Total Dataset size: {datasets.dataset_size}")
 
         file_ext = ""
@@ -278,6 +300,13 @@ def run_experiment(
             cf_plot_filename = f"{plot_filename}_cf{i}"
             cf_info_filename = f"{info_filename}_cf{i}"
 
+            encoder_model = None
+            if use_encoder:
+                assert encoder_model_path_name is not None
+                encoder_model = init_MLP_model(configs=model_config)
+                encoder_weights = torch.load(encoder_model_path_name.format(i))["model"]
+                encoder_model.load_state_dict(encoder_weights)
+
             file_ext = _run_experiment(
                 train_data=train_data,
                 test_data=test_data,
@@ -286,6 +315,8 @@ def run_experiment(
                 hash_label=hash_label,
                 data_reconstruction=data_reconstruction,
                 model_config=model_config,
+                encoder_model=encoder_model,
+                encoder_configs=encoder_configs,
                 iterations=iterations,
                 gpu_num=gpu_num,
                 data_workers=data_workers,
@@ -324,6 +355,13 @@ def run_experiment(
 
         logger.info(f"Total Dataset size: {len(train_data) + len(test_data)}")
 
+        encoder_model = None
+        if use_encoder:
+            assert encoder_model_path_name is not None
+            encoder_model = init_MLP_model(configs=model_config)
+            encoder_weights = torch.load(encoder_model_path_name)["model"]
+            encoder_model.load_state_dict(encoder_weights)
+
         file_ext = _run_experiment(
             train_data=train_data,
             test_data=test_data,
@@ -332,6 +370,8 @@ def run_experiment(
             hash_label=hash_label,
             data_reconstruction=data_reconstruction,
             model_config=model_config,
+            encoder_model=encoder_model,
+            encoder_configs=encoder_configs,
             iterations=iterations,
             gpu_num=gpu_num,
             data_workers=data_workers,
@@ -373,18 +413,55 @@ def main(
         seed = random.randint(1, 1 << 30)
     seed_everything(seed)
 
-    hidden_layers = [128] if hidden_layers is None else hidden_layers
+    model_hash = "40e65407aa"
 
+    hidden_layers = [256, 256, 256]
+
+    # pretrained encoder
     model_config: MinModelConfig = {
-        "num_layers": 3,
-        "input_dim": None,
-        "hidden_dim": 128,
+        "num_layers": -1,
+        "input_dim": 346,
+        "hidden_dim": -1,
         "hidden_layers": hidden_layers,
-        "output_dim": None,
+        "output_dim": 256,
         "use_batch_norm": True,
     }
+    # on demand encoder
+    # model_config: MinModelConfig = {
+    #     "num_layers": 3,
+    #     "input_dim": None,
+    #     "hidden_dim": 128,
+    #     "hidden_layers": hidden_layers,
+    #     "output_dim": None,
+    #     "use_batch_norm": True,
+    # }
 
-    model_hash = "40e65407aa"
+    use_encoder = True
+    freeze_encoder = True
+    encoder_model_name = (
+        "NoFilter()-Sequential()-CV-1L256+2L256+3L256-512b-0.001lr_cf{}.pt"
+    )
+    short_encoder_name = "1L256+2L256+3L256"
+    encoder_model_path_name = os.path.join(
+        "results",
+        "v4",
+        "crossfold_raw",
+        model_hash,
+        "encoder_test",
+        "models",
+        encoder_model_name,
+    )
+    encoder_configs: EncoderConfigs = {
+        "freeze_encoder": freeze_encoder,
+        "finetuning_model_configs": {
+            "num_layers": 1,
+            "input_dim": 256,
+            "hidden_dim": -1,
+            "output_dim": None,
+            "hidden_layers": None,
+            "use_batch_norm": True,
+        },
+    }
 
     # * filters
     # selector = FilterApply(condition="or")
@@ -424,18 +501,18 @@ def main(
     # label_logic = BinaryORHopLabeler(hop=0)
     # label_logic = BinaryDuplicatedAtomicLabeler()
     # --- multiclass
-    # label_logic = MulticlassRestrictionLabeler(
-    #     [
-    #         (1, None),
-    #         (2, None),
-    #         (3, None),
-    #         (4, None),
-    #         (None, 1),
-    #         (None, 2),
-    #         (None, 3),
-    #         (None, 4),
-    #     ]
-    # )
+    label_logic = MulticlassRestrictionLabeler(
+        [
+            (1, None),
+            (2, None),
+            (3, None),
+            (4, None),
+            (None, 1),
+            (None, 2),
+            (None, 3),
+            (None, 4),
+        ]
+    )
     # label_logic = MulticlassOpenQuantifierLabeler()
     # --- multilabel
     # label_logic = MultiLabelAtomicLabeler()
@@ -443,7 +520,7 @@ def main(
     # label_logic = MultilabelRestrictionLabeler(mode="both", class_for_no_label=False)
     # label_logic = MultilabelRestrictionLabeler(mode="upper", class_for_no_label=True)
     # label_logic = MultilabelFormulaElementLabeler()
-    label_logic = MultilabelFormulaElementWithAtomicPositionLabeler()
+    # label_logic = MultilabelFormulaElementWithAtomicPositionLabeler()
     labeler = LabelerApply(labeler=label_logic)
     # * /labelers
     data_config: NetworkDataConfig = {
@@ -464,6 +541,9 @@ def main(
         "required_train_hashes": [],
         "use_stratified": None,
     }
+    crossfold_fold_file = os.path.join(
+        "results", "v4", "crossfold_raw", model_hash, "base.folds"
+    )
 
     early_stopping: StopFormat = {
         "operation": "early",
@@ -478,10 +558,15 @@ def main(
         test_selector_name = "CV" if crossfold_config else str(test_selector)
         name = f"{selector}-{labeler}-{test_selector_name}"
 
-    hid = "+".join([f"{l}L{val}" for l, val in enumerate(hidden_layers, start=1)])
-    msg = f"{name}-{hid}-{train_batch}b-{lr}lr"
+    if use_encoder:
+        msg = f"{name}-F({freeze_encoder})-ENC[{short_encoder_name}]-{train_batch}b-{lr}lr"
+    else:
+        hid = "+".join([f"{l}L{val}" for l, val in enumerate(hidden_layers, start=1)])
+        msg = f"{name}-{hid}-{train_batch}b-{lr}lr"
 
-    results_path = f"./results/v4/crossfold_raw/{model_hash}/classification"
+    results_path = os.path.join(
+        "results", "v4", "crossfold_raw", model_hash, "classification+encoder"
+    )
     plot_file = None
     if make_plots:
         plot_file = msg
@@ -494,6 +579,7 @@ def main(
         model_config=model_config,
         data_config=data_config,
         crossfold_config=crossfold_config,
+        crossfold_fold_file=crossfold_fold_file,
         iterations=iterations,
         gpu_num=0,
         seed=seed,
@@ -512,6 +598,9 @@ def main(
         info_filename=msg,
         binary_labels=isinstance(label_logic, BinaryCategoricalLabeler),
         multilabel=isinstance(label_logic, MultiLabelCategoricalLabeler),
+        use_encoder=use_encoder,
+        encoder_model_path_name=encoder_model_path_name,
+        encoder_configs=encoder_configs,
         _legacy_load_without_batch=True,  # ! remove eventually
     )
     end = timer()
@@ -532,18 +621,10 @@ if __name__ == "__main__":
 
     logger.addHandler(ch)
 
-    __layers = [256, 256, 256]
-    # for __batch in [128, 256, 512]:
-    #     for __lr in [0.0005, 0.001, 0.005]:
-
-    #         logger.info(f"Running NN config: batch: {__batch}, "
-    #                     f"lr: {__lr}, layers: {__layers}")
-    #         main(seed=42, train_batch=__batch, lr=__lr, hidden_layers=__layers)
     main(
         seed=0,
         train_batch=32,
         lr=5e-4,
-        hidden_layers=__layers,
         save_model=True,
         make_plots=True,
     )
