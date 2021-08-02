@@ -93,3 +93,40 @@ class MLP(nn.Module):
         reset(self.linears)
         if not self.is_linear:
             reset(self.batch_norms)
+
+
+class EncoderNetwork(nn.Module):
+    def __init__(
+        self,
+        encoder: nn.Module,
+        finetuning_layer: Optional[nn.Module] = None,
+        freeze_encoder: bool = True,
+        **kwargs
+    ):
+        super(EncoderNetwork, self).__init__()
+
+        self.encoder = encoder
+        self.finetuning = (
+            finetuning_layer if finetuning_layer is not None else nn.Identity()
+        )
+
+        self.freeze_encoder = freeze_encoder
+        if freeze_encoder:
+            self.encoder.requires_grad_(False)
+            self.encoder.eval()
+
+    def forward(self, x):
+        out = self.encoder(x)
+        out = self.finetuning(out)
+
+        return out
+
+    def reset_parameters(self):
+        reset(self.finetuning)
+
+    def train(self, mode: bool = True):
+        super().train(mode=mode)
+        if self.freeze_encoder:
+            # ignore changes in state for the encoder
+            self.encoder.eval()
+        return self
