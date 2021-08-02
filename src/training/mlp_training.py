@@ -1,5 +1,5 @@
 import logging
-from typing import Any, Dict, List, Literal, Union
+from typing import Any, Dict, List, Literal, Optional, Union
 
 import numpy as np
 import torch
@@ -14,7 +14,9 @@ from sklearn.metrics import (
 )
 from torch.utils.data import DataLoader
 
-from src.models import MLP
+from src.models import MLP, EncoderNetwork
+from src.models.model_utils import init_MLP_model
+from src.typing import MinModelConfig
 
 from . import Trainer
 
@@ -161,7 +163,7 @@ class Metric:
 
 class MLPTrainer(Trainer):
     loss: nn.Module
-    model: MLP
+    model: Union[MLP, EncoderNetwork]
     optim: torch.optim.Optimizer
     train_loader: DataLoader
     test_loader: DataLoader
@@ -223,7 +225,13 @@ class MLPTrainer(Trainer):
             _, y_pred = output.max(dim=1)
             return y_pred
 
-    def init_model(
+    def init_model(self, use_encoder: bool = False, **kwargs):
+        if use_encoder:
+            return self.init_encoder_model(**kwargs)
+        else:
+            return self.init_MLP_model(**kwargs)
+
+    def init_MLP_model(
         self,
         *,
         num_layers: int,
@@ -244,6 +252,25 @@ class MLPTrainer(Trainer):
             **kwargs,
         )
 
+        return self.model
+
+    def init_encoder_model(
+        self,
+        *,
+        encoder_model: nn.Module,
+        freeze_encoder: bool = False,
+        finetuning_model_configs: Optional[MinModelConfig] = None,
+        **kwargs,
+    ):
+        finetuning_model = None
+        if finetuning_model_configs is not None:
+            finetuning_model = init_MLP_model(configs=finetuning_model_configs)
+
+        self.model = EncoderNetwork(
+            encoder=encoder_model,
+            freeze_encoder=freeze_encoder,
+            finetuning_layer=finetuning_model,
+        )
         return self.model
 
     def init_trainer(self, **optim_params):

@@ -50,6 +50,11 @@ class MinModelConfig(TypedDict):
     use_batch_norm: bool
 
 
+class EncoderConfigs(TypedDict):
+    freeze_encoder: bool
+    finetuning_model_configs: Optional[MinModelConfig]
+
+
 class GNNEncoderModelConfig(TypedDict):
     layer_input_dim: Optional[int]
     output_input_dim: Optional[int]
