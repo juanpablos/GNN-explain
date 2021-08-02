@@ -185,6 +185,7 @@ def run_experiment(
     model_config: MinModelConfig,
     data_config: NetworkDataConfig,
     crossfold_config: Optional[CrossFoldConfiguration] = None,
+    crossfold_fold_file: Optional[str] = None,
     iterations: int = 100,
     gpu_num: int = 0,
     seed: int = 10,
@@ -225,6 +226,13 @@ def run_experiment(
     )
 
     if isinstance(datasets, NetworkDatasetCrossFoldSplitter):
+
+        if crossfold_fold_file is not None:
+            logger.info(f"Loading CV folds from file")
+            with open(crossfold_fold_file) as f:
+                precalculated_folds = json.load(f)
+            datasets.load_precalculated_folds(fold_dict=precalculated_folds)
+
         logger.info(f"Total Dataset size: {datasets.dataset_size}")
 
         file_ext = ""
@@ -331,7 +339,7 @@ def main(
         seed = random.randint(1, 1 << 30)
     seed_everything(seed)
 
-    hidden_layers = [256, 256, 256]
+    hidden_layers = [512, 512, 512]
 
     model_config: MinModelConfig = {
         "num_layers": 3,
@@ -391,21 +399,18 @@ def main(
     }
     # crossfold_config = None
     crossfold_config: CrossFoldConfiguration = {
-        "n_splits": 5,
-        "shuffle": True,
-        "random_state": seed,
-        "defer_loading": False,
+        "n_splits": 5,  # not used
+        "shuffle": True,  # not used
+        "random_state": None,  # not used
+        "defer_loading": True,
         "required_train_hashes": [],
-        "use_stratified": False,
+        "use_stratified": None,
     }
+    crossfold_fold_file = os.path.join(
+        "results", "v4", "crossfold_raw", model_hash, "base.folds"
+    )
 
-    early_stopping: StopFormat = {
-        "operation": "early",
-        "conditions": {"test_loss": 0.001},
-        "stay": 10,
-    }
-
-    iterations = 50
+    iterations = 30
     test_batch = 2048
 
     if name is None:
@@ -415,7 +420,9 @@ def main(
     hid = "+".join([f"{l}L{val}" for l, val in enumerate(hidden_layers, start=1)])
     msg = f"{name}-{hid}-{train_batch}b-{lr}lr"
 
-    results_path = os.path.join("results", "v4", "crossfold_raw", model_hash, "encoder")
+    results_path = os.path.join(
+        "results", "v4", "crossfold_raw", model_hash, "encoder_test"
+    )
     plot_file = None
     if make_plots:
         plot_file = msg
@@ -428,6 +435,7 @@ def main(
         model_config=model_config,
         data_config=data_config,
         crossfold_config=crossfold_config,
+        crossfold_fold_file=crossfold_fold_file,
         iterations=iterations,
         gpu_num=0,
         seed=seed,
@@ -437,7 +445,6 @@ def main(
         batch_size=train_batch,
         test_batch_size=test_batch,
         lr=lr,
-        early_stopping=early_stopping,
         run_train_test=True,
         results_path=results_path,
         model_name=model_name,
@@ -465,7 +472,7 @@ if __name__ == "__main__":
 
     main(
         seed=0,
-        train_batch=64,
+        train_batch=512,
         lr=1e-3,
         # lr=5e-4,
         save_model=True,
