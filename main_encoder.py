@@ -3,7 +3,7 @@ import logging
 import os
 import random
 from timeit import default_timer as timer
-from typing import Dict, List, Optional, Union
+from typing import Dict, List, Literal, Optional, Union
 
 import torch
 from torch.functional import Tensor
@@ -44,6 +44,13 @@ def _run_experiment(
     iterations: int = 100,
     gpu_num: int = 0,
     data_workers: int = 2,
+    trainer_loss_name: Literal[
+        "contrastive",
+        "triplet",
+        "lifted_structure",
+        "angular",
+    ] = "contrastive",
+    use_m_per_class_sampler: bool = True,
     batch_size: int = 64,
     test_batch_size: int = 512,
     lr: float = 0.01,
@@ -86,6 +93,8 @@ def _run_experiment(
 
     trainer = EncoderTrainer(
         logging_variables="all",
+        loss_name=trainer_loss_name,
+        use_m_per_class_sampler=use_m_per_class_sampler,
     )
 
     trainer.init_dataloader(
@@ -129,7 +138,7 @@ def _run_experiment(
         model.cpu()
 
         os.makedirs(os.path.join(results_path, "models"), exist_ok=True)
-        obj = {"model": model.state_dict(), "class_mapping": class_mapping}
+        obj = {"model": model.state_dict()}
         torch.save(obj, os.path.join(results_path, "models", f"{model_name}{ext}.pt"))
 
     if plot_filename is not None:
@@ -192,6 +201,13 @@ def run_experiment(
     test_size: float = 0.25,
     stratify: bool = True,
     data_workers: int = 2,
+    trainer_loss_name: Literal[
+        "contrastive",
+        "triplet",
+        "lifted_structure",
+        "angular",
+    ] = "contrastive",
+    use_m_per_class_sampler: bool = True,
     batch_size: int = 64,
     test_batch_size: int = 512,
     lr: float = 0.01,
@@ -257,6 +273,8 @@ def run_experiment(
                 iterations=iterations,
                 gpu_num=gpu_num,
                 data_workers=data_workers,
+                trainer_loss_name=trainer_loss_name,
+                use_m_per_class_sampler=use_m_per_class_sampler,
                 batch_size=batch_size,
                 test_batch_size=test_batch_size,
                 lr=lr,
@@ -302,6 +320,8 @@ def run_experiment(
             iterations=iterations,
             gpu_num=gpu_num,
             data_workers=data_workers,
+            trainer_loss_name=trainer_loss_name,
+            use_m_per_class_sampler=use_m_per_class_sampler,
             batch_size=batch_size,
             test_batch_size=test_batch_size,
             lr=lr,
@@ -410,6 +430,11 @@ def main(
         "results", "v4", "crossfold_raw", model_hash, "base.folds"
     )
 
+    trainer_loss_name: Literal[
+        "contrastive", "triplet", "lifted_structure", "angular"
+    ] = "contrastive"
+    use_m_per_class_sampler = True
+
     iterations = 30
     test_batch = 2048
 
@@ -421,7 +446,7 @@ def main(
     msg = f"{name}-{hid}-{train_batch}b-{lr}lr"
 
     results_path = os.path.join(
-        "results", "v4", "crossfold_raw", model_hash, "encoder_test"
+        "results", "v4", "crossfold_raw", model_hash, "encoder", trainer_loss_name
     )
     plot_file = None
     if make_plots:
@@ -442,6 +467,8 @@ def main(
         test_size=0.20,
         stratify=True,
         data_workers=0,
+        trainer_loss_name=trainer_loss_name,
+        use_m_per_class_sampler=use_m_per_class_sampler,
         batch_size=train_batch,
         test_batch_size=test_batch,
         lr=lr,
@@ -474,7 +501,6 @@ if __name__ == "__main__":
         seed=0,
         train_batch=512,
         lr=1e-3,
-        # lr=5e-4,
         save_model=True,
         make_plots=True,
     )
