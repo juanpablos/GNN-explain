@@ -5,7 +5,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from pytorch_metric_learning import losses
+from pytorch_metric_learning import losses, samplers
 from sklearn.neighbors import KNeighborsClassifier
 from torch.utils.data import DataLoader
 
@@ -35,9 +35,19 @@ class EncoderTrainer(Trainer):
         self,
         seed: int = None,
         logging_variables: Union[Literal["all"], List[str]] = "all",
+        loss_name: Literal[
+            "contrastive",
+            "triplet",
+            "lifted_structure",
+            "angular",
+        ] = "contrastive",
+        use_m_per_class_sampler: bool = True,
     ):
         super().__init__(seed=seed, logging_variables=logging_variables)
         logger_metrics.info(",".join(self.metric_logger.keys()))
+
+        self.loss_name = loss_name
+        self.use_sampler = use_m_per_class_sampler
 
     def init_model(
         self,
@@ -71,26 +81,49 @@ class EncoderTrainer(Trainer):
         self.model = self.model.to(self.device)
         return self.model
 
+    @staticmethod
+    def __select_loss(loss_name: str):
+        available_losses = {
+            "contrastive": losses.ContrastiveLoss,
+            "triplet": losses.TripletMarginLoss,
+            "lifted_structure": losses.LiftedStructureLoss,
+            "angular": losses.AngularLoss,
+        }
+        try:
+            return available_losses[loss_name]
+        except KeyError as e:
+            raise ValueError(f"Passed {loss_name} is not a supported loss") from e
+
     def init_loss(self):
-        self.loss = losses.ContrastiveLoss()
+        self.loss = self.__select_loss(self.loss_name)()
         return self.loss
 
     def init_optim(self, lr):
         self.optim = optim.Adam(self.model.parameters(), lr=lr, weight_decay=1e-4)
         return self.optim
 
-    def init_dataloader(
-        self, data, mode: Union[Literal["train"], Literal["test"]], **kwargs
-    ):
-
+    def init_dataloader(self, data, mode: Literal["train", "test"], **kwargs):
         if mode not in ["train", "test"]:
             raise ValueError("Supported modes are only `train` and `test`")
 
-        loader = DataLoader(data, **kwargs)
         if mode == "train":
-            self.train_loader = loader
+            if self.use_sampler:
+                sampler_enforced_kwargs = {
+                    **kwargs,
+                    "shuffle": False,
+                    "drop_last": True,
+                }
+                sampler_enforced_kwargs["sampler"] = samplers.MPerClassSampler(
+                    labels=[sample[-1] for sample in data],
+                    m=2,
+                    batch_size=kwargs["batch_size"],
+                )
+                kwargs = sampler_enforced_kwargs
+            self.train_loader = DataLoader(data, **kwargs)
+            loader = self.train_loader
         elif mode == "test":
-            self.test_loader = loader
+            self.test_loader = DataLoader(data, **kwargs)
+            loader = self.test_loader
 
         return loader
 
