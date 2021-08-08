@@ -1,6 +1,7 @@
 from typing import (
     Dict,
     Generic,
+    Iterable,
     List,
     Literal,
     Mapping,
@@ -366,6 +367,72 @@ class MulticlassRestrictionLabeler(CategoricalLabeler[int, int]):
         }
 
         obj.quantifier_classes = pairs
+        obj.classes = data["classes"]
+        return obj
+
+
+class MulticlassQuantifierLimitLabeler(CategoricalLabeler[int, int]):
+    def __init__(
+        self,
+        any_limit: Literal["upper", "lower"],
+        limits: Iterable[int] = (1, 2, 3, 4, 5),
+        custom_name: Optional[str] = None,
+    ):
+        super().__init__()
+        self.quantifier_classes = {}
+        self.classes[0] = f"No {any_limit}"
+
+        self.limit_type = any_limit
+        self.limits = limits
+        if any_limit == "upper":
+            label_template = "Exist(*, {})"
+            self.extract_limit_fn = lambda e: e.upper
+        else:
+            label_template = "Exist({}, *)"
+            self.extract_limit_fn = lambda e: e.lower
+
+        for i, limit in enumerate(limits, start=1):
+            self.classes[i] = label_template.format(limit)
+            self.quantifier_classes[limit] = i
+
+        self.custom_name = custom_name
+
+    def reset(self):
+        self.result = 0
+
+    def _visit_Exist(self, node: Exist):
+        restriction = self.extract_limit_fn(node)
+        if restriction in self.quantifier_classes:
+            self.result = self.quantifier_classes[restriction]
+        else:
+            self.result = 0  # Other
+        super()._visit_Exist(node)
+
+    def __str__(self):
+        base_name = f"MulticlassQuantifierLimitLabeler({self.limit_type}_{{}})"
+        if self.custom_name is not None:
+            name = base_name.format(self.custom_name)
+        else:
+            name = base_name.format(f"{str(list(self.quantifier_classes.keys()))}")
+        return name
+
+    def serialize(self) -> Dict:
+        serialized_labeler = super().serialize()
+        serialized_labeler["quantifier_classes"] = self.quantifier_classes
+        serialized_labeler["limits"] = list(self.limits)
+        serialized_labeler["limit_type"] = self.limit_type
+        serialized_labeler["custom_name"] = self.custom_name
+        return serialized_labeler
+
+    @classmethod
+    def load(cls, data: Dict):
+        obj = cls(
+            any_limit=data["limit_type"],
+            limits=data["limits"],
+            custom_name=data["custom_name"],
+        )
+
+        obj.quantifier_classes = data["quantifier_classes"]
         obj.classes = data["classes"]
         return obj
 

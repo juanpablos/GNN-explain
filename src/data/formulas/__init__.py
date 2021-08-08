@@ -15,6 +15,7 @@ from .labeler import (
     BinaryRestrictionLabeler,
     LabelerApply,
     MulticlassOpenQuantifierLabeler,
+    MulticlassQuantifierLimitLabeler,
     MulticlassRestrictionLabeler,
     MultiLabelAtomicLabeler,
     MultilabelFormulaElementLabeler,
