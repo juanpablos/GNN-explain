@@ -2,6 +2,7 @@ import os
 from typing import Dict
 
 import matplotlib.pyplot as plt
+import numpy as np
 import umap
 import umap.plot
 
@@ -18,7 +19,7 @@ def plot_embedding_2d(
 
     mapper = umap.UMAP(random_state=seed, low_memory=False).fit(embedding)
 
-    string_labels = [labels_categorical_mapping[label] for label in labels]
+    string_labels = np.array([labels_categorical_mapping[label] for label in labels])
 
     umap.plot.points(mapper, labels=string_labels, ax=ax, width=1600, height=1000)
 
