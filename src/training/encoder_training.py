@@ -1,5 +1,5 @@
 import logging
-from typing import List, Literal, Union
+from typing import List, Literal, Tuple, Union
 
 import numpy as np
 import torch
@@ -33,6 +33,7 @@ class EncoderTrainer(Trainer):
 
     def __init__(
         self,
+        evaluate_with_train: bool,
         seed: int = None,
         logging_variables: Union[Literal["all"], List[str]] = "all",
         loss_name: Literal[
@@ -48,6 +49,7 @@ class EncoderTrainer(Trainer):
 
         self.loss_name = loss_name
         self.use_sampler = use_m_per_class_sampler
+        self.evaluate_with_train = evaluate_with_train
 
     def init_model(
         self,
@@ -107,6 +109,9 @@ class EncoderTrainer(Trainer):
             raise ValueError("Supported modes are only `train` and `test`")
 
         if mode == "train":
+            if self.evaluate_with_train:
+                self.train_eval_dataloader = DataLoader(data, **kwargs)
+
             if self.use_sampler:
                 sampler_enforced_kwargs = {
                     **kwargs,
@@ -157,6 +162,38 @@ class EncoderTrainer(Trainer):
 
         return average_loss
 
+    def _get_embeddings_with_loss_and_labels(
+        self, dataloader
+    ) -> Tuple[np.ndarray, np.ndarray, float]:
+        #!########
+        self.model.eval()
+        #!########
+
+        accum_loss = []
+        _embeddings = []
+        _labels = []
+
+        for x, y in dataloader:
+            x = x.to(self.device)
+            y = y.to(self.device)
+
+            if x.size(0) == 1:
+                continue
+
+            with torch.no_grad():
+                embedding = self.model(x)
+                loss = self.loss(embedding, y)
+            accum_loss.append(loss.detach().cpu().numpy())
+
+            _embeddings.append(embedding.detach().cpu())
+            _labels.append(y.detach().cpu())
+
+        embeddings = torch.cat(_embeddings).detach().cpu().numpy()
+        labels = torch.cat(_labels).numpy()
+        average_loss = np.mean(accum_loss)
+
+        return embeddings, labels, average_loss
+
     def evaluate(self, use_train_data, **kwargs):
 
         #!########
@@ -167,38 +204,30 @@ class EncoderTrainer(Trainer):
             self.metric_logger.update(train_acc=0)
             return
 
-        loader = self.test_loader
+        (
+            test_embeddings,
+            test_labels,
+            test_loss,
+        ) = self._get_embeddings_with_loss_and_labels(dataloader=self.test_loader)
 
-        accum_loss = []
-        _embeddings = []
-        _labels = []
-
-        for x, y in loader:
-            x = x.to(self.device)
-            y = y.to(self.device)
-
-            if x.size(0) == 1:
-                continue
-
-            with torch.no_grad():
-                embedding = self.model(x)
-
-            loss = self.loss(embedding, y)
-            accum_loss.append(loss.detach().cpu().numpy())
-
-            _embeddings.append(embedding.detach().cpu())
-            _labels.append(y.detach().cpu())
-
-        embeddings = torch.cat(_embeddings).detach().cpu().numpy()
-        labels = torch.cat(_labels).numpy()
+        if self.evaluate_with_train:
+            assert hasattr(self, "train_eval_dataloader")
+            (
+                train_embeddings,
+                train_labels,
+                _,
+            ) = self._get_embeddings_with_loss_and_labels(
+                dataloader=self.train_eval_dataloader
+            )
+        else:
+            train_embeddings = test_embeddings
+            train_labels = test_labels
 
         evaluator = KNeighborsClassifier(n_neighbors=15, n_jobs=4)
-        evaluator.fit(embeddings, labels)
-        accuracy = evaluator.score(embeddings, labels)
+        evaluator.fit(train_embeddings, train_labels)
+        accuracy = evaluator.score(test_embeddings, test_labels)
 
-        average_loss = np.mean(accum_loss)
-
-        metrics = {"test_loss": average_loss, "test_acc": accuracy}
+        metrics = {"test_loss": test_loss, "test_acc": accuracy}
 
         self.metric_logger.update(**metrics)
 
