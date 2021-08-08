@@ -14,7 +14,7 @@ from src.data.datasets import LabeledDataset, LabeledSubset
 from src.data.formula_index import FormulaMapping
 from src.data.formulas import *
 from src.data.loader import categorical_loader
-from src.data.utils import get_input_dim, train_test_dataset
+from src.data.utils import get_input_dim, get_label_distribution, train_test_dataset
 from src.graphs.foc import Element
 from src.run_logic import run, seed_everything
 from src.training.encoder_training import EncoderTrainer
@@ -22,7 +22,6 @@ from src.typing import (
     CrossFoldConfiguration,
     MinModelConfig,
     NetworkDataConfig,
-    S,
     StopFormat,
 )
 from src.utils import get_next_filename
@@ -34,13 +33,14 @@ logger_metrics = logging.getLogger("metrics")
 
 
 def _run_experiment(
-    train_data: Union[LabeledDataset[Tensor, S], LabeledSubset[Tensor, S]],
-    test_data: Union[LabeledDataset[Tensor, S], LabeledSubset[Tensor, S]],
-    class_mapping: Dict[S, str],
+    train_data: Union[LabeledDataset[Tensor, int], LabeledSubset[Tensor, int]],
+    test_data: Union[LabeledDataset[Tensor, int], LabeledSubset[Tensor, int]],
+    class_mapping: Dict[int, str],
     hash_formula: Dict[str, Element],
-    hash_label: Dict[str, S],
+    hash_label: Dict[str, int],
     data_reconstruction: NetworkDatasetCollectionWrapper,
     model_config: MinModelConfig,
+    evaluate_with_train: bool,
     iterations: int = 100,
     gpu_num: int = 0,
     data_workers: int = 2,
@@ -75,6 +75,11 @@ def _run_experiment(
     logger.debug(f"Train dataset size {len(train_data)}")
     logger.debug(f"Test dataset size {len(test_data)}")
 
+    _, train_distribution = get_label_distribution(train_data)
+    _, test_distribution = get_label_distribution(test_data)
+    logger.debug(f"Train dataset distribution {train_distribution}")
+    logger.debug(f"Test dataset distribution {test_distribution}")
+
     input_shape = get_input_dim(train_data)
     assert len(input_shape) == 1, "The input dimension is different from 1"
 
@@ -92,6 +97,7 @@ def _run_experiment(
     # /--- metrics logger
 
     trainer = EncoderTrainer(
+        evaluate_with_train=evaluate_with_train,
         logging_variables="all",
         loss_name=trainer_loss_name,
         use_m_per_class_sampler=use_m_per_class_sampler,
@@ -156,6 +162,7 @@ def _run_experiment(
         plot_embedding_2d(
             embedding,
             labels,
+            labels_categorical_mapping=class_mapping,
             save_path=results_path,
             filename=plot_filename + "_train" + ext,
             seed=seed,
@@ -173,6 +180,7 @@ def _run_experiment(
         plot_embedding_2d(
             embedding,
             labels,
+            labels_categorical_mapping=class_mapping,
             save_path=results_path,
             filename=plot_filename + "_test" + ext,
             seed=seed,
@@ -193,6 +201,7 @@ def _run_experiment(
 def run_experiment(
     model_config: MinModelConfig,
     data_config: NetworkDataConfig,
+    evaluate_with_train: bool,
     crossfold_config: Optional[CrossFoldConfiguration] = None,
     crossfold_fold_file: Optional[str] = None,
     iterations: int = 100,
@@ -270,6 +279,7 @@ def run_experiment(
                 hash_label=hash_label,
                 data_reconstruction=data_reconstruction,
                 model_config=model_config,
+                evaluate_with_train=evaluate_with_train,
                 iterations=iterations,
                 gpu_num=gpu_num,
                 data_workers=data_workers,
@@ -317,6 +327,7 @@ def run_experiment(
             hash_label=hash_label,
             data_reconstruction=data_reconstruction,
             model_config=model_config,
+            evaluate_with_train=evaluate_with_train,
             iterations=iterations,
             gpu_num=gpu_num,
             data_workers=data_workers,
@@ -360,13 +371,14 @@ def main(
     seed_everything(seed)
 
     hidden_layers = [512, 512, 512]
+    output_size = 256
 
     model_config: MinModelConfig = {
         "num_layers": 3,
         "input_dim": None,
         "hidden_dim": 128,
         "hidden_layers": hidden_layers,
-        "output_dim": 256,
+        "output_dim": output_size,
         "use_batch_norm": True,
     }
 
@@ -404,7 +416,22 @@ def main(
 
     # * labelers
     # give a different label for each formula
-    label_logic = SequentialCategoricalLabeler()
+    label_logic = MulticlassRestrictionLabeler(
+        [
+            (1, None),
+            (2, None),
+            (3, None),
+            (4, None),
+            (5, None),
+            (None, 1),
+            (None, 2),
+            (None, 3),
+            (None, 4),
+            (None, 5),
+        ],
+        custom_name="1-5_open_up_down",
+    )
+    # label_logic = SequentialCategoricalLabeler()
     labeler = LabelerApply(labeler=label_logic)
     # * /labelers
     data_config: NetworkDataConfig = {
@@ -433,20 +460,29 @@ def main(
     trainer_loss_name: Literal[
         "contrastive", "triplet", "lifted_structure", "angular"
     ] = "contrastive"
-    use_m_per_class_sampler = True
 
-    iterations = 30
-    test_batch = 2048
+    iterations = 0
+    # iterations = 30
+    # 2048 constrastive
+    # 512 triplet
+    # 128 lifted
+    # 512 angular
+    test_batch = 128
 
     if name is None:
         test_selector_name = "CV" if crossfold_config else str(test_selector)
         name = f"{selector}-{labeler}-{test_selector_name}"
 
     hid = "+".join([f"{l}L{val}" for l, val in enumerate(hidden_layers, start=1)])
-    msg = f"{name}-{hid}-{train_batch}b-{lr}lr"
+    msg = f"{name}-{hid}-O{output_size}-{train_batch}b-{lr}lr"
 
     results_path = os.path.join(
-        "results", "v4", "crossfold_raw", model_hash, "encoder", trainer_loss_name
+        "results",
+        "v4",
+        "crossfold_raw",
+        model_hash,
+        "encoder_delete",
+        trainer_loss_name,
     )
     plot_file = None
     if make_plots:
@@ -459,6 +495,7 @@ def main(
     run_experiment(
         model_config=model_config,
         data_config=data_config,
+        evaluate_with_train=not isinstance(label_logic, SequentialCategoricalLabeler),
         crossfold_config=crossfold_config,
         crossfold_fold_file=crossfold_fold_file,
         iterations=iterations,
@@ -468,7 +505,7 @@ def main(
         stratify=True,
         data_workers=0,
         trainer_loss_name=trainer_loss_name,
-        use_m_per_class_sampler=use_m_per_class_sampler,
+        use_m_per_class_sampler=isinstance(label_logic, SequentialCategoricalLabeler),
         batch_size=train_batch,
         test_batch_size=test_batch,
         lr=lr,
@@ -499,7 +536,7 @@ if __name__ == "__main__":
 
     main(
         seed=0,
-        train_batch=512,
+        train_batch=128,
         lr=1e-3,
         save_model=True,
         make_plots=True,
