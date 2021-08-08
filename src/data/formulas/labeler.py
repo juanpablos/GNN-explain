@@ -312,7 +312,11 @@ class SequentialCategoricalLabeler(CategoricalLabeler[int, int]):
 
 
 class MulticlassRestrictionLabeler(CategoricalLabeler[int, int]):
-    def __init__(self, quantifier_tuples: List[Tuple[Optional[int], Optional[int]]]):
+    def __init__(
+        self,
+        quantifier_tuples: List[Tuple[Optional[int], Optional[int]]],
+        custom_name: Optional[str] = None,
+    ):
         super().__init__()
         self.quantifier_classes = {}
         self.classes[0] = "Other"
@@ -320,6 +324,8 @@ class MulticlassRestrictionLabeler(CategoricalLabeler[int, int]):
         for i, (lower, upper) in enumerate(quantifier_tuples, start=1):
             self.classes[i] = f"Exist({lower},{upper})"
             self.quantifier_classes[(lower, upper)] = i
+
+        self.custom_name = custom_name
 
     def reset(self):
         self.result = 0
@@ -333,7 +339,12 @@ class MulticlassRestrictionLabeler(CategoricalLabeler[int, int]):
         super()._visit_Exist(node)
 
     def __str__(self):
-        return f"MulticlassRestrictionLabeler({list(self.quantifier_classes.keys())})"
+        base_name = "MulticlassRestrictionLabeler({})"
+        if self.custom_name is not None:
+            name = base_name.format(self.custom_name)
+        else:
+            name = base_name.format(str(list(self.quantifier_classes.keys())))
+        return name
 
     def serialize(self) -> Dict:
         serialized_labeler = super().serialize()
