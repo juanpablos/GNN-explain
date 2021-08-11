@@ -50,6 +50,7 @@ def _run_experiment(
         "lifted_structure",
         "angular",
     ] = "contrastive",
+    trainer_miner_name: Literal["none", "similarity", "triplet"] = "none",
     use_m_per_class_sampler: bool = True,
     batch_size: int = 64,
     test_batch_size: int = 512,
@@ -100,6 +101,7 @@ def _run_experiment(
         evaluate_with_train=evaluate_with_train,
         logging_variables="all",
         loss_name=trainer_loss_name,
+        miner_name=trainer_miner_name,
         use_m_per_class_sampler=use_m_per_class_sampler,
     )
 
@@ -216,6 +218,7 @@ def run_experiment(
         "lifted_structure",
         "angular",
     ] = "contrastive",
+    trainer_miner_name: Literal["none", "similarity", "triplet"] = "none",
     use_m_per_class_sampler: bool = True,
     batch_size: int = 64,
     test_batch_size: int = 512,
@@ -284,6 +287,7 @@ def run_experiment(
                 gpu_num=gpu_num,
                 data_workers=data_workers,
                 trainer_loss_name=trainer_loss_name,
+                trainer_miner_name=trainer_miner_name,
                 use_m_per_class_sampler=use_m_per_class_sampler,
                 batch_size=batch_size,
                 test_batch_size=test_batch_size,
@@ -332,6 +336,7 @@ def run_experiment(
             gpu_num=gpu_num,
             data_workers=data_workers,
             trainer_loss_name=trainer_loss_name,
+            trainer_miner_name=trainer_miner_name,
             use_m_per_class_sampler=use_m_per_class_sampler,
             batch_size=batch_size,
             test_batch_size=test_batch_size,
@@ -450,6 +455,7 @@ def main(
     trainer_loss_name: Literal[
         "contrastive", "triplet", "lifted_structure", "angular"
     ] = "lifted_structure"
+    trainer_miner_name: Literal["none", "similarity", "triplet"] = "triplet"
 
     iterations = 30
     # 2048 constrastive
@@ -471,6 +477,7 @@ def main(
         "crossfold_raw",
         model_hash,
         "encoder_upper",
+        trainer_miner_name,
         trainer_loss_name,
     )
     plot_file = None
@@ -494,6 +501,7 @@ def main(
         stratify=True,
         data_workers=0,
         trainer_loss_name=trainer_loss_name,
+        trainer_miner_name=trainer_miner_name,
         use_m_per_class_sampler=isinstance(label_logic, SequentialCategoricalLabeler),
         batch_size=train_batch,
         test_batch_size=test_batch,
