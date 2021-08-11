@@ -24,11 +24,14 @@ class NullMiner(miners.BaseMiner):
 
 class EncoderTrainer(Trainer):
     loss: nn.Module
+    test_loss: nn.Module
     miner: nn.Module
     model: MLP
     optim: torch.optim.Optimizer
     train_loader: DataLoader
     test_loader: DataLoader
+
+    output_size: int
 
     available_metrics = [
         "train_loss",
@@ -43,12 +46,10 @@ class EncoderTrainer(Trainer):
         seed: int = None,
         logging_variables: Union[Literal["all"], List[str]] = "all",
         loss_name: Literal[
-            "contrastive",
-            "triplet",
-            "lifted_structure",
-            "angular",
+            "contrastive", "triplet", "lifted_structure", "angular", "ntxent"
         ] = "contrastive",
         miner_name: Literal["none", "similarity", "triplet"] = "none",
+        use_cross_batch: bool = True,
         use_m_per_class_sampler: bool = True,
     ):
         super().__init__(seed=seed, logging_variables=logging_variables)
@@ -56,6 +57,7 @@ class EncoderTrainer(Trainer):
 
         self.loss_name = loss_name
         self.miner_name = miner_name
+        self.use_cross_batch = use_cross_batch
         self.use_sampler = use_m_per_class_sampler
         self.evaluate_with_train = evaluate_with_train
 
@@ -80,11 +82,13 @@ class EncoderTrainer(Trainer):
             **kwargs,
         )
 
+        self.output_size = output_dim
+
         return self.model
 
     def init_trainer(self, **optim_params):
-        self.init_loss()
         self.init_miner()
+        self.init_loss()
         self.model = self.model.to(self.device)
         self.init_optim(**optim_params)
 
@@ -107,21 +111,37 @@ class EncoderTrainer(Trainer):
             raise ValueError(f"Passed {miner_name} is not a supported miner") from e
 
     @staticmethod
-    def __select_loss(loss_name: str) -> losses.BaseMetricLossFunction:
+    def __select_loss(
+        loss_name: str, output_size: int, use_cross_batch: bool
+    ) -> Tuple[nn.Module, nn.Module]:
         available_losses = {
-            "contrastive": losses.ContrastiveLoss,
-            "triplet": losses.TripletMarginLoss,
-            "lifted_structure": losses.LiftedStructureLoss,
-            "angular": losses.AngularLoss,
-            "ntxent": losses.NTXentLoss,
+            "contrastive": losses.ContrastiveLoss(),
+            "triplet": losses.TripletMarginLoss(),
+            "lifted_structure": losses.LiftedStructureLoss(),
+            "angular": losses.AngularLoss(),
+            "ntxent": losses.NTXentLoss(),
         }
         try:
-            return available_losses[loss_name]
+            loss = available_losses[loss_name]
+            return (
+                losses.CrossBatchMemory(
+                    loss,
+                    embedding_size=output_size,
+                    memory_size=1024,
+                )
+                if use_cross_batch
+                else loss,
+                loss,
+            )
         except KeyError as e:
             raise ValueError(f"Passed {loss_name} is not a supported loss") from e
 
     def init_loss(self):
-        self.loss = self.__select_loss(self.loss_name)()
+        self.loss, self.test_loss = self.__select_loss(
+            self.loss_name,
+            output_size=self.output_size,
+            use_cross_batch=self.use_cross_batch,
+        )
         return self.loss
 
     def init_miner(self):
@@ -212,7 +232,7 @@ class EncoderTrainer(Trainer):
 
             with torch.no_grad():
                 embedding = self.model(x)
-                loss = self.loss(embedding, y)
+                loss = self.test_loss(embedding, y)
             accum_loss.append(loss.detach().cpu().numpy())
 
             _embeddings.append(embedding.detach().cpu())
