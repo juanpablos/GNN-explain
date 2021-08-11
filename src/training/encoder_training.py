@@ -5,7 +5,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from pytorch_metric_learning import losses, samplers
+from pytorch_metric_learning import losses, miners, samplers
 from sklearn.neighbors import KNeighborsClassifier
 from torch.utils.data import DataLoader
 
@@ -17,8 +17,14 @@ logger = logging.getLogger(__name__)
 logger_metrics = logging.getLogger("metrics")
 
 
+class NullMiner(miners.BaseMiner):
+    def forward(self, embeddings, labels, ref_emb=None, ref_labels=None):
+        return None
+
+
 class EncoderTrainer(Trainer):
     loss: nn.Module
+    miner: nn.Module
     model: MLP
     optim: torch.optim.Optimizer
     train_loader: DataLoader
@@ -42,12 +48,14 @@ class EncoderTrainer(Trainer):
             "lifted_structure",
             "angular",
         ] = "contrastive",
+        miner_name: Literal["none", "similarity", "triplet"] = "none",
         use_m_per_class_sampler: bool = True,
     ):
         super().__init__(seed=seed, logging_variables=logging_variables)
         logger_metrics.info(",".join(self.metric_logger.keys()))
 
         self.loss_name = loss_name
+        self.miner_name = miner_name
         self.use_sampler = use_m_per_class_sampler
         self.evaluate_with_train = evaluate_with_train
 
@@ -76,6 +84,7 @@ class EncoderTrainer(Trainer):
 
     def init_trainer(self, **optim_params):
         self.init_loss()
+        self.init_miner()
         self.model = self.model.to(self.device)
         self.init_optim(**optim_params)
 
@@ -84,12 +93,27 @@ class EncoderTrainer(Trainer):
         return self.model
 
     @staticmethod
-    def __select_loss(loss_name: str):
+    def __select_miner(miner_name: str) -> miners.BaseMiner:
+        available_miners = {
+            "similarity": miners.TripletMarginMiner(
+                margin=0.2, type_of_triplets="semihard"
+            ),
+            "triplet": miners.MultiSimilarityMiner(epsilon=0.1),
+            "none": NullMiner(),
+        }
+        try:
+            return available_miners[miner_name]
+        except KeyError as e:
+            raise ValueError(f"Passed {miner_name} is not a supported miner") from e
+
+    @staticmethod
+    def __select_loss(loss_name: str) -> losses.BaseMetricLossFunction:
         available_losses = {
             "contrastive": losses.ContrastiveLoss,
             "triplet": losses.TripletMarginLoss,
             "lifted_structure": losses.LiftedStructureLoss,
             "angular": losses.AngularLoss,
+            "ntxent": losses.NTXentLoss,
         }
         try:
             return available_losses[loss_name]
@@ -99,6 +123,10 @@ class EncoderTrainer(Trainer):
     def init_loss(self):
         self.loss = self.__select_loss(self.loss_name)()
         return self.loss
+
+    def init_miner(self):
+        self.miner = self.__select_miner(self.miner_name)
+        return self.miner
 
     def init_optim(self, lr):
         self.optim = optim.Adam(self.model.parameters(), lr=lr, weight_decay=1e-4)
@@ -148,7 +176,9 @@ class EncoderTrainer(Trainer):
                 continue
 
             embedding = self.model(x)
-            loss = self.loss(embedding, y)
+
+            mined_indices = self.miner(embedding, y)
+            loss = self.loss(embedding, y, mined_indices)
 
             self.optim.zero_grad()
             loss.backward()
