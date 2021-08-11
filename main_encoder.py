@@ -416,20 +416,10 @@ def main(
 
     # * labelers
     # give a different label for each formula
-    label_logic = MulticlassRestrictionLabeler(
-        [
-            (1, None),
-            (2, None),
-            (3, None),
-            (4, None),
-            (5, None),
-            (None, 1),
-            (None, 2),
-            (None, 3),
-            (None, 4),
-            (None, 5),
-        ],
-        custom_name="1-5_open_up_down",
+    label_logic = MulticlassQuantifierLimitLabeler(
+        any_limit="upper",
+        limits=[1, 2, 3, 4, 5],
+        custom_name="1-5",
     )
     # label_logic = SequentialCategoricalLabeler()
     labeler = LabelerApply(labeler=label_logic)
@@ -459,10 +449,9 @@ def main(
 
     trainer_loss_name: Literal[
         "contrastive", "triplet", "lifted_structure", "angular"
-    ] = "contrastive"
+    ] = "lifted_structure"
 
-    iterations = 0
-    # iterations = 30
+    iterations = 30
     # 2048 constrastive
     # 512 triplet
     # 128 lifted
@@ -481,7 +470,7 @@ def main(
         "v4",
         "crossfold_raw",
         model_hash,
-        "encoder_delete",
+        "encoder_upper",
         trainer_loss_name,
     )
     plot_file = None
