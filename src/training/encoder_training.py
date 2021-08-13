@@ -1,5 +1,5 @@
 import logging
-from typing import List, Literal, Tuple, Union
+from typing import List, Literal, Optional, Tuple, Union
 
 import numpy as np
 import torch
@@ -49,6 +49,7 @@ class EncoderTrainer(Trainer):
             "contrastive", "triplet", "lifted_structure", "angular", "ntxent"
         ] = "contrastive",
         miner_name: Literal["none", "similarity", "triplet"] = "none",
+        miner_pairs: Literal["semihard", "all", None] = "all",
         use_cross_batch: bool = True,
         use_m_per_class_sampler: bool = True,
     ):
@@ -57,6 +58,7 @@ class EncoderTrainer(Trainer):
 
         self.loss_name = loss_name
         self.miner_name = miner_name
+        self.miner_pairs = miner_pairs
         self.use_cross_batch = use_cross_batch
         self.use_sampler = use_m_per_class_sampler
         self.evaluate_with_train = evaluate_with_train
@@ -97,10 +99,10 @@ class EncoderTrainer(Trainer):
         return self.model
 
     @staticmethod
-    def __select_miner(miner_name: str) -> miners.BaseMiner:
+    def __select_miner(miner_name: str, miner_pairs: Optional[str]) -> miners.BaseMiner:
         available_miners = {
             "similarity": miners.TripletMarginMiner(
-                margin=0.2, type_of_triplets="semihard"
+                margin=0.2, type_of_triplets=miner_pairs
             ),
             "triplet": miners.MultiSimilarityMiner(epsilon=0.1),
             "none": NullMiner(),
@@ -145,7 +147,7 @@ class EncoderTrainer(Trainer):
         return self.loss
 
     def init_miner(self):
-        self.miner = self.__select_miner(self.miner_name)
+        self.miner = self.__select_miner(self.miner_name, self.miner_pairs)
         return self.miner
 
     def init_optim(self, lr):
