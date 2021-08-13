@@ -101,10 +101,10 @@ class EncoderTrainer(Trainer):
     @staticmethod
     def __select_miner(miner_name: str, miner_pairs: Optional[str]) -> miners.BaseMiner:
         available_miners = {
-            "similarity": miners.TripletMarginMiner(
+            "triplet": miners.TripletMarginMiner(
                 margin=0.2, type_of_triplets=miner_pairs
             ),
-            "triplet": miners.MultiSimilarityMiner(epsilon=0.1),
+            "similarity": miners.MultiSimilarityMiner(epsilon=0.1),
             "none": NullMiner(),
         }
         try:
