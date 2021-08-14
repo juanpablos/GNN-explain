@@ -15,6 +15,9 @@ class EncoderModelHelper:
     def __init__(
         self, encoder_model_configs: EncoderModelConfigs, current_cv_iteration: int
     ):
+        if current_cv_iteration is None:
+            raise NotImplementedError("Encoder models are only supported for CV")
+
         self.encoders_configs = encoder_model_configs["encoders"]
         self.finetuner_configs = encoder_model_configs["finetuning"]
         self.simple_encoders: List[MinModelConfig] = []

@@ -22,12 +22,11 @@ from src.data.loader import categorical_loader
 from src.data.utils import get_input_dim, get_label_distribution, train_test_dataset
 from src.eval_utils import evaluate_model
 from src.graphs.foc import Element
-from src.models.model_utils import init_MLP_model
+from src.models.encoder_model_helper import EncoderModelHelper
 from src.run_logic import run, seed_everything
 from src.training.mlp_training import MLPTrainer
 from src.typing import (
     CrossFoldConfiguration,
-    EncoderConfigs,
     EncoderModelConfigs,
     MinModelConfig,
     NetworkDataConfig,
@@ -53,8 +52,7 @@ def _run_experiment(
     hash_label: Dict[str, S],
     data_reconstruction: NetworkDatasetCollectionWrapper,
     model_config: MinModelConfig,
-    encoder_model: Optional[torch.nn.Module],
-    encoder_configs: Optional[EncoderConfigs] = None,
+    encoder_model_helper: Optional[EncoderModelHelper] = None,
     iterations: int = 100,
     gpu_num: int = 0,
     data_workers: int = 2,
@@ -128,12 +126,12 @@ def _run_experiment(
         num_workers=data_workers,
     )
 
-    if encoder_model is not None:
-        assert encoder_configs is not None
-        assert model_config["input_dim"] == input_shape[0]
-        encoder_configs["finetuning_model_configs"]["output_dim"] = n_classes
+    if encoder_model_helper is not None:
         trainer.init_model(
-            use_encoder=True, encoder_model=encoder_model, **encoder_configs
+            use_encoder=True,
+            model_helper=encoder_model_helper,
+            model_input_size=input_shape,
+            model_output_size=n_classes,
         )
     else:
         model_config["input_dim"] = input_shape[0]
@@ -254,9 +252,8 @@ def run_experiment(
     info_filename: str = "info",
     binary_labels: bool = True,
     multilabel: bool = True,
-    use_encoder: bool = False,
-    encoder_model_path_name: Optional[str] = None,
-    encoder_configs: Optional[EncoderConfigs] = None,
+    use_encoders: bool = False,
+    encoders_configs: Optional[EncoderModelConfigs] = None,
     _legacy_load_without_batch: bool = False,
 ):
 
@@ -282,7 +279,6 @@ def run_experiment(
     )
 
     if isinstance(datasets, NetworkDatasetCrossFoldSplitter):
-
         if crossfold_fold_file is not None:
             logger.info(f"Loading CV folds from file")
             with open(crossfold_fold_file) as f:
@@ -305,12 +301,12 @@ def run_experiment(
             cf_plot_filename = f"{plot_filename}_cf{i}"
             cf_info_filename = f"{info_filename}_cf{i}"
 
-            encoder_model = None
-            if use_encoder:
-                assert encoder_model_path_name is not None
-                encoder_model = init_MLP_model(configs=model_config)
-                encoder_weights = torch.load(encoder_model_path_name.format(i))["model"]
-                encoder_model.load_state_dict(encoder_weights)
+            encoder_helper = None
+            if use_encoders:
+                assert encoders_configs is not None
+                encoder_helper = EncoderModelHelper(
+                    encoder_model_configs=encoders_configs, current_cv_iteration=i
+                )
 
             file_ext = _run_experiment(
                 train_data=train_data,
@@ -320,8 +316,7 @@ def run_experiment(
                 hash_label=hash_label,
                 data_reconstruction=data_reconstruction,
                 model_config=model_config,
-                encoder_model=encoder_model,
-                encoder_configs=encoder_configs,
+                encoder_model_helper=encoder_helper,
                 iterations=iterations,
                 gpu_num=gpu_num,
                 data_workers=data_workers,
@@ -360,12 +355,12 @@ def run_experiment(
 
         logger.info(f"Total Dataset size: {len(train_data) + len(test_data)}")
 
-        encoder_model = None
-        if use_encoder:
-            assert encoder_model_path_name is not None
-            encoder_model = init_MLP_model(configs=model_config)
-            encoder_weights = torch.load(encoder_model_path_name)["model"]
-            encoder_model.load_state_dict(encoder_weights)
+        encoder_helper = None
+        if use_encoders:
+            assert encoders_configs is not None
+            encoder_helper = EncoderModelHelper(
+                encoder_model_configs=encoders_configs, current_cv_iteration=None
+            )
 
         file_ext = _run_experiment(
             train_data=train_data,
@@ -375,8 +370,7 @@ def run_experiment(
             hash_label=hash_label,
             data_reconstruction=data_reconstruction,
             model_config=model_config,
-            encoder_model=encoder_model,
-            encoder_configs=encoder_configs,
+            encoder_model_helper=encoder_helper,
             iterations=iterations,
             gpu_num=gpu_num,
             data_workers=data_workers,
@@ -642,7 +636,7 @@ def main(
         binary_labels=isinstance(label_logic, BinaryCategoricalLabeler),
         multilabel=isinstance(label_logic, MultiLabelCategoricalLabeler),
         use_encoders=use_encoders,
-        encoder_configs=encoder_configs,
+        encoders_configs=encoders_settings,
         _legacy_load_without_batch=True,  # ! remove eventually
     )
     end = timer()
