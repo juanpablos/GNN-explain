@@ -28,6 +28,7 @@ from src.training.mlp_training import MLPTrainer
 from src.typing import (
     CrossFoldConfiguration,
     EncoderConfigs,
+    EncoderModelConfigs,
     MinModelConfig,
     NetworkDataConfig,
     S,
@@ -417,47 +418,75 @@ def main(
 
     hidden_layers = [256, 256, 256]
 
-    # pretrained encoder
     model_config: MinModelConfig = {
-        "num_layers": -1,
-        "input_dim": 346,
-        "hidden_dim": -1,
+        "num_layers": 3,
+        "input_dim": None,
+        "hidden_dim": 128,
         "hidden_layers": hidden_layers,
-        "output_dim": 256,
+        "output_dim": 128,
         "use_batch_norm": True,
     }
-    # on demand encoder
-    # model_config: MinModelConfig = {
-    #     "num_layers": 3,
-    #     "input_dim": None,
-    #     "hidden_dim": 128,
-    #     "hidden_layers": hidden_layers,
-    #     "output_dim": None,
-    #     "use_batch_norm": True,
-    # }
 
-    use_encoder = True
-    freeze_encoder = True
-    encoder_model_name = (
-        "NoFilter()-Sequential()-CV-1L256+2L256+3L256-512b-0.001lr_cf{}.pt"
-    )
-    short_encoder_name = "1L256+2L256+3L256"
-    encoder_model_path_name = os.path.join(
+    use_encoders = True
+    freeze_encoders = True
+
+    finetuning_layers = 1
+    embedding_input = 128 + 128 + 128
+
+    encoder_base_path = os.path.join(
         "results",
         "v4",
         "crossfold_raw",
         model_hash,
-        "encoder_test",
+        "{encoder_class}",
+        "{miner_setting}",
+        "{loss_setting}",
         "models",
-        encoder_model_name,
+        "{encoder_name}",
     )
-    finetuning_layers = 1
-    encoder_configs: EncoderConfigs = {
-        "freeze_encoder": freeze_encoder,
-        "finetuning_model_configs": {
-            "num_layers": 1,
-            "input_dim": 256,
-            "hidden_dim": 128,
+    encoders_settings: EncoderModelConfigs = {
+        "encoders": [
+            {
+                "encoder_path": encoder_base_path.format(
+                    encoder_class="encoder_lower",
+                    miner_setting="triplet",
+                    loss_setting="triplet",
+                    encoder_name="NoFilter()-MulticlassQuantifierLimitLabeler(lower_1-5)-CV-1L256+2L256+3L256-O128-256b-0.001lr_cf{}.pt",
+                ),
+                "short_name": "lower256x128",
+                "freeze_encoder": freeze_encoders,
+                "model_config": {
+                    "num_layers": 3,
+                    "input_dim": 346,
+                    "hidden_dim": -1,
+                    "output_dim": 128,
+                    "hidden_layers": [256, 256, 256],
+                    "use_batch_norm": True,
+                },
+            },
+            {
+                "encoder_path": encoder_base_path.format(
+                    encoder_class="encoder_upper",
+                    miner_setting="triplet",
+                    loss_setting="triplet",
+                    encoder_name="NoFilter()-MulticlassQuantifierLimitLabeler(upper_1-5)-CV-1L256+2L256+3L256-O128-256b-0.001lr_cf{}.pt",
+                ),
+                "short_name": "upper256x128",
+                "freeze_encoder": freeze_encoders,
+                "model_config": {
+                    "num_layers": 3,
+                    "input_dim": 346,
+                    "hidden_dim": -1,
+                    "output_dim": 128,
+                    "hidden_layers": [256, 256, 256],
+                    "use_batch_norm": True,
+                },
+            },
+        ],
+        "finetuning": {
+            "num_layers": finetuning_layers,
+            "input_dim": embedding_input,
+            "hidden_dim": embedding_input,
             "output_dim": None,
             "hidden_layers": None,
             "use_batch_norm": True,
@@ -508,11 +537,14 @@ def main(
             (2, None),
             (3, None),
             (4, None),
+            (5, None),
             (None, 1),
             (None, 2),
             (None, 3),
             (None, 4),
-        ]
+            (None, 5),
+        ],
+        custom_name="lower-upper-open",
     )
     # label_logic = MulticlassOpenQuantifierLabeler()
     # --- multilabel
@@ -552,6 +584,8 @@ def main(
         "stay": 5,
     }
 
+    only_run_for_first_cv = True
+
     iterations = 50
     test_batch = 2048
 
@@ -559,8 +593,11 @@ def main(
         test_selector_name = "CV" if crossfold_config else str(test_selector)
         name = f"{selector}-{labeler}-{test_selector_name}"
 
-    if use_encoder:
-        msg = f"{name}-F({freeze_encoder})-ENC[{short_encoder_name}]-FINE[{finetuning_layers}]-{train_batch}b-{lr}lr"
+    if use_encoders:
+        encoder_names = ",".join(
+            [settings["short_name"] for settings in encoders_settings["encoders"]]
+        )
+        msg = f"{name}-F({freeze_encoders})-ENC[{encoder_names}]-FINE[{finetuning_layers}]-{train_batch}b-{lr}lr"
     else:
         hid = "+".join([f"{l}L{val}" for l, val in enumerate(hidden_layers, start=1)])
         msg = f"{name}-{hid}-{train_batch}b-{lr}lr"
@@ -581,6 +618,7 @@ def main(
         data_config=data_config,
         crossfold_config=crossfold_config,
         crossfold_fold_file=crossfold_fold_file,
+        only_run_for_first_cv=only_run_for_first_cv,
         iterations=iterations,
         gpu_num=0,
         seed=seed,
@@ -599,8 +637,7 @@ def main(
         info_filename=msg,
         binary_labels=isinstance(label_logic, BinaryCategoricalLabeler),
         multilabel=isinstance(label_logic, MultiLabelCategoricalLabeler),
-        use_encoder=use_encoder,
-        encoder_model_path_name=encoder_model_path_name,
+        use_encoders=use_encoders,
         encoder_configs=encoder_configs,
         _legacy_load_without_batch=True,  # ! remove eventually
     )

@@ -51,8 +51,15 @@ class MinModelConfig(TypedDict):
 
 
 class EncoderConfigs(TypedDict):
+    encoder_path: str
+    short_name: str
     freeze_encoder: bool
-    finetuning_model_configs: Optional[MinModelConfig]
+    model_config: MinModelConfig
+
+
+class EncoderModelConfigs(TypedDict):
+    encoders: List[EncoderConfigs]
+    finetuning: MinModelConfig
 
 
 class GNNEncoderModelConfig(TypedDict):
