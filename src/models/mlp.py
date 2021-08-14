@@ -94,39 +94,32 @@ class MLP(nn.Module):
         if not self.is_linear:
             reset(self.batch_norms)
 
+    @property
+    def out_features(self) -> int:
+        return self.linears[-1].out_features
+
 
 class EncoderNetwork(nn.Module):
     def __init__(
         self,
-        encoder: nn.Module,
-        finetuning_layer: Optional[nn.Module] = None,
-        freeze_encoder: bool = True,
+        pretrained_encoders: List[MLP],
+        base_encoders: List[MLP],
+        finetuner_module: MLP,
         **kwargs
     ):
         super(EncoderNetwork, self).__init__()
 
-        self.encoder = encoder
-        self.finetuning = (
-            finetuning_layer if finetuning_layer is not None else nn.Identity()
-        )
-
-        self.freeze_encoder = freeze_encoder
-        if freeze_encoder:
-            self.encoder.requires_grad_(False)
-            self.encoder.eval()
+        self.pretrained_encoders = pretrained_encoders
+        self.base_encoders = base_encoders
+        self.finetuner_module = finetuner_module
 
     def forward(self, x):
-        out = self.encoder(x)
-        out = self.finetuning(out)
+        out_1 = [model(x) for model in self.pretrained_encoders]
+        out_2 = [model(x) for model in self.base_encoders]
+
+        embedding_list = [*out_1, *out_2]
+        embedding = torch.cat(embedding_list)
+
+        out = self.finetuner_module(embedding)
 
         return out
-
-    def reset_parameters(self):
-        reset(self.finetuning)
-
-    def train(self, mode: bool = True):
-        super().train(mode=mode)
-        if self.freeze_encoder:
-            # ignore changes in state for the encoder
-            self.encoder.eval()
-        return self
