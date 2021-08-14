@@ -235,6 +235,7 @@ def run_experiment(
     data_config: NetworkDataConfig,
     crossfold_config: CrossFoldConfiguration = None,
     crossfold_fold_file: Optional[str] = None,
+    only_run_for_first_cv: bool = False,
     iterations: int = 100,
     gpu_num: int = 0,
     seed: int = 10,
@@ -295,6 +296,9 @@ def run_experiment(
         for i, (train_data, test_data, data_reconstruction) in enumerate(
             datasets, start=1
         ):
+            if only_run_for_first_cv and i > 1:
+                break
+
             logger.info(f"Running experiment for crossfold {i}/{n_splits}")
 
             cf_model_name = f"{model_name}_cf{i}"
