@@ -45,12 +45,11 @@ def _run_experiment(
     gpu_num: int = 0,
     data_workers: int = 2,
     trainer_loss_name: Literal[
-        "contrastive",
-        "triplet",
-        "lifted_structure",
-        "angular",
+        "contrastive", "triplet", "lifted_structure", "angular", "ntxent"
     ] = "contrastive",
     trainer_miner_name: Literal["none", "similarity", "triplet"] = "none",
+    miner_pairs: Literal["semihard", "all", None] = "all",
+    use_cross_batch: bool = True,
     use_m_per_class_sampler: bool = True,
     batch_size: int = 64,
     test_batch_size: int = 512,
@@ -102,6 +101,8 @@ def _run_experiment(
         logging_variables="all",
         loss_name=trainer_loss_name,
         miner_name=trainer_miner_name,
+        miner_pairs=miner_pairs,
+        use_cross_batch=use_cross_batch,
         use_m_per_class_sampler=use_m_per_class_sampler,
     )
 
@@ -118,7 +119,7 @@ def _run_experiment(
         mode="test",
         batch_size=test_batch_size,
         pin_memory=False,
-        shuffle=True,
+        shuffle=False,
         num_workers=data_workers,
     )
 
@@ -213,12 +214,12 @@ def run_experiment(
     stratify: bool = True,
     data_workers: int = 2,
     trainer_loss_name: Literal[
-        "contrastive",
-        "triplet",
-        "lifted_structure",
-        "angular",
+        "contrastive", "triplet", "lifted_structure", "angular", "ntxent"
     ] = "contrastive",
     trainer_miner_name: Literal["none", "similarity", "triplet"] = "none",
+    miner_pairs: Literal["semihard", "all", None] = "all",
+    use_cross_batch: bool = True,
+    only_run_for_first_cv: bool = False,
     use_m_per_class_sampler: bool = True,
     batch_size: int = 64,
     test_batch_size: int = 512,
@@ -268,6 +269,9 @@ def run_experiment(
         for i, (train_data, test_data, data_reconstruction) in enumerate(
             datasets, start=1
         ):
+            if only_run_for_first_cv and i > 1:
+                break
+
             logger.info(f"Running experiment for crossfold {i}/{n_splits}")
 
             cf_model_name = f"{model_name}_cf{i}"
@@ -288,6 +292,8 @@ def run_experiment(
                 data_workers=data_workers,
                 trainer_loss_name=trainer_loss_name,
                 trainer_miner_name=trainer_miner_name,
+                use_cross_batch=use_cross_batch,
+                miner_pairs=miner_pairs,
                 use_m_per_class_sampler=use_m_per_class_sampler,
                 batch_size=batch_size,
                 test_batch_size=test_batch_size,
@@ -337,6 +343,8 @@ def run_experiment(
             data_workers=data_workers,
             trainer_loss_name=trainer_loss_name,
             trainer_miner_name=trainer_miner_name,
+            use_cross_batch=use_cross_batch,
+            miner_pairs=miner_pairs,
             use_m_per_class_sampler=use_m_per_class_sampler,
             batch_size=batch_size,
             test_batch_size=test_batch_size,
@@ -422,7 +430,7 @@ def main(
     # * labelers
     # give a different label for each formula
     label_logic = MulticlassQuantifierLimitLabeler(
-        any_limit="upper",
+        any_limit="lower",
         limits=[1, 2, 3, 4, 5],
         custom_name="1-5",
     )
@@ -452,16 +460,16 @@ def main(
         "results", "v4", "crossfold_raw", model_hash, "base.folds"
     )
 
+    use_cross_batch = False
     trainer_loss_name: Literal[
-        "contrastive", "triplet", "lifted_structure", "angular"
-    ] = "lifted_structure"
-    trainer_miner_name: Literal["none", "similarity", "triplet"] = "triplet"
+        "contrastive", "triplet", "lifted_structure", "angular", "ntxent"
+    ] = "triplet"
+    miner_pairs: Literal["semihard", "all", None] = None
+    trainer_miner_name: Literal["none", "triplet", "similarity"] = "none"
+
+    only_run_for_first_cv = True
 
     iterations = 30
-    # 2048 constrastive
-    # 512 triplet
-    # 128 lifted
-    # 512 angular
     test_batch = 128
 
     if name is None:
@@ -476,9 +484,9 @@ def main(
         "v4",
         "crossfold_raw",
         model_hash,
-        "encoder_upper",
-        trainer_miner_name,
-        trainer_loss_name,
+        "encoder_lower",
+        f"{trainer_miner_name}_{miner_pairs}" if miner_pairs else trainer_miner_name,
+        f"{trainer_loss_name}_cross" if use_cross_batch else trainer_loss_name,
     )
     plot_file = None
     if make_plots:
@@ -502,6 +510,9 @@ def main(
         data_workers=0,
         trainer_loss_name=trainer_loss_name,
         trainer_miner_name=trainer_miner_name,
+        use_cross_batch=use_cross_batch,
+        miner_pairs=miner_pairs,
+        only_run_for_first_cv=only_run_for_first_cv,
         use_m_per_class_sampler=isinstance(label_logic, SequentialCategoricalLabeler),
         batch_size=train_batch,
         test_batch_size=test_batch,
@@ -533,7 +544,7 @@ if __name__ == "__main__":
 
     main(
         seed=0,
-        train_batch=128,
+        train_batch=256,
         lr=1e-3,
         save_model=True,
         make_plots=True,
