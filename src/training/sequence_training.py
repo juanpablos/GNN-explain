@@ -1,7 +1,7 @@
 import logging
 import os
 from itertools import chain
-from typing import Dict, List, Literal, Union
+from typing import Dict, List, Literal, Optional, Union
 
 import numpy as np
 import torch
@@ -13,6 +13,7 @@ from torch.utils.data import DataLoader
 from src.data.auxiliary import FormulaAppliedDatasetWrapper
 from src.data.vocabulary import Vocabulary
 from src.models import MLP, LSTMCellDecoder, LSTMDecoder
+from src.models.encoder_model_helper import EncoderModelHelper
 from src.training.metrics import SequenceMetrics
 
 from . import Trainer
@@ -101,7 +102,13 @@ class RecurrentTrainer(Trainer):
         _, y_pred = output.max(dim=dim)
         return y_pred
 
-    def init_encoder(
+    def init_encoder(self, use_encoder: bool = False, **kwargs):
+        if use_encoder:
+            return self.init_complex_encoder(**kwargs)
+        else:
+            return self.init_MLP_encoder(**kwargs)
+
+    def init_MLP_encoder(
         self,
         *,
         num_layers: int,
@@ -127,6 +134,19 @@ class RecurrentTrainer(Trainer):
             self.encoder.load_state_dict(model_weights)
 
         return self.encoder
+
+    def init_complex_encoder(
+        self,
+        *,
+        model_helper: EncoderModelHelper,
+        model_input_size: int,
+        model_output_size: Optional[int],
+        **kwargs,
+    ):
+        self.model = model_helper.create_encoder_model(
+            model_input_size=model_input_size, model_output_size=model_output_size
+        )
+        return self.model
 
     def init_decoder(
         self,

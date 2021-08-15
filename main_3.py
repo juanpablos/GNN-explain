@@ -21,6 +21,7 @@ from src.data.loader import text_sequence_loader
 from src.data.utils import get_input_dim, train_test_dataset
 from src.data.vocabulary import Vocabulary
 from src.eval_utils import evaluate_text_model
+from src.models.encoder_model_helper import EncoderModelHelper
 from src.run_logic import run, seed_everything
 from src.training.check_formulas import FormulaReconstruction
 from src.training.sequence_training import RecurrentTrainer
@@ -173,6 +174,7 @@ def _run_experiment(
     decoder_config: LSTMConfig,
     data_reconstruction: NetworkDatasetCollectionWrapper,
     formula_target: FormulaAppliedDatasetWrapper,
+    encoder_model_helper: Optional[EncoderModelHelper] = None,
     iterations: int = 100,
     seed: int = 10,
     gpu_num: int = 0,
@@ -198,9 +200,6 @@ def _run_experiment(
 
     input_shape = get_input_dim(train_data)
     assert len(input_shape) == 1, "The input dimension is different from 1"
-
-    encoder_config["input_dim"] = input_shape[0]
-    decoder_config["vocab_size"] = vocab_size
 
     # ready to log metrics
     # returns a number to put after the file name in case it already exists
@@ -256,7 +255,22 @@ def _run_experiment(
         num_workers=data_workers,
     )
 
-    trainer.init_encoder(**encoder_config)
+    if encoder_model_helper is not None:
+        input_size = input_shape[0]
+        encoder_model_helper.add_simple_encoder(
+            encoder_config={**encoder_config, "input_dim": input_size}
+        )
+        trainer.init_encoder(
+            use_encoder=True,
+            model_helper=encoder_model_helper,
+            model_input_size=input_size,
+        )
+        logger.info("Using encoder model")
+    else:
+        encoder_config["input_dim"] = input_shape[0]
+        trainer.init_encoder(**encoder_config)
+
+    decoder_config["vocab_size"] = vocab_size
     trainer.init_decoder(**decoder_config)
 
     logger.debug("Running")
@@ -338,6 +352,8 @@ def run_experiment(
     plot_title: str = None,
     train_file: str = None,
     info_filename: str = "info",
+    use_encoders: bool = False,
+    encoders_configs: Optional[EncoderModelConfigs] = None,
     _legacy_load_without_batch: bool = False,
 ):
 
@@ -388,6 +404,13 @@ def run_experiment(
             cf_info_filename = f"{info_filename}_cf{i}"
             cf_train_file = f"{train_file}_cf{i}"
 
+            encoder_helper = None
+            if use_encoders:
+                assert encoders_configs is not None
+                encoder_helper = EncoderModelHelper(
+                    encoder_model_configs=encoders_configs, current_cv_iteration=i
+                )
+
             file_ext = _run_experiment(
                 train_data=train_data,
                 test_data=test_data,
@@ -396,6 +419,7 @@ def run_experiment(
                 decoder_config=decoder_config,
                 data_reconstruction=data_reconstruction,
                 formula_target=formula_target,
+                encoder_model_helper=encoder_helper,
                 iterations=iterations,
                 seed=seed,
                 gpu_num=gpu_num,
@@ -433,6 +457,13 @@ def run_experiment(
 
         logger.info(f"Total Dataset size: {len(train_data) + len(test_data)}")
 
+        encoder_helper = None
+        if use_encoders:
+            assert encoders_configs is not None
+            encoder_helper = EncoderModelHelper(
+                encoder_model_configs=encoders_configs, current_cv_iteration=None
+            )
+
         file_ext = _run_experiment(
             train_data=train_data,
             test_data=test_data,
@@ -441,6 +472,7 @@ def run_experiment(
             decoder_config=decoder_config,
             data_reconstruction=data_reconstruction,
             formula_target=formula_target,
+            encoder_model_helper=encoder_helper,
             iterations=iterations,
             seed=seed,
             gpu_num=gpu_num,
@@ -715,6 +747,8 @@ def main(
         plot_title=msg,  # ? maybe a better message
         train_file=train_file,
         info_filename=msg,
+        use_encoders=use_encoders,
+        encoders_configs=encoders_settings,
         _legacy_load_without_batch=True,  # ! remove eventually
     )
     end = timer()
