@@ -3,7 +3,7 @@ import logging
 import os
 import random
 from timeit import default_timer as timer
-from typing import Any, Dict, List, Union
+from typing import Any, Dict, List, Optional, Union
 
 import torch
 from torch.functional import Tensor
@@ -301,6 +301,7 @@ def run_experiment(
     data_config: NetworkDataConfig,
     graph_config: Dict[str, Any],
     crossfold_config: CrossFoldConfiguration = None,
+    crossfold_fold_file: Optional[str] = None,
     iterations: int = 100,
     gpu_num: int = 0,
     seed: int = 10,
@@ -344,6 +345,12 @@ def run_experiment(
     )
 
     if isinstance(datasets, TextNetworkDatasetCrossFoldSplitter):
+        if crossfold_fold_file is not None:
+            logger.info(f"Loading CV folds from file")
+            with open(crossfold_fold_file) as f:
+                precalculated_folds = json.load(f)
+            datasets.load_precalculated_folds(fold_dict=precalculated_folds)
+
         logger.info(f"Total Dataset size: {datasets.dataset_size}")
 
         file_ext = ""
@@ -615,21 +622,12 @@ def main(
         "shuffle": True,
         "random_state": seed,
         "defer_loading": False,
-        "required_train_hashes": [
-            # all basic no quantifier formula (single colors + single with ORs)
-            "dc670b1bec",
-            "4805042859",
-            "688d12b701",
-            "652c706f1b",
-            "56dc8827b8",
-            "a8c2c67eea",
-            "c439b78825",
-            "a2d4a80c8d",
-            "9564eab880",
-            "98e4690a6c",
-        ],
+        "required_train_hashes": [],
         "use_stratified": None,
     }
+    crossfold_fold_file = os.path.join(
+        "results", "v4", "crossfold_raw", model_hash, "base.folds"
+    )
 
     early_stopping: StopFormat = {
         "operation": "early",
@@ -670,6 +668,7 @@ def main(
         decoder_config=lstm_config,
         data_config=data_config,
         crossfold_config=crossfold_config,
+        crossfold_fold_file=crossfold_fold_file,
         graph_config=graph_config,
         iterations=iterations,
         gpu_num=0,
