@@ -118,7 +118,7 @@ class EncoderNetwork(nn.Module):
         out_2 = [model(x) for model in self.base_encoders]
 
         embedding_list = [*out_1, *out_2]
-        embedding = torch.cat(embedding_list)
+        embedding = torch.cat(embedding_list, dim=1)
 
         out = self.finetuner_module(embedding)
 
