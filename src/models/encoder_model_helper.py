@@ -1,6 +1,6 @@
 import logging
 import types
-from typing import List, Tuple
+from typing import List, Optional, Tuple
 
 import torch
 
@@ -82,11 +82,15 @@ class EncoderModelHelper:
         return model, output_size
 
     def _create_finetuning_model(
-        self, model_config: MinModelConfig, output_size: int, input_size: int
+        self, model_config: MinModelConfig, output_size: Optional[int], input_size: int
     ) -> MLP:
         logger.debug("Creating finetuning model")
 
-        finetuning_config = {**model_config, "output_dim": output_size}
+        if output_size is None:
+            assert self.finetuner_configs["output_dim"] is not None
+            finetuning_config = {**model_config}
+        else:
+            finetuning_config = {**model_config, "output_dim": output_size}
         model, _ = self._create_base(
             model_config=finetuning_config, input_size=input_size
         )
@@ -94,12 +98,18 @@ class EncoderModelHelper:
         return model
 
     def create_encoder_model(
-        self, model_input_size: int, model_output_size: int
+        self, model_input_size: int, model_output_size: Optional[int]
     ) -> EncoderNetwork:
-        logger.debug(
-            "Building encoder model with input "
-            f"{model_input_size} and output {model_output_size}"
-        )
+        if model_output_size is not None:
+            logger.debug(
+                "Building encoder model with input "
+                f"{model_input_size} and output {model_output_size}"
+            )
+        else:
+            logger.debug(
+                "Building encoder model with input "
+                f"{model_input_size} and output {self.finetuner_configs['output_dim']}"
+            )
 
         simple_encoders = []
         pretrained_encoders = []
