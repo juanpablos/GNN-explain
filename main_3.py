@@ -302,6 +302,7 @@ def run_experiment(
     graph_config: Dict[str, Any],
     crossfold_config: CrossFoldConfiguration = None,
     crossfold_fold_file: Optional[str] = None,
+    only_run_for_first_cv: bool = False,
     iterations: int = 100,
     gpu_num: int = 0,
     seed: int = 10,
@@ -358,6 +359,9 @@ def run_experiment(
         for i, (train_data, test_data, data_reconstruction) in enumerate(
             datasets, start=1
         ):
+            if only_run_for_first_cv and i > 1:
+                break
+
             logger.info(f"Running experiment for crossfold {i}/{n_splits}")
 
             cf_model_name = f"{model_name}_cf{i}"
@@ -635,6 +639,8 @@ def main(
         "stay": 3,
     }
 
+    only_run_for_first_cv = True
+
     iterations = 20
     test_batch = 2048
 
@@ -669,6 +675,7 @@ def main(
         data_config=data_config,
         crossfold_config=crossfold_config,
         crossfold_fold_file=crossfold_fold_file,
+        only_run_for_first_cv=only_run_for_first_cv,
         graph_config=graph_config,
         iterations=iterations,
         gpu_num=0,
