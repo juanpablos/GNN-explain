@@ -710,7 +710,7 @@ def main(
 
     msg = f"{name}-{encoder}-{decoder}-{train_batch}b-{lr}lr"
 
-    results_path = os.path.join("results", "v4", "crossfold_raw", model_hash, "text")
+    results_path = os.path.join("results", "v4", "crossfold_raw", model_hash, "text_test")
 
     plot_file = None
     if make_plots:

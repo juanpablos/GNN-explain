@@ -1,7 +1,7 @@
 import logging
 import os
 from itertools import chain
-from typing import Dict, List, Literal, Optional, Union
+from typing import Dict, List, Literal, Union
 
 import numpy as np
 import torch
@@ -14,6 +14,7 @@ from src.data.auxiliary import FormulaAppliedDatasetWrapper
 from src.data.vocabulary import Vocabulary
 from src.models import MLP, LSTMCellDecoder, LSTMDecoder
 from src.models.encoder_model_helper import EncoderModelHelper
+from src.models.mlp import EncoderNetwork
 from src.training.metrics import SequenceMetrics
 
 from . import Trainer
@@ -40,7 +41,7 @@ class Collator:
 
 class RecurrentTrainer(Trainer):
     loss: nn.Module
-    encoder: MLP
+    encoder: Union[MLP, EncoderNetwork]
     decoder: Union[LSTMDecoder, LSTMCellDecoder]
     optim: torch.optim.Optimizer
     train_loader: DataLoader
@@ -140,13 +141,12 @@ class RecurrentTrainer(Trainer):
         *,
         model_helper: EncoderModelHelper,
         model_input_size: int,
-        model_output_size: Optional[int],
         **kwargs,
     ):
-        self.model = model_helper.create_encoder_model(
-            model_input_size=model_input_size, model_output_size=model_output_size
+        self.encoder = model_helper.create_encoder_model(
+            model_input_size=model_input_size, model_output_size=None
         )
-        return self.model
+        return self.encoder
 
     def init_decoder(
         self,
