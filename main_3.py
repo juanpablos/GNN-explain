@@ -26,6 +26,7 @@ from src.training.check_formulas import FormulaReconstruction
 from src.training.sequence_training import RecurrentTrainer
 from src.typing import (
     CrossFoldConfiguration,
+    EncoderModelConfigs,
     LSTMConfig,
     MinModelConfig,
     NetworkDataConfig,
@@ -442,8 +443,6 @@ def main(
     seed: int = None,
     train_batch: int = 32,
     lr: float = 0.001,
-    mlp_hidden_layers: List[int] = None,
-    encoder_output_size: int = 1024,
     save_model: bool = True,
     write_train_data: bool = True,
     make_plots: bool = True,
@@ -453,19 +452,90 @@ def main(
         seed = random.randint(1, 1 << 30)
     seed_everything(seed)
 
-    mlp_hidden_layers = [128] if mlp_hidden_layers is None else mlp_hidden_layers
+    model_hash = "40e65407aa"
+
+    mlp_hidden_layers = [256, 256, 256]
+    base_encoder_size = 128
+    embedding_output_size = 256
 
     mlp_config: MinModelConfig = {
         "num_layers": 3,
         "input_dim": None,
         "hidden_dim": 128,
         "hidden_layers": mlp_hidden_layers,
-        "output_dim": encoder_output_size,
+        "output_dim": base_encoder_size,
         "use_batch_norm": True,
     }
+
+    use_encoders = True
+    freeze_encoders = True
+
+    finetuning_layers = 2
+    embedding_input = base_encoder_size + 64 + 64
+
+    encoder_base_path = os.path.join(
+        "results",
+        "v4",
+        "crossfold_raw",
+        model_hash,
+        "{encoder_class}",
+        "{miner_setting}",
+        "{loss_setting}",
+        "models",
+        "{encoder_name}",
+    )
+    encoders_settings: EncoderModelConfigs = {
+        "encoders": [
+            {
+                "encoder_path": encoder_base_path.format(
+                    encoder_class="encoder_lower",
+                    miner_setting="triplet_all",
+                    loss_setting="triplet",
+                    encoder_name="NoFilter()-MulticlassQuantifierLimitLabeler(lower_1-5)-CV-1L256+2L256+3L256-O64-256b-0.001lr_cf{}.pt",
+                ),
+                "short_name": "lower256x64",
+                "freeze_encoder": freeze_encoders,
+                "model_config": {
+                    "num_layers": 3,
+                    "input_dim": 346,
+                    "hidden_dim": -1,
+                    "output_dim": 64,
+                    "hidden_layers": [256, 256, 256],
+                    "use_batch_norm": True,
+                },
+            },
+            {
+                "encoder_path": encoder_base_path.format(
+                    encoder_class="encoder_upper",
+                    miner_setting="triplet_all",
+                    loss_setting="triplet",
+                    encoder_name="NoFilter()-MulticlassQuantifierLimitLabeler(upper_1-5)-CV-1L256+2L256+3L256-O64-256b-0.001lr_cf{}.pt",
+                ),
+                "short_name": "upper256x64",
+                "freeze_encoder": freeze_encoders,
+                "model_config": {
+                    "num_layers": 3,
+                    "input_dim": 346,
+                    "hidden_dim": -1,
+                    "output_dim": 64,
+                    "hidden_layers": [256, 256, 256],
+                    "use_batch_norm": True,
+                },
+            },
+        ],
+        "finetuning": {
+            "num_layers": finetuning_layers,
+            "input_dim": embedding_input,
+            "hidden_dim": embedding_input,
+            "output_dim": embedding_output_size,
+            "hidden_layers": None,
+            "use_batch_norm": True,
+        },
+    }
+
     lstm_config: LSTMConfig = {
         "name": "lstmcell",
-        "encoder_dim": encoder_output_size,
+        "encoder_dim": embedding_output_size,
         "embedding_dim": 4,
         "hidden_dim": 256,
         "vocab_size": None,
@@ -489,8 +559,6 @@ def main(
             {"min_nodes": 10, "max_nodes": 100, "n_graphs": 5, "m": 5},
         ],
     }
-
-    model_hash = "40e65407aa"
 
     # * filters
     # selector = FilterApply(condition="or")
@@ -530,8 +598,8 @@ def main(
     # * labelers
     label_logic = TextSequenceLabeler()
     labeler = SequenceLabelerApply(labeler=label_logic)
-
     # * /labelers
+
     data_config: NetworkDataConfig = {
         "root": "data/gnns_v4",
         "model_hash": model_hash,
@@ -579,7 +647,7 @@ def main(
     encoder, decoder = get_model_name(
         hidden_layers=mlp_hidden_layers,
         lstm_config=lstm_config,
-        encoder_output=encoder_output_size,
+        encoder_output=embedding_output_size,
     )
 
     msg = f"{name}-{encoder}-{decoder}-{train_batch}b-{lr}lr"
@@ -690,14 +758,12 @@ if __name__ == "__main__":
     logger.addHandler(ch)
 
     # __layers = [256, 256, 256]
-    # main(
-    #     seed=0,
-    #     train_batch=32,
-    #     lr=5e-4,
-    #     mlp_hidden_layers=__layers,
-    #     encoder_output_size=256,
-    #     save_model=True,
-    #     make_plots=True,
-    # )
+    main(
+        seed=0,
+        train_batch=32,
+        lr=5e-4,
+        save_model=True,
+        make_plots=True,
+    )
 
-    main_inference()
+    # main_inference()
