@@ -109,8 +109,8 @@ class EncoderNetwork(nn.Module):
     ):
         super(EncoderNetwork, self).__init__()
 
-        self.pretrained_encoders = pretrained_encoders
-        self.base_encoders = base_encoders
+        self.pretrained_encoders = nn.ModuleList(pretrained_encoders)
+        self.base_encoders = nn.ModuleList(base_encoders)
         self.finetuner_module = finetuner_module
 
     def forward(self, x):
