@@ -3,7 +3,7 @@ import logging
 import os
 import random
 from timeit import default_timer as timer
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, Optional, Union
 
 import torch
 from torch.functional import Tensor
@@ -84,7 +84,9 @@ def inference(
     assert len(inference_data.shape) == 2
 
     logger.info("Loading Pre-trained meta model")
-    model_weights = torch.load(f"{results_path}/models/{model_name_to_load}.pt")
+    model_weights = torch.load(
+        os.path.join(results_path, "models", f"{model_name_to_load}.pt")
+    )
     encoder_weights = model_weights["encoder"]
     decoder_weights = model_weights["decoder"]
     vocabulary = Vocabulary()
@@ -273,8 +275,9 @@ def _run_experiment(
             "decoder": decoder.state_dict(),
             "vocabulary": vocabulary.token2id,
         }
-        os.makedirs(f"{results_path}/models/", exist_ok=True)
-        torch.save(obj, f"{results_path}/models/{model_name}{ext}.pt")
+
+        os.makedirs(os.path.join(results_path, "models"), exist_ok=True)
+        torch.save(obj, os.path.join(results_path, "models", f"{model_name}{ext}.pt"))
 
     metrics = trainer.metric_logger
     if train_file is not None:
@@ -616,7 +619,7 @@ def main(
         "model_hash": model_hash,
         "selector": selector,
         "labeler": labeler,
-        "formula_mapping": FormulaMapping("./data/formulas.json"),
+        "formula_mapping": FormulaMapping(os.path.join("data", "formulas.json")),
         "test_selector": test_selector,
         "load_aggregated": "aggregated_raw.pt",
         "force_preaggregated": True,
@@ -656,7 +659,7 @@ def main(
 
     msg = f"{name}-{encoder}-{decoder}-{train_batch}b-{lr}lr"
 
-    results_path = f"./results/v4/crossfold_raw/{model_hash}/text"
+    results_path = os.path.join("results", "v4", "crossfold_raw", model_hash, "text")
 
     plot_file = None
     if make_plots:
