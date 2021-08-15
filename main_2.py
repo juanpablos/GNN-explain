@@ -452,7 +452,7 @@ def main(
             {
                 "encoder_path": encoder_base_path.format(
                     encoder_class="encoder_lower",
-                    miner_setting="triplet",
+                    miner_setting="triplet_all",
                     loss_setting="triplet",
                     encoder_name="NoFilter()-MulticlassQuantifierLimitLabeler(lower_1-5)-CV-1L256+2L256+3L256-O64-256b-0.001lr_cf{}.pt",
                 ),
@@ -470,7 +470,7 @@ def main(
             {
                 "encoder_path": encoder_base_path.format(
                     encoder_class="encoder_upper",
-                    miner_setting="triplet",
+                    miner_setting="triplet_all",
                     loss_setting="triplet",
                     encoder_name="NoFilter()-MulticlassQuantifierLimitLabeler(upper_1-5)-CV-1L256+2L256+3L256-O64-256b-0.001lr_cf{}.pt",
                 ),
@@ -606,7 +606,7 @@ def main(
         msg = f"{name}-{hid}-{train_batch}b-{lr}lr"
 
     results_path = os.path.join(
-        "results", "v4", "crossfold_raw", model_hash, "classification+encoder"
+        "results", "v4", "crossfold_raw", model_hash, "classification+encoder_test"
     )
     plot_file = None
     if make_plots:
