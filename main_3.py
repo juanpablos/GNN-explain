@@ -437,9 +437,19 @@ def run_experiment(
                 info_filename=cf_info_filename,
             )
 
+            if encoder_helper is not None:
+                encoder_conf_file = os.path.join(
+                    results_path, "enc_conf", f"{model_name}{file_ext}.conf.json"
+                )
+                with open(encoder_conf_file, "w", encoding="utf-8") as f:
+                    json.dump(
+                        encoder_helper.serialize(), f, ensure_ascii=False, indent=2
+                    )
+
         folds_file = os.path.join(results_path, "info", f"{model_name}{file_ext}.folds")
         with open(folds_file, "w", encoding="utf-8") as f:
             json.dump(datasets.get_folds(), f, ensure_ascii=False, indent=2)
+
     else:
         if isinstance(datasets, tuple):
             logger.debug("Using selected data as test")
@@ -710,7 +720,9 @@ def main(
 
     msg = f"{name}-{encoder}-{decoder}-{train_batch}b-{lr}lr"
 
-    results_path = os.path.join("results", "v4", "crossfold_raw", model_hash, "text_test")
+    results_path = os.path.join(
+        "results", "v4", "crossfold_raw", model_hash, "text+encoder"
+    )
 
     plot_file = None
     if make_plots:

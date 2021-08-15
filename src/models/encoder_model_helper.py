@@ -143,3 +143,11 @@ class EncoderModelHelper:
             base_encoders=simple_encoders,
             finetuner_module=finetuner_module,
         )
+
+    def serialize(self):
+        return {
+            "encoders_configs": self.encoders_configs,
+            "finetuner_configs": self.finetuner_configs,
+            "simple_encoders": self.simple_encoders,
+            "current_cv_iteration": self.current_cv_iteration,
+        }
