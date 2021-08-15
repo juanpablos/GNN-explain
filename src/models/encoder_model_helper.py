@@ -1,3 +1,4 @@
+import logging
 import types
 from typing import List, Tuple
 
@@ -5,6 +6,8 @@ import torch
 
 from src.models import MLP, EncoderNetwork
 from src.typing import EncoderConfigs, EncoderModelConfigs, MinModelConfig
+
+logger = logging.getLogger(__name__)
 
 
 def fake_train(self, *args, **kwargs):
@@ -24,6 +27,7 @@ class EncoderModelHelper:
         self.current_cv_iteration = current_cv_iteration
 
     def add_simple_encoder(self, encoder_config: MinModelConfig):
+        logger.debug("Adding base model settings")
         self.simple_encoders.append(encoder_config)
 
     def reset_bases(self):
@@ -36,6 +40,8 @@ class EncoderModelHelper:
         assert model_config["output_dim"] is not None
 
         assert model_config["input_dim"] == input_size
+
+        logger.debug("Creating Base encoder model")
 
         model = MLP(
             num_layers=model_config["num_layers"],
@@ -54,6 +60,8 @@ class EncoderModelHelper:
         model_config = encoder_config["model_config"]
         model_weights_path = encoder_config["encoder_path"]
         freeze_weights = encoder_config["freeze_encoder"]
+
+        logger.debug("Creating pretrained encoder model")
 
         model, output_size = self._create_base(
             model_config=model_config, input_size=input_size
@@ -76,6 +84,8 @@ class EncoderModelHelper:
     def _create_finetuning_model(
         self, model_config: MinModelConfig, output_size: int, input_size: int
     ) -> MLP:
+        logger.debug("Creating finetuning model")
+
         finetuning_config = {**model_config, "output_dim": output_size}
         model, _ = self._create_base(
             model_config=finetuning_config, input_size=input_size
@@ -86,6 +96,11 @@ class EncoderModelHelper:
     def create_encoder_model(
         self, model_input_size: int, model_output_size: int
     ) -> EncoderNetwork:
+        logger.debug(
+            "Building encoder model with input "
+            f"{model_input_size} and output {model_output_size}"
+        )
+
         simple_encoders = []
         pretrained_encoders = []
 

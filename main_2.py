@@ -127,12 +127,17 @@ def _run_experiment(
     )
 
     if encoder_model_helper is not None:
+        input_size = input_shape[0]
+        encoder_model_helper.add_simple_encoder(
+            encoder_config={**model_config, "input_dim": input_size}
+        )
         trainer.init_model(
             use_encoder=True,
             model_helper=encoder_model_helper,
-            model_input_size=input_shape,
+            model_input_size=input_size,
             model_output_size=n_classes,
         )
+        logger.info("Using encoder model")
     else:
         model_config["input_dim"] = input_shape[0]
         model_config["output_dim"] = n_classes
@@ -429,7 +434,7 @@ def main(
     freeze_encoders = True
 
     finetuning_layers = 1
-    embedding_input = 128 + 128 + 128
+    embedding_input = 128 + 64 + 64
 
     encoder_base_path = os.path.join(
         "results",
@@ -449,15 +454,15 @@ def main(
                     encoder_class="encoder_lower",
                     miner_setting="triplet",
                     loss_setting="triplet",
-                    encoder_name="NoFilter()-MulticlassQuantifierLimitLabeler(lower_1-5)-CV-1L256+2L256+3L256-O128-256b-0.001lr_cf{}.pt",
+                    encoder_name="NoFilter()-MulticlassQuantifierLimitLabeler(lower_1-5)-CV-1L256+2L256+3L256-O64-256b-0.001lr_cf{}.pt",
                 ),
-                "short_name": "lower256x128",
+                "short_name": "lower256x64",
                 "freeze_encoder": freeze_encoders,
                 "model_config": {
                     "num_layers": 3,
                     "input_dim": 346,
                     "hidden_dim": -1,
-                    "output_dim": 128,
+                    "output_dim": 64,
                     "hidden_layers": [256, 256, 256],
                     "use_batch_norm": True,
                 },
@@ -467,15 +472,15 @@ def main(
                     encoder_class="encoder_upper",
                     miner_setting="triplet",
                     loss_setting="triplet",
-                    encoder_name="NoFilter()-MulticlassQuantifierLimitLabeler(upper_1-5)-CV-1L256+2L256+3L256-O128-256b-0.001lr_cf{}.pt",
+                    encoder_name="NoFilter()-MulticlassQuantifierLimitLabeler(upper_1-5)-CV-1L256+2L256+3L256-O64-256b-0.001lr_cf{}.pt",
                 ),
-                "short_name": "upper256x128",
+                "short_name": "upper256x64",
                 "freeze_encoder": freeze_encoders,
                 "model_config": {
                     "num_layers": 3,
                     "input_dim": 346,
                     "hidden_dim": -1,
-                    "output_dim": 128,
+                    "output_dim": 64,
                     "hidden_layers": [256, 256, 256],
                     "use_batch_norm": True,
                 },
