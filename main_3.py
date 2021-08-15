@@ -39,8 +39,24 @@ logger = logging.getLogger("src")
 logger_metrics = logging.getLogger("metrics")
 
 
-def get_model_name(hidden_layers, lstm_config, encoder_output):
-    encoder = "+".join([f"{l}L{val}" for l, val in enumerate(hidden_layers, start=1)])
+def get_model_name(
+    hidden_layers,
+    lstm_config,
+    encoder_output,
+    encoders_settings=None,
+    freeze_encoders=False,
+    finetuning_layers=0,
+):
+
+    if encoders_settings is None:
+        encoder = "+".join(
+            [f"{l}L{val}" for l, val in enumerate(hidden_layers, start=1)]
+        )
+    else:
+        encoder_names = ",".join(
+            [settings["short_name"] for settings in encoders_settings["encoders"]]
+        )
+        encoder = f"F({freeze_encoders})-ENC[{encoder_names}]-FINE[{finetuning_layers}]"
 
     embedding = f"emb{lstm_config['embedding_dim']}"
     name = lstm_config["name"]
@@ -655,6 +671,9 @@ def main(
         hidden_layers=mlp_hidden_layers,
         lstm_config=lstm_config,
         encoder_output=embedding_output_size,
+        encoders_settings=encoders_settings if use_encoders else None,
+        freeze_encoders=freeze_encoders,
+        finetuning_layers=finetuning_layers,
     )
 
     msg = f"{name}-{encoder}-{decoder}-{train_batch}b-{lr}lr"
