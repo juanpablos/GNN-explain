@@ -3,6 +3,7 @@ import json
 import logging
 import os
 from timeit import default_timer as timer
+from typing import Optional
 
 import torch
 
@@ -16,6 +17,7 @@ from src.data.vocabulary import Vocabulary
 from src.eval_heuristics import *
 from src.generate_graphs import graph_data_stream_pregenerated_graphs_test
 from src.graphs.foc import *
+from src.models.encoder_model_helper import EncoderModelHelper
 from src.training.check_formulas import FormulaReconstruction
 from src.training.metrics import semantic_evaluation_for_formula
 from src.training.sequence_training import RecurrentTrainer
@@ -37,6 +39,9 @@ def evaluate_crossfolds(
     labeler: TextSequenceLabeler,
     model_file_path: str,
     model_filename: str,
+    encoder_configs_path: Optional[str],
+    encoder_configs_filename: Optional[str],
+    encoder_target_cf: Optional[int],
     folds_file_path: str,
     folds_filename: str,
     labeler_path: str,
@@ -84,7 +89,25 @@ def evaluate_crossfolds(
         vocabulary=vocabulary,
         target_apply_mapping=None,
     )
-    trainer.init_encoder(**encoder_config)
+
+    if encoder_configs_filename is None:
+        trainer.init_encoder(use_encoder=False, **encoder_config)
+    else:
+        assert encoder_configs_path is not None
+        assert encoder_configs_filename is not None
+        with open(
+            os.path.join(
+                encoder_configs_path, encoder_configs_filename.format(encoder_target_cf)
+            )
+        ) as f:
+            encoder_helper_configs = json.load(f)
+        encoder_helper = EncoderModelHelper.load_helper(configs=encoder_helper_configs)
+        trainer.init_encoder(
+            use_encoder=True,
+            model_helper=encoder_helper,
+            model_input_size=input_shape[0],
+        )
+
     trainer.init_decoder(**decoder_config)
 
     device = torch.device("cuda:0")
@@ -95,6 +118,9 @@ def evaluate_crossfolds(
     for i, grouped_cv_test_data in enumerate(
         cv_data_splitter.group_test_formulas(), start=1
     ):
+        if encoder_target_cf is not None and encoder_target_cf != i:
+            continue
+
         logger.info(f"Running eval for crossfold {i}/{n_splits}")
 
         cf_model_name = model_filename.format(i)
@@ -314,35 +340,42 @@ def main():
         "force_preaggregated": True,
     }
 
+    base_folder = "text+encoder"
+
     model_path = os.path.join(
         "results",
         "v4",
         "crossfold_raw",
         model_hash,
-        "text",
+        base_folder,
         "models",
     )
-    base_model_filename = "NoFilter()-TextSequenceAtomic()-CV-1L256+2L256+3L256-emb4-lstmcellIN256-lstmH256-initTrue-catTrue-drop0-compFalse-d256-32b-0.0005lr_cf{}.pt"
+    base_model_filename = "NoFilter()-TextSequenceAtomic()-CV-F(True)-ENC[lower256x64,upper256x64]-FINE[2]-emb4-lstmcellIN256-lstmH256-initTrue-catTrue-drop0-compFalse-d256-32b-0.0005lr_cf{}.pt"
+
+    encoder_configs_path = os.path.join(
+        "results", "v4", "crossfold_raw", model_hash, base_folder, "enc_conf"
+    )
+    encoder_configs_filename = "NoFilter()-TextSequenceAtomic()-CV-F(True)-ENC[lower256x64,upper256x64]-FINE[2]-emb4-lstmcellIN256-lstmH256-initTrue-catTrue-drop0-compFalse-d256-32b-0.0005lr_cf{}.conf.json"
 
     crossfold_path = os.path.join(
         "results",
         "v4",
         "crossfold_raw",
         model_hash,
-        "text",
+        base_folder,
         "info",
     )
-    crossfold_filename = "NoFilter()-TextSequenceAtomic()-CV-1L256+2L256+3L256-emb4-lstmcellIN256-lstmH256-initTrue-catTrue-drop0-compFalse-d256-32b-0.0005lr.folds"
+    crossfold_filename = "NoFilter()-TextSequenceAtomic()-CV-F(True)-ENC[lower256x64,upper256x64]-FINE[2]-emb4-lstmcellIN256-lstmH256-initTrue-catTrue-drop0-compFalse-d256-32b-0.0005lr.folds"
 
     labeler_path = os.path.join(
         "results",
         "v4",
         "crossfold_raw",
         model_hash,
-        "text",
+        base_folder,
         "labelers",
     )
-    labeler_filename = "NoFilter()-TextSequenceAtomic()-CV-1L256+2L256+3L256-emb4-lstmcellIN256-lstmH256-initTrue-catTrue-drop0-compFalse-d256-32b-0.0005lr.labeler"
+    labeler_filename = "NoFilter()-TextSequenceAtomic()-CV-F(True)-ENC[lower256x64,upper256x64]-FINE[2]-emb4-lstmcellIN256-lstmH256-initTrue-catTrue-drop0-compFalse-d256-32b-0.0005lr.labeler"
 
     evaluation_results_model_name = crossfold_filename.split(".folds")[0]
     evaluation_results_path = os.path.join(
@@ -350,7 +383,7 @@ def main():
         "v4",
         "crossfold_raw",
         model_hash,
-        "text",
+        base_folder,
         "evaluation",
         evaluation_results_model_name,
     )
@@ -365,6 +398,9 @@ def main():
         labeler=label_logic,
         model_file_path=model_path,
         model_filename=base_model_filename,
+        encoder_configs_path=encoder_configs_path,
+        encoder_configs_filename=encoder_configs_filename,
+        encoder_target_cf=1,
         folds_file_path=crossfold_path,
         folds_filename=crossfold_filename,
         labeler_path=labeler_path,
@@ -453,6 +489,6 @@ if __name__ == "__main__":
     ch.setFormatter(_console_f)
 
     logger.addHandler(ch)
-    # main()
 
-    main_heuristic()
+    main()
+    # main_heuristic()
