@@ -44,6 +44,7 @@ def get_model_name(
     hidden_layers,
     lstm_config,
     encoder_output,
+    base_short_name,
     encoders_settings=None,
     freeze_encoders=False,
     finetuning_layers=0,
@@ -57,7 +58,7 @@ def get_model_name(
         encoder_names = ",".join(
             [settings["short_name"] for settings in encoders_settings["encoders"]]
         )
-        encoder = f"F({freeze_encoders})-ENC[{encoder_names}]-FINE[{finetuning_layers}]"
+        encoder = f"F({freeze_encoders})-ENC[{base_short_name},{encoder_names}]-FINE[{finetuning_layers}]"
 
     embedding = f"emb{lstm_config['embedding_dim']}"
     name = lstm_config["name"]
@@ -380,6 +381,11 @@ def run_experiment(
         _legacy_load_without_batch=_legacy_load_without_batch,
     )
 
+    encoder_conf_path = ""
+    if use_encoders:
+        encoder_conf_path = os.path.join(results_path, "enc_conf")
+        os.makedirs(encoder_conf_path, exist_ok=True)
+
     if isinstance(datasets, TextNetworkDatasetCrossFoldSplitter):
         if crossfold_fold_file is not None:
             logger.info(f"Loading CV folds from file")
@@ -439,7 +445,7 @@ def run_experiment(
 
             if encoder_helper is not None:
                 encoder_conf_file = os.path.join(
-                    results_path, "enc_conf", f"{model_name}{file_ext}.conf.json"
+                    encoder_conf_path, f"{model_name}_cf{i}{file_ext}.conf.json"
                 )
                 with open(encoder_conf_file, "w", encoding="utf-8") as f:
                     json.dump(
@@ -530,6 +536,8 @@ def main(
     base_encoder_size = 128
     embedding_output_size = 256
 
+    base_short_name = "256x3+128"
+
     mlp_config: MinModelConfig = {
         "num_layers": 3,
         "input_dim": None,
@@ -542,7 +550,7 @@ def main(
     use_encoders = True
     freeze_encoders = True
 
-    finetuning_layers = 2
+    finetuning_layers = 1
     embedding_input = base_encoder_size + 64 + 64
 
     encoder_base_path = os.path.join(
@@ -716,6 +724,7 @@ def main(
         encoders_settings=encoders_settings if use_encoders else None,
         freeze_encoders=freeze_encoders,
         finetuning_layers=finetuning_layers,
+        base_short_name=base_short_name,
     )
 
     msg = f"{name}-{encoder}-{decoder}-{train_batch}b-{lr}lr"
