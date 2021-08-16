@@ -151,3 +151,15 @@ class EncoderModelHelper:
             "simple_encoders": self.simple_encoders,
             "current_cv_iteration": self.current_cv_iteration,
         }
+
+    @classmethod
+    def load_helper(cls, configs):
+        helper = cls(
+            encoder_model_configs={
+                "encoders": configs["encoders_configs"],
+                "finetuning": configs["finetuner_configs"],
+            },
+            current_cv_iteration=configs["current_cv_iteration"],
+        )
+        helper.simple_encoders = configs["simple_encoders"]
+        return helper
