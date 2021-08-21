@@ -408,7 +408,6 @@ def main(
     seed: int = None,
     train_batch: int = 32,
     lr: float = 0.001,
-    hidden_layers: List[int] = None,
     save_model: bool = True,
     make_plots: bool = True,
 ):
@@ -433,7 +432,7 @@ def main(
     use_encoders = True
     freeze_encoders = True
 
-    finetuning_layers = 1
+    finetuning_layers = 2
     embedding_input = 128 + 64 + 64
 
     encoder_base_path = os.path.join(
@@ -534,26 +533,26 @@ def main(
     # label_logic = BinaryORHopLabeler(hop=0)
     # label_logic = BinaryDuplicatedAtomicLabeler()
     # --- multiclass
-    label_logic = MulticlassRestrictionLabeler(
-        [
-            (1, None),
-            (2, None),
-            (3, None),
-            (4, None),
-            (5, None),
-            (None, 1),
-            (None, 2),
-            (None, 3),
-            (None, 4),
-            (None, 5),
-        ],
-        custom_name="lower-upper-open",
-    )
+    # label_logic = MulticlassRestrictionLabeler(
+    #     [
+    #         (1, None),
+    #         (2, None),
+    #         (3, None),
+    #         (4, None),
+    #         (5, None),
+    #         (None, 1),
+    #         (None, 2),
+    #         (None, 3),
+    #         (None, 4),
+    #         (None, 5),
+    #     ],
+    #     custom_name="lower-upper-open",
+    # )
     # label_logic = MulticlassOpenQuantifierLabeler()
     # --- multilabel
     # label_logic = MultiLabelAtomicLabeler()
     # label_logic = MultilabelQuantifierLabeler()
-    # label_logic = MultilabelRestrictionLabeler(mode="both", class_for_no_label=False)
+    label_logic = MultilabelRestrictionLabeler(mode="both", class_for_no_label=False)
     # label_logic = MultilabelRestrictionLabeler(mode="upper", class_for_no_label=True)
     # label_logic = MultilabelFormulaElementLabeler()
     # label_logic = MultilabelFormulaElementWithAtomicPositionLabeler()
@@ -573,7 +572,7 @@ def main(
         "n_splits": 5,
         "shuffle": True,
         "random_state": seed,
-        "defer_loading": False,
+        "defer_loading": True,
         "required_train_hashes": [],
         "use_stratified": None,
     }
@@ -605,9 +604,7 @@ def main(
         hid = "+".join([f"{l}L{val}" for l, val in enumerate(hidden_layers, start=1)])
         msg = f"{name}-{hid}-{train_batch}b-{lr}lr"
 
-    results_path = os.path.join(
-        "results", "v4", "crossfold_raw", model_hash, "classification+encoder_test"
-    )
+    results_path = os.path.join("results", "v4", "crossfold_raw", model_hash, "delete")
     plot_file = None
     if make_plots:
         plot_file = msg

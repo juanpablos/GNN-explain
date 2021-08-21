@@ -533,10 +533,10 @@ def main(
     model_hash = "40e65407aa"
 
     mlp_hidden_layers = [256, 256, 256]
-    base_encoder_size = 128
+    base_encoder_size = 256
     embedding_output_size = 256
 
-    base_short_name = "256x3+128"
+    base_short_name = "256x3+256"
 
     mlp_config: MinModelConfig = {
         "num_layers": 3,
@@ -694,7 +694,7 @@ def main(
         "n_splits": 5,
         "shuffle": True,
         "random_state": seed,
-        "defer_loading": False,
+        "defer_loading": True,
         "required_train_hashes": [],
         "use_stratified": None,
     }
