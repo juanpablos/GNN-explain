@@ -3,7 +3,7 @@ import logging
 import os
 import random
 from timeit import default_timer as timer
-from typing import Dict, List, Optional, Union
+from typing import Dict, Optional, Union
 
 import torch
 from sklearn.metrics import classification_report
@@ -418,22 +418,27 @@ def main(
 
     model_hash = "40e65407aa"
 
-    hidden_layers = [256, 256, 256]
+    hidden_layer_size = 512
+    number_of_layers = 5
+    hidden_layers = [hidden_layer_size] * number_of_layers
+    base_encoder_size = 256
 
     model_config: MinModelConfig = {
         "num_layers": 3,
         "input_dim": None,
         "hidden_dim": 128,
         "hidden_layers": hidden_layers,
-        "output_dim": 128,
+        "output_dim": base_encoder_size,
         "use_batch_norm": True,
     }
 
-    use_encoders = True
+    use_encoders = False
     freeze_encoders = True
 
     finetuning_layers = 2
-    embedding_input = 128 + 64 + 64
+    embedding_input = base_encoder_size + 64 + 64
+
+    base_short_name = f"{hidden_layer_size}x{number_of_layers}+{base_encoder_size}"
 
     encoder_base_path = os.path.join(
         "results",
@@ -552,10 +557,10 @@ def main(
     # --- multilabel
     # label_logic = MultiLabelAtomicLabeler()
     # label_logic = MultilabelQuantifierLabeler()
-    label_logic = MultilabelRestrictionLabeler(mode="both", class_for_no_label=False)
+    # label_logic = MultilabelRestrictionLabeler(mode="both", class_for_no_label=False)
     # label_logic = MultilabelRestrictionLabeler(mode="upper", class_for_no_label=True)
     # label_logic = MultilabelFormulaElementLabeler()
-    # label_logic = MultilabelFormulaElementWithAtomicPositionLabeler()
+    label_logic = MultilabelFormulaElementWithAtomicPositionLabeler()
     labeler = LabelerApply(labeler=label_logic)
     # * /labelers
     data_config: NetworkDataConfig = {
@@ -599,12 +604,18 @@ def main(
         encoder_names = ",".join(
             [settings["short_name"] for settings in encoders_settings["encoders"]]
         )
-        msg = f"{name}-F({freeze_encoders})-ENC[{encoder_names}]-FINE[{finetuning_layers}]-{train_batch}b-{lr}lr"
+        msg = f"{name}-F({freeze_encoders})-ENC[{base_short_name},{encoder_names}]-FINE[{finetuning_layers}]-{train_batch}b-{lr}lr"
     else:
         hid = "+".join([f"{l}L{val}" for l, val in enumerate(hidden_layers, start=1)])
         msg = f"{name}-{hid}-{train_batch}b-{lr}lr"
 
-    results_path = os.path.join("results", "v4", "crossfold_raw", model_hash, "delete")
+    results_path = os.path.join(
+        "results",
+        "v4",
+        "crossfold_raw",
+        model_hash,
+        "base_encoder",
+    )
     plot_file = None
     if make_plots:
         plot_file = msg
