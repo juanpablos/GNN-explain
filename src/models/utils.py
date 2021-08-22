@@ -21,3 +21,13 @@ class Waiter:
         else:
             self.remaining -= 1
             return False
+
+
+def count_parameters(model):
+    with_grad_params = 0
+    all_params = 0
+    for p in model.parameters():
+        all_params += p.numel()
+        if p.requires_grad:
+            with_grad_params += p.numel()
+    return all_params, with_grad_params

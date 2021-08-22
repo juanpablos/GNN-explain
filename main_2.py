@@ -23,6 +23,7 @@ from src.data.utils import get_input_dim, get_label_distribution, train_test_dat
 from src.eval_utils import evaluate_model
 from src.graphs.foc import Element
 from src.models.encoder_model_helper import EncoderModelHelper
+from src.models.utils import count_parameters
 from src.run_logic import run, seed_everything
 from src.training.mlp_training import MLPTrainer
 from src.typing import (
@@ -142,6 +143,12 @@ def _run_experiment(
         model_config["input_dim"] = input_shape[0]
         model_config["output_dim"] = n_classes
         trainer.init_model(use_encoder=False, **model_config)
+
+    # log model sizes
+    (_model,) = trainer.get_models()
+    total_parameters, grad_parameters = count_parameters(_model)
+    logger.info(f"Model Parameters: {total_parameters}")
+    logger.info(f"Model Grad Parameters: {grad_parameters}")
 
     logger.debug("Running")
     logger.debug(f"Input size is {input_shape[0]}")
@@ -418,8 +425,8 @@ def main(
 
     model_hash = "40e65407aa"
 
-    hidden_layer_size = 512
-    number_of_layers = 5
+    hidden_layer_size = 256
+    number_of_layers = 3
     hidden_layers = [hidden_layer_size] * number_of_layers
     base_encoder_size = 256
 
@@ -432,7 +439,7 @@ def main(
         "use_batch_norm": True,
     }
 
-    use_encoders = False
+    use_encoders = True
     freeze_encoders = True
 
     finetuning_layers = 2
@@ -614,7 +621,7 @@ def main(
         "v4",
         "crossfold_raw",
         model_hash,
-        "base_encoder",
+        "delete",
     )
     plot_file = None
     if make_plots:
