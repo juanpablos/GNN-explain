@@ -383,7 +383,7 @@ def main(
         seed = random.randint(1, 1 << 30)
     seed_everything(seed)
 
-    hidden_layers = [256, 256, 256]
+    hidden_layers = [128, 128]
     output_size = 64
 
     model_config: MinModelConfig = {
@@ -430,7 +430,7 @@ def main(
     # * labelers
     # give a different label for each formula
     label_logic = MulticlassQuantifierLimitLabeler(
-        any_limit="upper",
+        any_limit="lower",
         limits=[1, 2, 3, 4, 5],
         custom_name="1-5",
     )
@@ -464,7 +464,7 @@ def main(
     trainer_loss_name: Literal[
         "contrastive", "triplet", "lifted_structure", "angular", "ntxent"
     ] = "triplet"
-    miner_pairs: Literal["semihard", "all", None] = "semihard"
+    miner_pairs: Literal["semihard", "all", None] = "all"
     trainer_miner_name: Literal["none", "triplet", "similarity"] = "triplet"
 
     only_run_for_first_cv = True
@@ -484,7 +484,8 @@ def main(
         "v4",
         "crossfold_raw",
         model_hash,
-        "encoder_upper",
+        "encoders",
+        "encoder_lower",
         f"{trainer_miner_name}_{miner_pairs}" if miner_pairs else trainer_miner_name,
         f"{trainer_loss_name}_cross" if use_cross_batch else trainer_loss_name,
     )

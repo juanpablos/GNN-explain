@@ -426,7 +426,7 @@ def main(
     model_hash = "40e65407aa"
 
     hidden_layer_size = 256
-    number_of_layers = 3
+    number_of_layers = 2
     hidden_layers = [hidden_layer_size] * number_of_layers
     base_encoder_size = 256
 
@@ -452,6 +452,7 @@ def main(
         "v4",
         "crossfold_raw",
         model_hash,
+        "encoders",
         "{encoder_class}",
         "{miner_setting}",
         "{loss_setting}",
@@ -465,16 +466,16 @@ def main(
                     encoder_class="encoder_lower",
                     miner_setting="triplet_all",
                     loss_setting="triplet",
-                    encoder_name="NoFilter()-MulticlassQuantifierLimitLabeler(lower_1-5)-CV-1L256+2L256+3L256-O64-256b-0.001lr_cf{}.pt",
+                    encoder_name="NoFilter()-MulticlassQuantifierLimitLabeler(lower_1-5)-CV-1L128+2L128-O64-256b-0.001lr_cf{}.pt",
                 ),
                 "short_name": "lower256x64",
                 "freeze_encoder": freeze_encoders,
                 "model_config": {
-                    "num_layers": 3,
+                    "num_layers": 2,
                     "input_dim": 346,
                     "hidden_dim": -1,
                     "output_dim": 64,
-                    "hidden_layers": [256, 256, 256],
+                    "hidden_layers": [128, 128],
                     "use_batch_norm": True,
                 },
             },
@@ -483,16 +484,16 @@ def main(
                     encoder_class="encoder_upper",
                     miner_setting="triplet_all",
                     loss_setting="triplet",
-                    encoder_name="NoFilter()-MulticlassQuantifierLimitLabeler(upper_1-5)-CV-1L256+2L256+3L256-O64-256b-0.001lr_cf{}.pt",
+                    encoder_name="NoFilter()-MulticlassQuantifierLimitLabeler(upper_1-5)-CV-1L128+2L128-O64-256b-0.001lr_cf{}.pt",
                 ),
                 "short_name": "upper256x64",
                 "freeze_encoder": freeze_encoders,
                 "model_config": {
-                    "num_layers": 3,
+                    "num_layers": 2,
                     "input_dim": 346,
                     "hidden_dim": -1,
                     "output_dim": 64,
-                    "hidden_layers": [256, 256, 256],
+                    "hidden_layers": [128, 128],
                     "use_batch_norm": True,
                 },
             },
@@ -545,21 +546,21 @@ def main(
     # label_logic = BinaryORHopLabeler(hop=0)
     # label_logic = BinaryDuplicatedAtomicLabeler()
     # --- multiclass
-    # label_logic = MulticlassRestrictionLabeler(
-    #     [
-    #         (1, None),
-    #         (2, None),
-    #         (3, None),
-    #         (4, None),
-    #         (5, None),
-    #         (None, 1),
-    #         (None, 2),
-    #         (None, 3),
-    #         (None, 4),
-    #         (None, 5),
-    #     ],
-    #     custom_name="lower-upper-open",
-    # )
+    label_logic = MulticlassRestrictionLabeler(
+        [
+            (1, None),
+            (2, None),
+            (3, None),
+            (4, None),
+            (5, None),
+            (None, 1),
+            (None, 2),
+            (None, 3),
+            (None, 4),
+            (None, 5),
+        ],
+        custom_name="lower-upper-open",
+    )
     # label_logic = MulticlassOpenQuantifierLabeler()
     # --- multilabel
     # label_logic = MultiLabelAtomicLabeler()
@@ -567,7 +568,7 @@ def main(
     # label_logic = MultilabelRestrictionLabeler(mode="both", class_for_no_label=False)
     # label_logic = MultilabelRestrictionLabeler(mode="upper", class_for_no_label=True)
     # label_logic = MultilabelFormulaElementLabeler()
-    label_logic = MultilabelFormulaElementWithAtomicPositionLabeler()
+    # label_logic = MultilabelFormulaElementWithAtomicPositionLabeler()
     labeler = LabelerApply(labeler=label_logic)
     # * /labelers
     data_config: NetworkDataConfig = {
@@ -621,7 +622,7 @@ def main(
         "v4",
         "crossfold_raw",
         model_hash,
-        "delete",
+        "encoder - multiclass2",
     )
     plot_file = None
     if make_plots:

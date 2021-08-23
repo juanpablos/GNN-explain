@@ -532,11 +532,13 @@ def main(
 
     model_hash = "40e65407aa"
 
-    mlp_hidden_layers = [256, 256, 256]
+    hidden_layer_size = 512
+    number_of_layers = 5
+    mlp_hidden_layers = [hidden_layer_size] * number_of_layers
     base_encoder_size = 256
     embedding_output_size = 256
 
-    base_short_name = "256x3+256"
+    base_short_name = f"{hidden_layer_size}x{number_of_layers}+{base_encoder_size}"
 
     mlp_config: MinModelConfig = {
         "num_layers": 3,
@@ -547,10 +549,10 @@ def main(
         "use_batch_norm": True,
     }
 
-    use_encoders = True
+    use_encoders = False
     freeze_encoders = True
 
-    finetuning_layers = 1
+    finetuning_layers = 2
     embedding_input = base_encoder_size + 64 + 64
 
     encoder_base_path = os.path.join(
@@ -730,7 +732,7 @@ def main(
     msg = f"{name}-{encoder}-{decoder}-{train_batch}b-{lr}lr"
 
     results_path = os.path.join(
-        "results", "v4", "crossfold_raw", model_hash, "text+encoder"
+        "results", "v4", "crossfold_raw", model_hash, "text+base_encoder"
     )
 
     plot_file = None
