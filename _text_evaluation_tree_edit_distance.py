@@ -11,16 +11,18 @@ from src.data.formulas.copy_tree import FOC2Node
 from src.graphs.foc import *
 
 model_hash = "40e65407aa"
-model_name = "NoFilter()-TextSequenceAtomic()-CV-1L256+2L256+3L256-emb4-lstmcellIN256-lstmH256-initTrue-catTrue-drop0-compFalse-d256-32b-0.0005lr"
+model_name = "NoFilter()-TextSequenceAtomic()-CV-1L512+2L512+3L512-emb4-lstmcellIN256-lstmH256-initTrue-catTrue-drop0-compFalse-d256-32b-0.0005lr"
 evaluation_path = os.path.join(
     "results",
     "v4",
     "crossfold_raw",
     model_hash,
-    "text",
+    "text+base_encoder",
     "evaluation",
     model_name,
 )
+
+limit_iterations = 1
 
 formula_object_to_node_transformator = FOC2Node()
 repr_to_node_cache: Dict[str, Node] = {}
@@ -50,6 +52,8 @@ def edit_distance_for_trees(
 
 
 for i in range(1, 5 + 1):
+    if i > limit_iterations:
+        break
     cv_path = os.path.join(evaluation_path, f"CV{i}")
     cv_tree_edit_path = os.path.join(evaluation_path, f"CV{i}_tree")
     os.makedirs(cv_tree_edit_path, exist_ok=True)
