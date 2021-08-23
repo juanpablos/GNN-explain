@@ -3,7 +3,7 @@ import json
 import logging
 import os
 from timeit import default_timer as timer
-from typing import Optional
+from typing import List, Optional, Union
 
 import torch
 
@@ -31,6 +31,82 @@ from src.typing import (
 logger = logging.getLogger("src")
 
 
+def _write_predicted_formulas(
+    cv_fold: int,
+    generated_formulas: List[Union[FOC, None]],
+    decoded_expected_formula: Optional[FOC],
+    cv_evaluation_results_path: str,
+    expected_formula_hash: str,
+):
+    with open(
+        os.path.join(cv_evaluation_results_path, expected_formula_hash + ".txt"),
+        "w",
+        newline="",
+    ) as evaluation_file:
+        expected_header = "\n".join(
+            ["-" * 20, repr(decoded_expected_formula), "-" * 20]
+        )
+        evaluation_file.writelines([expected_header, "\n\n"])
+
+        csv_writer = csv.writer(evaluation_file, delimiter=";")
+        csv_writer.writerow(["formula"])
+
+        logger.debug(f"[CV{cv_fold}] Running evaluation")
+        for generated_formula in generated_formulas:
+            csv_writer.writerow([repr(generated_formula)])
+
+
+def _write_evaluate_for_formulas(
+    cv_fold: int,
+    generated_formulas: List[Union[FOC, None]],
+    decoded_expected_formula: Optional[FOC],
+    cv_evaluation_results_path: str,
+    expected_formula_hash: str,
+):
+    logger.debug(f"[CV{cv_fold}] Loading evaluation graphs")
+    test_stream = graph_data_stream_pregenerated_graphs_test(
+        formula=decoded_expected_formula,
+        graphs_path=os.path.join("data", "graphs"),
+        graphs_filename="test_graphs_v2_10626.pt",
+        pregenerated_labels_file=f"{expected_formula_hash}_labels_test.pt",
+    )
+
+    semantic_formula_evaluator = PreloadedSingleFormulaEvaluationWrapper(
+        formula=decoded_expected_formula, graphs_data=test_stream
+    )
+    cached_semantic_results = {}
+
+    with open(
+        os.path.join(cv_evaluation_results_path, expected_formula_hash + ".txt"),
+        "w",
+        newline="",
+    ) as evaluation_file:
+        expected_header = "\n".join(
+            ["-" * 20, repr(decoded_expected_formula), "-" * 20]
+        )
+        evaluation_file.writelines([expected_header, "\n\n"])
+
+        csv_writer = csv.writer(evaluation_file, delimiter=";")
+        csv_writer.writerow(["formula", "precision", "recall", "accuracy"])
+
+        logger.debug(f"[CV{cv_fold}] Running evaluation")
+        for generated_formula in generated_formulas:
+            precision, recall, accuracy = semantic_evaluation_for_formula(
+                formula=generated_formula,
+                semantic_formula=semantic_formula_evaluator,
+                cached_evaluation=cached_semantic_results,
+            )
+
+            csv_writer.writerow(
+                [
+                    repr(generated_formula),
+                    precision,
+                    recall,
+                    accuracy,
+                ]
+            )
+
+
 def evaluate_crossfolds(
     encoder_config: MinModelConfig,
     decoder_config: LSTMConfig,
@@ -47,6 +123,7 @@ def evaluate_crossfolds(
     labeler_path: str,
     labeler_filename: str,
     evaluation_results_path: str,
+    skip_semantic_evaluation: bool,
 ):
     logger.info("Loading labeler stored state")
     with open(os.path.join(labeler_path, labeler_filename)) as f:
@@ -91,10 +168,12 @@ def evaluate_crossfolds(
     )
 
     if encoder_configs_filename is None:
+        logger.info("Using base encoder")
         trainer.init_encoder(use_encoder=False, **encoder_config)
     else:
         assert encoder_configs_path is not None
         assert encoder_configs_filename is not None
+        logger.info("Using complex encoder")
         with open(
             os.path.join(
                 encoder_configs_path, encoder_configs_filename.format(encoder_target_cf)
@@ -160,45 +239,22 @@ def evaluate_crossfolds(
                 batch_data=predictions.tolist()
             )
 
-            logger.debug(f"[CV{i}] Loading evaluation graphs")
-            test_stream = graph_data_stream_pregenerated_graphs_test(
-                formula=decoded_expected_formula,
-                graphs_path=os.path.join("data", "graphs"),
-                graphs_filename="test_graphs_v2_10626.pt",
-                pregenerated_labels_file=f"{expected_formula_hash}_labels_test.pt",
-            )
-
-            semantic_formula_evaluator = PreloadedSingleFormulaEvaluationWrapper(
-                formula=decoded_expected_formula, graphs_data=test_stream
-            )
-            cached_semantic_results = {}
-
-            with open(
-                os.path.join(
-                    cv_evaluation_results_path, expected_formula_hash + ".txt"
-                ),
-                "w",
-                newline="",
-            ) as evaluation_file:
-                expected_header = "\n".join(
-                    ["-" * 20, repr(decoded_expected_formula), "-" * 20]
+            if skip_semantic_evaluation:
+                _write_predicted_formulas(
+                    cv_fold=i,
+                    generated_formulas=generated_formulas,
+                    decoded_expected_formula=decoded_expected_formula,
+                    cv_evaluation_results_path=cv_evaluation_results_path,
+                    expected_formula_hash=expected_formula_hash,
                 )
-                evaluation_file.writelines([expected_header, "\n\n"])
-
-                csv_writer = csv.writer(evaluation_file, delimiter=";")
-                csv_writer.writerow(["formula", "precision", "recall", "accuracy"])
-
-                logger.debug(f"[CV{i}] Running evaluation")
-                for generated_formula in generated_formulas:
-                    precision, recall, accuracy = semantic_evaluation_for_formula(
-                        formula=generated_formula,
-                        semantic_formula=semantic_formula_evaluator,
-                        cached_evaluation=cached_semantic_results,
-                    )
-
-                    csv_writer.writerow(
-                        [repr(generated_formula), precision, recall, accuracy]
-                    )
+            else:
+                _write_evaluate_for_formulas(
+                    cv_fold=i,
+                    generated_formulas=generated_formulas,
+                    decoded_expected_formula=decoded_expected_formula,
+                    cv_evaluation_results_path=cv_evaluation_results_path,
+                    expected_formula_hash=expected_formula_hash,
+                )
 
 
 def evaluate_crossfolds_heuristics(
@@ -294,8 +350,13 @@ def main():
     label_logic = TextSequenceLabeler()
     labeler = SequenceLabelerApply(labeler=label_logic)
 
-    mlp_hidden_layers = [256, 256, 256]
+    skip_semantic_evaluation = True
+
+    hidden_layer_size = 256
+    number_of_layers = 3
+    mlp_hidden_layers = [hidden_layer_size] * number_of_layers
     encoder_output_size = 256
+
     encoder_config: MinModelConfig = {
         "num_layers": 3,
         "input_dim": None,
@@ -340,7 +401,7 @@ def main():
         "force_preaggregated": True,
     }
 
-    base_folder = "text+encoder"
+    base_folder = "text+base_encoder"
 
     model_path = os.path.join(
         "results",
@@ -350,12 +411,13 @@ def main():
         base_folder,
         "models",
     )
-    base_model_filename = "NoFilter()-TextSequenceAtomic()-CV-F(True)-ENC[lower256x64,upper256x64]-FINE[2]-emb4-lstmcellIN256-lstmH256-initTrue-catTrue-drop0-compFalse-d256-32b-0.0005lr_cf{}.pt"
+    base_model_filename = "NoFilter()-TextSequenceAtomic()-CV-1L256+2L256+3L256-emb4-lstmcellIN256-lstmH256-initTrue-catTrue-drop0-compFalse-d256-32b-0.0005lr_cf{}.pt"
 
     encoder_configs_path = os.path.join(
         "results", "v4", "crossfold_raw", model_hash, base_folder, "enc_conf"
     )
-    encoder_configs_filename = "NoFilter()-TextSequenceAtomic()-CV-F(True)-ENC[lower256x64,upper256x64]-FINE[2]-emb4-lstmcellIN256-lstmH256-initTrue-catTrue-drop0-compFalse-d256-32b-0.0005lr_cf{}.conf.json"
+    encoder_configs_filename = None
+    # encoder_configs_filename = "NoFilter()-TextSequenceAtomic()-CV-F(True)-ENC[lower256x64,upper256x64]-FINE[2]-emb4-lstmcellIN256-lstmH256-initTrue-catTrue-drop0-compFalse-d256-32b-0.0005lr_cf{}.conf.json"
 
     crossfold_path = os.path.join(
         "results",
@@ -365,7 +427,7 @@ def main():
         base_folder,
         "info",
     )
-    crossfold_filename = "NoFilter()-TextSequenceAtomic()-CV-F(True)-ENC[lower256x64,upper256x64]-FINE[2]-emb4-lstmcellIN256-lstmH256-initTrue-catTrue-drop0-compFalse-d256-32b-0.0005lr.folds"
+    crossfold_filename = "NoFilter()-TextSequenceAtomic()-CV-1L256+2L256+3L256-emb4-lstmcellIN256-lstmH256-initTrue-catTrue-drop0-compFalse-d256-32b-0.0005lr.folds"
 
     labeler_path = os.path.join(
         "results",
@@ -375,7 +437,7 @@ def main():
         base_folder,
         "labelers",
     )
-    labeler_filename = "NoFilter()-TextSequenceAtomic()-CV-F(True)-ENC[lower256x64,upper256x64]-FINE[2]-emb4-lstmcellIN256-lstmH256-initTrue-catTrue-drop0-compFalse-d256-32b-0.0005lr.labeler"
+    labeler_filename = "NoFilter()-TextSequenceAtomic()-CV-1L256+2L256+3L256-emb4-lstmcellIN256-lstmH256-initTrue-catTrue-drop0-compFalse-d256-32b-0.0005lr.labeler"
 
     evaluation_results_model_name = crossfold_filename.split(".folds")[0]
     evaluation_results_path = os.path.join(
@@ -406,6 +468,7 @@ def main():
         labeler_path=labeler_path,
         labeler_filename=labeler_filename,
         evaluation_results_path=evaluation_results_path,
+        skip_semantic_evaluation=skip_semantic_evaluation,
     )
 
     end = timer()
