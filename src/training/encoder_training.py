@@ -5,7 +5,8 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from pytorch_metric_learning import losses, miners, samplers
+from pytorch_metric_learning import distances, losses, miners, reducers, samplers
+from sklearn.metrics._classification import accuracy_score
 from sklearn.neighbors import KNeighborsClassifier
 from torch.utils.data import DataLoader
 
@@ -46,9 +47,14 @@ class EncoderTrainer(Trainer):
         seed: int = None,
         logging_variables: Union[Literal["all"], List[str]] = "all",
         loss_name: Literal[
-            "contrastive", "triplet", "lifted_structure", "angular", "ntxent"
+            "contrastive",
+            "triplet",
+            "triplet_cosine",
+            "lifted_structure",
+            "angular",
+            "ntxent",
         ] = "contrastive",
-        miner_name: Literal["none", "similarity", "triplet"] = "none",
+        miner_name: Literal["none", "similarity", "triplet", "triplet_cosine"] = "none",
         miner_pairs: Literal["semihard", "all", None] = "all",
         use_cross_batch: bool = True,
         use_m_per_class_sampler: bool = True,
@@ -62,6 +68,8 @@ class EncoderTrainer(Trainer):
         self.use_cross_batch = use_cross_batch
         self.use_sampler = use_m_per_class_sampler
         self.evaluate_with_train = evaluate_with_train
+
+        logger.info(f"Will evaluate with train data: {self.evaluate_with_train}")
 
     def init_model(
         self,
@@ -104,6 +112,11 @@ class EncoderTrainer(Trainer):
             "triplet": miners.TripletMarginMiner(
                 margin=0.2, type_of_triplets=miner_pairs
             ),
+            "triplet_cosine": miners.TripletMarginMiner(
+                margin=0.2,
+                type_of_triplets=miner_pairs,
+                distance=distances.CosineSimilarity(),
+            ),
             "similarity": miners.MultiSimilarityMiner(epsilon=0.1),
             "none": NullMiner(),
         }
@@ -118,7 +131,12 @@ class EncoderTrainer(Trainer):
     ) -> Tuple[nn.Module, nn.Module]:
         available_losses = {
             "contrastive": losses.ContrastiveLoss(),
-            "triplet": losses.TripletMarginLoss(),
+            "triplet": losses.TripletMarginLoss(margin=0.2),
+            "triplet_cosine": losses.TripletMarginLoss(
+                margin=0.2,
+                distance=distances.CosineSimilarity(),
+                reducer=reducers.ThresholdReducer(low=0),
+            ),
             "lifted_structure": losses.LiftedStructureLoss(),
             "angular": losses.AngularLoss(),
             "ntxent": losses.NTXentLoss(),
