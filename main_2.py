@@ -123,7 +123,7 @@ def _run_experiment(
         mode="test",
         batch_size=test_batch_size,
         pin_memory=False,
-        shuffle=True,
+        shuffle=False,
         num_workers=data_workers,
     )
 
