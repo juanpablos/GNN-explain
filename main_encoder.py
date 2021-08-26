@@ -45,9 +45,16 @@ def _run_experiment(
     gpu_num: int = 0,
     data_workers: int = 2,
     trainer_loss_name: Literal[
-        "contrastive", "triplet", "lifted_structure", "angular", "ntxent"
+        "contrastive",
+        "triplet",
+        "triplet_cosine",
+        "lifted_structure",
+        "angular",
+        "ntxent",
     ] = "contrastive",
-    trainer_miner_name: Literal["none", "similarity", "triplet"] = "none",
+    trainer_miner_name: Literal[
+        "none", "similarity", "triplet", "triplet_cosine"
+    ] = "none",
     miner_pairs: Literal["semihard", "all", None] = "all",
     use_cross_batch: bool = True,
     use_m_per_class_sampler: bool = True,
@@ -150,6 +157,18 @@ def _run_experiment(
         obj = {"model": model.state_dict()}
         torch.save(obj, os.path.join(results_path, "models", f"{model_name}{ext}.pt"))
 
+    os.makedirs(os.path.join(results_path, "extra_data"), exist_ok=True)
+    extra_data_dict = {}
+    for (
+        extra_data_label,
+        extra_data,
+    ) in trainer.metric_logger.extra_iteration_data.items():
+        extra_data_dict[extra_data_label] = dict(enumerate(extra_data, start=1))
+    with open(
+        os.path.join(results_path, "extra_data", f"{model_name}{ext}.json"), "w"
+    ) as f:
+        json.dump(extra_data_dict, f, indent=4)
+
     if plot_filename is not None:
         trainer.move_model_to_device()
 
@@ -214,9 +233,16 @@ def run_experiment(
     stratify: bool = True,
     data_workers: int = 2,
     trainer_loss_name: Literal[
-        "contrastive", "triplet", "lifted_structure", "angular", "ntxent"
+        "contrastive",
+        "triplet",
+        "triplet_cosine",
+        "lifted_structure",
+        "angular",
+        "ntxent",
     ] = "contrastive",
-    trainer_miner_name: Literal["none", "similarity", "triplet"] = "none",
+    trainer_miner_name: Literal[
+        "none", "similarity", "triplet", "triplet_cosine"
+    ] = "none",
     miner_pairs: Literal["semihard", "all", None] = "all",
     use_cross_batch: bool = True,
     only_run_for_first_cv: bool = False,
@@ -383,8 +409,8 @@ def main(
         seed = random.randint(1, 1 << 30)
     seed_everything(seed)
 
-    hidden_layers = [128, 128]
-    output_size = 64
+    hidden_layers = [256, 256]
+    output_size = 32
 
     model_config: MinModelConfig = {
         "num_layers": 3,
@@ -430,7 +456,7 @@ def main(
     # * labelers
     # give a different label for each formula
     label_logic = MulticlassQuantifierLimitLabeler(
-        any_limit="lower",
+        any_limit="upper",
         limits=[1, 2, 3, 4, 5],
         custom_name="1-5",
     )
@@ -460,12 +486,25 @@ def main(
         "results", "v4", "crossfold_raw", model_hash, "base.folds"
     )
 
+    early_stopping: StopFormat = {
+        "operation": "early",
+        "conditions": {"test_loss": 0.001},
+        "stay": 5,
+    }
+
     use_cross_batch = False
     trainer_loss_name: Literal[
-        "contrastive", "triplet", "lifted_structure", "angular", "ntxent"
+        "contrastive",
+        "triplet",
+        "triplet_cosine",
+        "lifted_structure",
+        "angular",
+        "ntxent",
+    ] = "triplet"
+    trainer_miner_name: Literal[
+        "none", "triplet", "triplet_cosine", "similarity"
     ] = "triplet"
     miner_pairs: Literal["semihard", "all", None] = "all"
-    trainer_miner_name: Literal["none", "triplet", "similarity"] = "triplet"
 
     only_run_for_first_cv = True
 
@@ -485,7 +524,7 @@ def main(
         "crossfold_raw",
         model_hash,
         "encoders",
-        "encoder_lower",
+        "encoder_upper_v2",
         f"{trainer_miner_name}_{miner_pairs}" if miner_pairs else trainer_miner_name,
         f"{trainer_loss_name}_cross" if use_cross_batch else trainer_loss_name,
     )
@@ -518,6 +557,7 @@ def main(
         batch_size=train_batch,
         test_batch_size=test_batch,
         lr=lr,
+        early_stopping=early_stopping,
         run_train_test=True,
         results_path=results_path,
         model_name=model_name,
@@ -545,7 +585,7 @@ if __name__ == "__main__":
 
     main(
         seed=0,
-        train_batch=256,
+        train_batch=512,
         lr=1e-3,
         save_model=True,
         make_plots=True,
