@@ -13,7 +13,12 @@ class StopTraining:
             if "operation" not in conditions:
                 raise ValueError("`conditions` must have key 'operation'")
 
-            if conditions["operation"] not in ["and", "or", "early"]:
+            if conditions["operation"] not in [
+                "and",
+                "or",
+                "early_decrease",
+                "early_increase",
+            ]:
                 raise ValueError(
                     f"{conditions['operation']} is not a supported operation"
                 )
@@ -31,7 +36,8 @@ class StopTraining:
         operations = {
             "and": lambda: self._and_condition,
             "or": lambda: self._or_condition,
-            "early": self._early_condition_pre_check,
+            "early_decrease": self._early_condition_pre_check_decrease,
+            "early_increase": self._early_condition_pre_check_increase,
         }
         return operations[operation]()
 
@@ -47,7 +53,7 @@ class StopTraining:
         ]
         return any(current_state)
 
-    def _early_condition(self, **kwargs):
+    def _early_condition_decrease(self, **kwargs):
         condition, tolerance = next(iter(self.conditions.items()))
         current_value = kwargs[condition]
 
@@ -64,9 +70,30 @@ class StopTraining:
         # returning True is 1 step closer to stopping
         return not decreasing
 
-    def _early_condition_pre_check(self):
+    def _early_condition_pre_check_decrease(self):
         assert len(self.conditions) == 1, "early stopping only accepts one variable"
-        return self._early_condition
+        return self._early_condition_decrease
+
+    def _early_condition_increase(self, **kwargs):
+        condition, tolerance = next(iter(self.conditions.items()))
+        current_value = kwargs[condition]
+
+        increasing = True
+        last_low = self._auxiliary_storage.get(condition)
+
+        if last_low is None or current_value - last_low >= tolerance:
+            # its not yet set, or it is increasing faster than `tolerance`
+            self._auxiliary_storage[condition] = current_value
+        else:
+            # its increasing or increasing too slowly
+            increasing = False
+
+        # returning True is 1 step closer to stopping
+        return not increasing
+
+    def _early_condition_pre_check_increase(self):
+        assert len(self.conditions) == 1, "early stopping only accepts one variable"
+        return self._early_condition_increase
 
     def __call__(self, **kwargs):
         if self.operation is None:

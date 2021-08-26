@@ -705,7 +705,7 @@ def main(
     )
 
     early_stopping: StopFormat = {
-        "operation": "early",
+        "operation": "early_decrease",
         "conditions": {"test_loss": 0.001},
         "stay": 3,
     }

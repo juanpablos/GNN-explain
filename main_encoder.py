@@ -412,8 +412,8 @@ def main(
         seed = random.randint(1, 1 << 30)
     seed_everything(seed)
 
-    hidden_layers = [256, 256]
-    output_size = 32
+    hidden_layers = [256]
+    output_size = 16
 
     model_config: MinModelConfig = {
         "num_layers": 3,
@@ -490,9 +490,10 @@ def main(
     )
 
     early_stopping: StopFormat = {
-        "operation": "early",
-        "conditions": {"test_loss": 0.001},
-        "stay": 5,
+        "operation": "early_increase",
+        "conditions": {"test_acc": 0.1},
+        # "conditions": {"test_loss": 0.001},
+        "stay": 1,
     }
 
     use_cross_batch = False
