@@ -1,6 +1,6 @@
 import warnings
 from collections import defaultdict
-from typing import Dict, Iterator, List, Literal, Optional, Union
+from typing import Any, Dict, Iterator, List, Literal, Optional, Union
 
 from src.typing import StopFormat
 
@@ -95,6 +95,7 @@ class MetricLogger:
         if variables is None:
             variables = []
         self.variables: Dict[str, List[float]] = defaultdict(list)
+        self.extra_iteration_data: Dict[str, List[Any]] = defaultdict(list)
 
         self.log_any = variables == "any"
         if isinstance(variables, list):
@@ -119,6 +120,10 @@ class MetricLogger:
     def update(self, **kwargs: float):
         for name, value in kwargs.items():
             self.variables[name].append(value)
+
+    def update_extra_data(self, **kwargs: Any):
+        for name, value in kwargs.items():
+            self.extra_iteration_data[name].append(value)
 
     def get_history(self, key: str):
         return self.variables[key]
