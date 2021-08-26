@@ -249,3 +249,13 @@ def write_train_data(metric_history: MetricHistory, save_path: str, filename: st
 
         writer.writerow(header)
         writer.writerows(zip(*history))
+
+
+def prediction_data_formatting(prediction_dict: Dict, label_mapping: Dict[int, str]):
+    formatted_prediction_data = {}
+    for iteration, data in prediction_dict.items():
+        formatted_prediction_data[str(iteration)] = {
+            label_mapping[label]: value for label, value in data.items()
+        }
+
+    return formatted_prediction_data

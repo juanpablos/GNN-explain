@@ -24,7 +24,7 @@ from src.typing import (
     NetworkDataConfig,
     StopFormat,
 )
-from src.utils import get_next_filename
+from src.utils import get_next_filename, prediction_data_formatting
 from src.visualization.curve_plot import plot_training
 from src.visualization.umap import plot_embedding_2d
 
@@ -163,7 +163,10 @@ def _run_experiment(
         extra_data_label,
         extra_data,
     ) in trainer.metric_logger.extra_iteration_data.items():
-        extra_data_dict[extra_data_label] = dict(enumerate(extra_data, start=1))
+        extra_data_dict[extra_data_label] = prediction_data_formatting(
+            prediction_dict=dict(enumerate(extra_data, start=1)),
+            label_mapping=class_mapping,
+        )
     with open(
         os.path.join(results_path, "extra_data", f"{model_name}{ext}.json"), "w"
     ) as f:
