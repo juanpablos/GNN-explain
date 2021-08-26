@@ -295,11 +295,18 @@ class EncoderTrainer(Trainer):
 
         evaluator = KNeighborsClassifier(n_neighbors=15, n_jobs=4)
         evaluator.fit(train_embeddings, train_labels)
-        accuracy = evaluator.score(test_embeddings, test_labels)
+        predictions = evaluator.predict(test_embeddings)
+
+        unique_labels, label_counts = np.unique(predictions, return_counts=True)
+        count_distributions = label_counts / np.sum(label_counts)
+        distribution = dict(zip(unique_labels, count_distributions))
+
+        accuracy = accuracy_score(y_true=test_labels, y_pred=predictions)
 
         metrics = {"test_loss": test_loss, "test_acc": accuracy}
 
         self.metric_logger.update(**metrics)
+        self.metric_logger.update_extra_data(prediction_distribution=distribution)
 
         return metrics
 
