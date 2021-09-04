@@ -412,7 +412,7 @@ def main(
         seed = random.randint(1, 1 << 30)
     seed_everything(seed)
 
-    hidden_layers = [256]
+    hidden_layers = [1024]
     output_size = 16
 
     model_config: MinModelConfig = {
@@ -459,7 +459,7 @@ def main(
     # * labelers
     # give a different label for each formula
     label_logic = MulticlassQuantifierLimitLabeler(
-        any_limit="upper",
+        any_limit="lower",
         limits=[1, 2, 3, 4, 5],
         custom_name="1-5",
     )
@@ -491,9 +491,9 @@ def main(
 
     early_stopping: StopFormat = {
         "operation": "early_increase",
-        "conditions": {"test_acc": 0.1},
+        "conditions": {"test_acc": 0.005},
         # "conditions": {"test_loss": 0.001},
-        "stay": 1,
+        "stay": 5,
     }
 
     use_cross_batch = False
@@ -512,7 +512,7 @@ def main(
 
     only_run_for_first_cv = True
 
-    iterations = 30
+    iterations = 50
     test_batch = 128
 
     if name is None:
@@ -528,7 +528,7 @@ def main(
         "crossfold_raw",
         model_hash,
         "encoders",
-        "encoder_upper_v2",
+        "encoder_lower_v2_256",
         f"{trainer_miner_name}_{miner_pairs}" if miner_pairs else trainer_miner_name,
         f"{trainer_loss_name}_cross" if use_cross_batch else trainer_loss_name,
     )
@@ -589,7 +589,7 @@ if __name__ == "__main__":
 
     main(
         seed=0,
-        train_batch=512,
+        train_batch=256,
         lr=1e-3,
         save_model=True,
         make_plots=True,
