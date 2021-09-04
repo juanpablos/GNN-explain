@@ -535,6 +535,60 @@ class MultiLabelAtomicLabeler(MultiLabelCategoricalLabeler):
         return obj
 
 
+class MultiLabelAtomicPositionLabeler(MultiLabelCategoricalLabeler):
+    """
+    Colors in positions
+    """
+
+    def __init__(self):
+        super().__init__()
+
+        self.current_hop = 0
+        self.atomic_position_classes: Dict[Tuple[str, int], int] = {}
+
+    def _visit_Exist(self, node: Exist):
+        self.current_hop += 1
+        super()._visit_Exist(node)
+        self.current_hop -= 1
+
+    def _visit_Property(self, node: Property):
+        atomic_id = (node.name, self.current_hop)
+        if atomic_id not in self.atomic_position_classes:
+            self.classes[self.current_counter] = f"{node.name}:{self.current_hop}"
+            self.atomic_position_classes[atomic_id] = self.current_counter
+            self.current_counter += 1
+
+        self.current_result.append(self.atomic_position_classes[atomic_id])
+
+    def reset(self):
+        super().reset()
+        self.current_hop = 0
+
+    def __str__(self):
+        return f"MultiLabelAtomicPositionLabeler()"
+
+    def serialize(self) -> Dict:
+        serialized_labeler = super().serialize()
+        encoded_atomic_positions = [
+            {"key": list(tuple_pair), "value": value}
+            for tuple_pair, value in self.atomic_position_classes.items()
+        ]
+        serialized_labeler["encoded_atomic_positions"] = encoded_atomic_positions
+        return serialized_labeler
+
+    @classmethod
+    def load(cls, data: Dict):
+        obj = cls()
+        obj.current_counter = data["current_counter"]
+        atomic_positions = {
+            tuple(encoded["key"]): encoded["value"]
+            for encoded in data["encoded_atomic_positions"]
+        }
+        obj.atomic_position_classes = atomic_positions
+        obj.classes = data["classes"]
+        return obj
+
+
 class MultilabelRestrictionLabeler(MultiLabelCategoricalLabeler):
     """
     Labels are for compound Exist operations:
