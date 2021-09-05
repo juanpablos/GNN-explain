@@ -60,6 +60,7 @@ class EncoderModelHelper:
         model_config = encoder_config["model_config"]
         model_weights_path = encoder_config["encoder_path"]
         freeze_weights = encoder_config["freeze_encoder"]
+        remove_last_layer = encoder_config.get("remove_last_layer")
 
         logger.debug("Creating pretrained encoder model")
 
@@ -71,6 +72,9 @@ class EncoderModelHelper:
             model_weights_path.format(self.current_cv_iteration)
         )["model"]
         model.load_state_dict(encoder_weights)
+
+        if remove_last_layer:
+            model.remove_last_layer()
 
         if freeze_weights:
             model.requires_grad_(False)
