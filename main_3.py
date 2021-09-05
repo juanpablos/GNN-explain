@@ -41,7 +41,6 @@ logger_metrics = logging.getLogger("metrics")
 
 
 def get_model_name(
-    hidden_layers,
     lstm_config,
     encoder_output,
     base_short_name,
@@ -51,14 +50,14 @@ def get_model_name(
 ):
 
     if encoders_settings is None:
-        encoder = "+".join(
-            [f"{l}L{val}" for l, val in enumerate(hidden_layers, start=1)]
-        )
+        encoder = base_short_name
     else:
         encoder_names = ",".join(
             [settings["short_name"] for settings in encoders_settings["encoders"]]
         )
-        encoder = f"F({freeze_encoders})-ENC[{base_short_name},{encoder_names}]-FINE[{finetuning_layers}]"
+        if base_short_name is not None:
+            encoder_names = f"{base_short_name},{encoder_names}"
+        encoder = f"F({freeze_encoders})-ENC[{encoder_names}]-FINE[{finetuning_layers}]"
 
     embedding = f"emb{lstm_config['embedding_dim']}"
     name = lstm_config["name"]
@@ -171,7 +170,7 @@ def _run_experiment(
         LabeledSubset[Tensor, Tensor],
     ],
     vocabulary: Vocabulary,
-    encoder_config: MinModelConfig,
+    encoder_config: Optional[MinModelConfig],
     decoder_config: LSTMConfig,
     data_reconstruction: NetworkDatasetCollectionWrapper,
     formula_target: FormulaAppliedDatasetWrapper,
@@ -185,6 +184,7 @@ def _run_experiment(
     lr: float = 0.01,
     early_stopping: StopFormat = None,
     run_train_test: bool = False,
+    write_checkpoint: bool = True,
     results_path: str = "./results",
     model_name: str = None,
     plot_filename: str = None,
@@ -225,7 +225,6 @@ def _run_experiment(
         write_checkpoint = False
         checkpoint_path = ""
     else:
-        write_checkpoint = True
         checkpoint_path = os.path.join(results_path, "models", model_name)
     os.makedirs(f"{results_path}/models/{model_name}", exist_ok=True)
     trainer = RecurrentTrainer(
@@ -258,9 +257,10 @@ def _run_experiment(
 
     if encoder_model_helper is not None:
         input_size = input_shape[0]
-        encoder_model_helper.add_simple_encoder(
-            encoder_config={**encoder_config, "input_dim": input_size}
-        )
+        if encoder_config is not None:
+            encoder_model_helper.add_simple_encoder(
+                encoder_config={**encoder_config, "input_dim": input_size}
+            )
         trainer.init_encoder(
             use_encoder=True,
             model_helper=encoder_model_helper,
@@ -268,6 +268,7 @@ def _run_experiment(
         )
         logger.info("Using encoder model")
     else:
+        assert encoder_config is not None
         encoder_config["input_dim"] = input_shape[0]
         trainer.init_encoder(**encoder_config)
 
@@ -330,7 +331,7 @@ def _run_experiment(
 
 
 def run_experiment(
-    encoder_config: MinModelConfig,
+    encoder_config: Optional[MinModelConfig],
     decoder_config: LSTMConfig,
     data_config: NetworkDataConfig,
     graph_config: Dict[str, Any],
@@ -347,6 +348,7 @@ def run_experiment(
     lr: float = 0.01,
     early_stopping: StopFormat = None,
     run_train_test: bool = False,
+    write_checkpoint: bool = True,
     results_path: str = "./results",
     model_name: str = None,
     plot_filename: str = None,
@@ -435,6 +437,7 @@ def run_experiment(
                 lr=lr,
                 early_stopping=early_stopping,
                 run_train_test=run_train_test,
+                write_checkpoint=write_checkpoint,
                 results_path=results_path,
                 model_name=cf_model_name,
                 plot_filename=cf_plot_filename,
@@ -498,6 +501,7 @@ def run_experiment(
             lr=lr,
             early_stopping=early_stopping,
             run_train_test=run_train_test,
+            write_checkpoint=write_checkpoint,
             results_path=results_path,
             model_name=model_name,
             plot_filename=plot_filename,
@@ -532,34 +536,35 @@ def main(
 
     model_hash = "40e65407aa"
 
-    hidden_layer_size = 512
-    number_of_layers = 5
+    hidden_layer_size = 256
+    number_of_layers = 3
     mlp_hidden_layers = [hidden_layer_size] * number_of_layers
-    base_encoder_size = 256
-    embedding_output_size = 256
+    base_encoder_output = 16
 
-    base_short_name = f"{hidden_layer_size}x{number_of_layers}+{base_encoder_size}"
+    base_short_name = f"{hidden_layer_size}x{number_of_layers}+{base_encoder_output}"
 
     mlp_config: MinModelConfig = {
         "num_layers": 3,
         "input_dim": None,
         "hidden_dim": 128,
         "hidden_layers": mlp_hidden_layers,
-        "output_dim": base_encoder_size,
+        "output_dim": base_encoder_output,
         "use_batch_norm": True,
     }
 
-    use_encoders = False
+    use_encoders = True
     freeze_encoders = True
 
-    finetuning_layers = 2
-    embedding_input = base_encoder_size + 64 + 64
+    finetuning_layers = 1
+    embedding_input = base_encoder_output + 16 + 16
+    embedding_output_size = 8
 
     encoder_base_path = os.path.join(
         "results",
         "v4",
         "crossfold_raw",
         model_hash,
+        "encoders",
         "{encoder_class}",
         "{miner_setting}",
         "{loss_setting}",
@@ -570,37 +575,37 @@ def main(
         "encoders": [
             {
                 "encoder_path": encoder_base_path.format(
-                    encoder_class="encoder_lower",
+                    encoder_class="encoder_lower_v2",
                     miner_setting="triplet_all",
                     loss_setting="triplet",
-                    encoder_name="NoFilter()-MulticlassQuantifierLimitLabeler(lower_1-5)-CV-1L256+2L256+3L256-O64-256b-0.001lr_cf{}.pt",
+                    encoder_name="NoFilter()-MulticlassQuantifierLimitLabeler(lower_1-5)-CV-1L512-O16-512b-0.001lr_cf{}.pt",
                 ),
-                "short_name": "lower256x64",
+                "short_name": "lower512x1+16",
                 "freeze_encoder": freeze_encoders,
                 "model_config": {
                     "num_layers": 3,
                     "input_dim": 346,
                     "hidden_dim": -1,
-                    "output_dim": 64,
-                    "hidden_layers": [256, 256, 256],
+                    "output_dim": 16,
+                    "hidden_layers": [512],
                     "use_batch_norm": True,
                 },
             },
             {
                 "encoder_path": encoder_base_path.format(
-                    encoder_class="encoder_upper",
+                    encoder_class="encoder_upper_v2",
                     miner_setting="triplet_all",
                     loss_setting="triplet",
-                    encoder_name="NoFilter()-MulticlassQuantifierLimitLabeler(upper_1-5)-CV-1L256+2L256+3L256-O64-256b-0.001lr_cf{}.pt",
+                    encoder_name="NoFilter()-MulticlassQuantifierLimitLabeler(upper_1-5)-CV-1L512-O16-512b-0.001lr_cf{}.pt",
                 ),
-                "short_name": "upper256x64",
+                "short_name": "upper512x1+16",
                 "freeze_encoder": freeze_encoders,
                 "model_config": {
                     "num_layers": 3,
                     "input_dim": 346,
                     "hidden_dim": -1,
-                    "output_dim": 64,
-                    "hidden_layers": [256, 256, 256],
+                    "output_dim": 16,
+                    "hidden_layers": [512],
                     "use_batch_norm": True,
                 },
             },
@@ -619,7 +624,7 @@ def main(
         "name": "lstmcell",
         "encoder_dim": embedding_output_size,
         "embedding_dim": 4,
-        "hidden_dim": 256,
+        "hidden_dim": min(embedding_output_size, 128),
         "vocab_size": None,
         "dropout_prob": 0,
         # * works best with
@@ -707,12 +712,14 @@ def main(
     early_stopping: StopFormat = {
         "operation": "early_decrease",
         "conditions": {"test_loss": 0.001},
-        "stay": 3,
+        "stay": 5,
     }
 
     only_run_for_first_cv = True
 
-    iterations = 20
+    write_checkpoint = False
+
+    iterations = 50
     test_batch = 2048
 
     if name is None:
@@ -720,7 +727,6 @@ def main(
         name = f"{selector}-{labeler}-{test_selector_name}"
 
     encoder, decoder = get_model_name(
-        hidden_layers=mlp_hidden_layers,
         lstm_config=lstm_config,
         encoder_output=embedding_output_size,
         encoders_settings=encoders_settings if use_encoders else None,
@@ -732,7 +738,11 @@ def main(
     msg = f"{name}-{encoder}-{decoder}-{train_batch}b-{lr}lr"
 
     results_path = os.path.join(
-        "results", "v4", "crossfold_raw", model_hash, "text+base_encoder"
+        "results",
+        "v4",
+        "crossfold_raw",
+        model_hash,
+        "text+encoder_v2_extra",
     )
 
     plot_file = None
@@ -764,6 +774,7 @@ def main(
         lr=lr,
         early_stopping=early_stopping,
         run_train_test=True,
+        write_checkpoint=write_checkpoint,
         results_path=results_path,
         model_name=model_name,
         plot_filename=plot_file,
@@ -846,7 +857,7 @@ if __name__ == "__main__":
     main(
         seed=0,
         train_batch=32,
-        lr=5e-4,
+        lr=1e-3,
         save_model=True,
         make_plots=True,
     )

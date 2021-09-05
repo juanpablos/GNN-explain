@@ -52,7 +52,7 @@ def _run_experiment(
     hash_formula: Dict[str, Element],
     hash_label: Dict[str, S],
     data_reconstruction: NetworkDatasetCollectionWrapper,
-    model_config: MinModelConfig,
+    model_config: Optional[MinModelConfig],
     encoder_model_helper: Optional[EncoderModelHelper] = None,
     iterations: int = 100,
     gpu_num: int = 0,
@@ -88,6 +88,7 @@ def _run_experiment(
     logger.debug(f"Train dataset distribution {train_distribution}")
     logger.debug(f"Test dataset size {len(test_data)}")
     logger.debug(f"Test dataset distribution {test_distribution}")
+    logger.info(f"classes: {class_mapping}")
 
     input_shape = get_input_dim(train_data)
     assert len(input_shape) == 1, "The input dimension is different from 1"
@@ -129,9 +130,10 @@ def _run_experiment(
 
     if encoder_model_helper is not None:
         input_size = input_shape[0]
-        encoder_model_helper.add_simple_encoder(
-            encoder_config={**model_config, "input_dim": input_size}
-        )
+        if model_config is not None:
+            encoder_model_helper.add_simple_encoder(
+                encoder_config={**model_config, "input_dim": input_size}
+            )
         trainer.init_model(
             use_encoder=True,
             model_helper=encoder_model_helper,
@@ -140,6 +142,7 @@ def _run_experiment(
         )
         logger.info("Using encoder model")
     else:
+        assert model_config is not None
         model_config["input_dim"] = input_shape[0]
         model_config["output_dim"] = n_classes
         trainer.init_model(use_encoder=False, **model_config)
@@ -241,7 +244,7 @@ def _run_experiment(
 
 
 def run_experiment(
-    model_config: MinModelConfig,
+    model_config: Optional[MinModelConfig],
     data_config: NetworkDataConfig,
     crossfold_config: CrossFoldConfiguration = None,
     crossfold_fold_file: Optional[str] = None,
@@ -425,10 +428,10 @@ def main(
 
     model_hash = "40e65407aa"
 
-    hidden_layer_size = 256
-    number_of_layers = 2
+    hidden_layer_size = 128
+    number_of_layers = 4
     hidden_layers = [hidden_layer_size] * number_of_layers
-    base_encoder_size = 256
+    base_encoder_size = -1
 
     model_config: MinModelConfig = {
         "num_layers": 3,
@@ -439,11 +442,11 @@ def main(
         "use_batch_norm": True,
     }
 
-    use_encoders = True
+    use_encoders = False
     freeze_encoders = True
 
-    finetuning_layers = 2
-    embedding_input = base_encoder_size + 64 + 64
+    finetuning_layers = 3
+    embedding_input = base_encoder_size + 16 + 16
 
     base_short_name = f"{hidden_layer_size}x{number_of_layers}+{base_encoder_size}"
 
@@ -463,37 +466,37 @@ def main(
         "encoders": [
             {
                 "encoder_path": encoder_base_path.format(
-                    encoder_class="encoder_lower",
+                    encoder_class="encoder_lower_v2",
                     miner_setting="triplet_all",
                     loss_setting="triplet",
-                    encoder_name="NoFilter()-MulticlassQuantifierLimitLabeler(lower_1-5)-CV-1L128+2L128-O64-256b-0.001lr_cf{}.pt",
+                    encoder_name="NoFilter()-MulticlassQuantifierLimitLabeler(lower_1-5)-CV-1L512-O16-512b-0.001lr_cf{}.pt",
                 ),
-                "short_name": "lower256x64",
+                "short_name": "lower512-1x16",
                 "freeze_encoder": freeze_encoders,
                 "model_config": {
                     "num_layers": 2,
                     "input_dim": 346,
                     "hidden_dim": -1,
-                    "output_dim": 64,
-                    "hidden_layers": [128, 128],
+                    "output_dim": 16,
+                    "hidden_layers": [512],
                     "use_batch_norm": True,
                 },
             },
             {
                 "encoder_path": encoder_base_path.format(
-                    encoder_class="encoder_upper",
+                    encoder_class="encoder_upper_v2",
                     miner_setting="triplet_all",
                     loss_setting="triplet",
-                    encoder_name="NoFilter()-MulticlassQuantifierLimitLabeler(upper_1-5)-CV-1L128+2L128-O64-256b-0.001lr_cf{}.pt",
+                    encoder_name="NoFilter()-MulticlassQuantifierLimitLabeler(upper_1-5)-CV-1L512-O16-512b-0.001lr_cf{}.pt",
                 ),
-                "short_name": "upper256x64",
+                "short_name": "upper512-1x16",
                 "freeze_encoder": freeze_encoders,
                 "model_config": {
                     "num_layers": 2,
                     "input_dim": 346,
                     "hidden_dim": -1,
-                    "output_dim": 64,
-                    "hidden_layers": [128, 128],
+                    "output_dim": 16,
+                    "hidden_layers": [512],
                     "use_batch_norm": True,
                 },
             },
@@ -546,24 +549,25 @@ def main(
     # label_logic = BinaryORHopLabeler(hop=0)
     # label_logic = BinaryDuplicatedAtomicLabeler()
     # --- multiclass
-    label_logic = MulticlassRestrictionLabeler(
-        [
-            (1, None),
-            (2, None),
-            (3, None),
-            (4, None),
-            (5, None),
-            (None, 1),
-            (None, 2),
-            (None, 3),
-            (None, 4),
-            (None, 5),
-        ],
-        custom_name="lower-upper-open",
-    )
+    # label_logic = MulticlassRestrictionLabeler(
+    #     [
+    #         (1, None),
+    #         (2, None),
+    #         (3, None),
+    #         (4, None),
+    #         (5, None),
+    #         (None, 1),
+    #         (None, 2),
+    #         (None, 3),
+    #         (None, 4),
+    #         (None, 5),
+    #     ],
+    #     custom_name="lower-upper-open",
+    # )
     # label_logic = MulticlassOpenQuantifierLabeler()
     # --- multilabel
     # label_logic = MultiLabelAtomicLabeler()
+    label_logic = MultiLabelAtomicPositionLabeler()
     # label_logic = MultilabelQuantifierLabeler()
     # label_logic = MultilabelRestrictionLabeler(mode="both", class_for_no_label=False)
     # label_logic = MultilabelRestrictionLabeler(mode="upper", class_for_no_label=True)
@@ -612,17 +616,19 @@ def main(
         encoder_names = ",".join(
             [settings["short_name"] for settings in encoders_settings["encoders"]]
         )
-        msg = f"{name}-F({freeze_encoders})-ENC[{base_short_name},{encoder_names}]-FINE[{finetuning_layers}]-{train_batch}b-{lr}lr"
+        if model_config is not None:
+            encoder_names = f"{base_short_name},{encoder_names}"
+        msg = f"{name}-F({freeze_encoders})-ENC[{encoder_names}]-FINE[{finetuning_layers}]-{train_batch}b-{lr}lr"
     else:
-        hid = "+".join([f"{l}L{val}" for l, val in enumerate(hidden_layers, start=1)])
-        msg = f"{name}-{hid}-{train_batch}b-{lr}lr"
+        msg = f"{name}-ENC[{base_short_name}]-{train_batch}b-{lr}lr"
 
     results_path = os.path.join(
         "results",
         "v4",
         "crossfold_raw",
         model_hash,
-        "encoder - multiclass2",
+        "classification+color_encoder",
+        "only_colors",
     )
     plot_file = None
     if make_plots:
@@ -681,7 +687,7 @@ if __name__ == "__main__":
     main(
         seed=0,
         train_batch=32,
-        lr=5e-4,
+        lr=1e-3,
         save_model=True,
         make_plots=True,
     )
