@@ -98,6 +98,11 @@ class MLP(nn.Module):
     def out_features(self) -> int:
         return self.linears[-1].out_features
 
+    def remove_last_layer(self):
+        assert len(self.linears) > 1, "Cannot delete layers of an MLP with only 1 layer"
+        del self.linears[-1]
+        del self.batch_norms[-1]
+
 
 class EncoderNetwork(nn.Module):
     def __init__(
