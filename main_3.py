@@ -582,6 +582,7 @@ def main(
                 ),
                 "short_name": "lower512x1+16",
                 "freeze_encoder": freeze_encoders,
+                "remove_last_layer": False,
                 "model_config": {
                     "num_layers": 3,
                     "input_dim": 346,
@@ -600,6 +601,7 @@ def main(
                 ),
                 "short_name": "upper512x1+16",
                 "freeze_encoder": freeze_encoders,
+                "remove_last_layer": False,
                 "model_config": {
                     "num_layers": 3,
                     "input_dim": 346,

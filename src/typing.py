@@ -55,6 +55,7 @@ class EncoderConfigs(TypedDict):
     short_name: str
     freeze_encoder: bool
     model_config: MinModelConfig
+    remove_last_layer: bool
 
 
 class EncoderModelConfigs(TypedDict):
