@@ -106,6 +106,7 @@ class MLP(nn.Module):
 
 class MLPWrapper(nn.Module):
     def __init__(self, out_dim: int, mlp: MLP):
+        super(MLPWrapper, self).__init__()
         self.mlp = mlp
         self.out_layer = nn.Linear(self.mlp.out_features, out_dim)
 
