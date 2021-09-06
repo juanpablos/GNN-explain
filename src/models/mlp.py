@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import List, Optional, Union
 
 import torch
 import torch.nn as nn
@@ -104,10 +104,24 @@ class MLP(nn.Module):
         del self.batch_norms[-1]
 
 
+class MLPWrapper(nn.Module):
+    def __init__(self, out_dim: int, mlp: MLP):
+        self.mlp = mlp
+        self.out_layer = nn.Linear(self.mlp.out_features, out_dim)
+
+    def forward(self, x):
+        mlp_out = self.mlp(x)
+        return self.out_layer(mlp_out)
+
+    @property
+    def out_features(self) -> int:
+        return self.out_layer.out_features
+
+
 class EncoderNetwork(nn.Module):
     def __init__(
         self,
-        pretrained_encoders: List[MLP],
+        pretrained_encoders: List[Union[MLP, MLPWrapper]],
         base_encoders: List[MLP],
         finetuner_module: MLP,
         **kwargs

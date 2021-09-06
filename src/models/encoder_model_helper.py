@@ -1,10 +1,11 @@
 import logging
 import types
-from typing import List, Optional, Tuple
+from typing import List, Optional, Tuple, Union
 
 import torch
 
 from src.models import MLP, EncoderNetwork
+from src.models.mlp import MLPWrapper
 from src.typing import EncoderConfigs, EncoderModelConfigs, MinModelConfig
 
 logger = logging.getLogger(__name__)
@@ -56,11 +57,12 @@ class EncoderModelHelper:
 
     def _create_encoder(
         self, encoder_config: EncoderConfigs, input_size: int
-    ) -> Tuple[MLP, int]:
+    ) -> Tuple[Union[MLP, MLPWrapper], int]:
         model_config = encoder_config["model_config"]
         model_weights_path = encoder_config["encoder_path"]
         freeze_weights = encoder_config["freeze_encoder"]
         remove_last_layer = encoder_config.get("remove_last_layer")
+        replace_last_layer_size = encoder_config.get("replace_last_layer_with")
 
         logger.debug("Creating pretrained encoder model")
 
@@ -73,16 +75,20 @@ class EncoderModelHelper:
         )["model"]
         model.load_state_dict(encoder_weights)
 
-        if remove_last_layer:
-            model.remove_last_layer()
-            output_size = model.out_features
-
         if freeze_weights:
             model.requires_grad_(False)
             model.eval()
 
             # ! monkeypatch train method on frozen modules
             model.train = types.MethodType(fake_train, model)
+
+        if remove_last_layer:
+            model.remove_last_layer()
+
+            if replace_last_layer_size is not None:
+                model = MLPWrapper(out_dim=replace_last_layer_size, mlp=model)
+
+            output_size = model.out_features
 
         return model, output_size
 
@@ -116,8 +122,8 @@ class EncoderModelHelper:
                 f"{model_input_size} and output {self.finetuner_configs['output_dim']}"
             )
 
-        simple_encoders = []
-        pretrained_encoders = []
+        simple_encoders: List[MLP] = []
+        pretrained_encoders: List[Union[MLP, MLPWrapper]] = []
 
         embeddings_size = 0
 
