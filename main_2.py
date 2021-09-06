@@ -428,8 +428,8 @@ def main(
 
     model_hash = "40e65407aa"
 
-    hidden_layer_size = 128
-    number_of_layers = 4
+    hidden_layer_size = 1024
+    number_of_layers = 5
     hidden_layers = [hidden_layer_size] * number_of_layers
     base_encoder_size = -1
 
@@ -474,6 +474,7 @@ def main(
                 "short_name": "lower512-1x16",
                 "freeze_encoder": freeze_encoders,
                 "remove_last_layer": False,
+                "replace_last_layer_with": None,
                 "model_config": {
                     "num_layers": 2,
                     "input_dim": 346,
@@ -493,6 +494,7 @@ def main(
                 "short_name": "upper512-1x16",
                 "freeze_encoder": freeze_encoders,
                 "remove_last_layer": False,
+                "replace_last_layer_with": None,
                 "model_config": {
                     "num_layers": 2,
                     "input_dim": 346,

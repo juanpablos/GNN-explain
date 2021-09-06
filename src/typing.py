@@ -56,6 +56,7 @@ class EncoderConfigs(TypedDict):
     freeze_encoder: bool
     model_config: MinModelConfig
     remove_last_layer: bool
+    replace_last_layer_with: Optional[int]
 
 
 class EncoderModelConfigs(TypedDict):

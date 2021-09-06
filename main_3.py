@@ -270,7 +270,7 @@ def _run_experiment(
     else:
         assert encoder_config is not None
         encoder_config["input_dim"] = input_shape[0]
-        trainer.init_encoder(**encoder_config)
+        trainer.init_encoder(use_encoder=False, **encoder_config)
 
     decoder_config["vocab_size"] = vocab_size
     trainer.init_decoder(**decoder_config)
@@ -536,13 +536,15 @@ def main(
 
     model_hash = "40e65407aa"
 
-    hidden_layer_size = 256
+    hidden_layer_size = 512
     number_of_layers = 3
     mlp_hidden_layers = [hidden_layer_size] * number_of_layers
-    base_encoder_output = 16
+    base_encoder_output = 8
 
+    # base_short_name = None
     base_short_name = f"{hidden_layer_size}x{number_of_layers}+{base_encoder_output}"
 
+    # mlp_config = None
     mlp_config: MinModelConfig = {
         "num_layers": 3,
         "input_dim": None,
@@ -555,9 +557,9 @@ def main(
     use_encoders = True
     freeze_encoders = True
 
-    finetuning_layers = 1
+    finetuning_layers = 2
     embedding_input = base_encoder_output + 16 + 16
-    embedding_output_size = 8
+    embedding_output_size = 16
 
     encoder_base_path = os.path.join(
         "results",
@@ -571,8 +573,36 @@ def main(
         "models",
         "{encoder_name}",
     )
+    encoder_color_path = os.path.join(
+        "results",
+        "v4",
+        "crossfold_raw",
+        model_hash,
+        "classification+color_encoder",
+        "{encoder_class}",
+        "models",
+        "{encoder_name}",
+    )
     encoders_settings: EncoderModelConfigs = {
         "encoders": [
+            # {
+            #     "encoder_path": encoder_color_path.format(
+            #         encoder_class="only_colors",
+            #         encoder_name="NoFilter()-MultiLabelAtomicPositionLabeler()-CV-ENC[1024x4+-1]-32b-0.001lr_cf{}.pt",
+            #     ),
+            #     "short_name": "color1024x4",
+            #     "freeze_encoder": freeze_encoders,
+            #     "remove_last_layer": True,
+            #     "replace_last_layer_with": None,
+            #     "model_config": {
+            #         "num_layers": 3,
+            #         "input_dim": 346,
+            #         "hidden_dim": -1,
+            #         "output_dim": 8,
+            #         "hidden_layers": [1024, 1024, 1024, 1024],
+            #         "use_batch_norm": True,
+            #     },
+            # },
             {
                 "encoder_path": encoder_base_path.format(
                     encoder_class="encoder_lower_v2",
@@ -583,6 +613,7 @@ def main(
                 "short_name": "lower512x1+16",
                 "freeze_encoder": freeze_encoders,
                 "remove_last_layer": False,
+                "replace_last_layer_with": None,
                 "model_config": {
                     "num_layers": 3,
                     "input_dim": 346,
@@ -602,6 +633,7 @@ def main(
                 "short_name": "upper512x1+16",
                 "freeze_encoder": freeze_encoders,
                 "remove_last_layer": False,
+                "replace_last_layer_with": None,
                 "model_config": {
                     "num_layers": 3,
                     "input_dim": 346,
@@ -744,7 +776,7 @@ def main(
         "v4",
         "crossfold_raw",
         model_hash,
-        "text+encoder_v2_extra",
+        "text+base_v2+encoder_v2",
     )
 
     plot_file = None
