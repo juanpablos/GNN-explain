@@ -75,6 +75,7 @@ class EncoderModelHelper:
 
         if remove_last_layer:
             model.remove_last_layer()
+            output_size = model.out_features
 
         if freeze_weights:
             model.requires_grad_(False)
