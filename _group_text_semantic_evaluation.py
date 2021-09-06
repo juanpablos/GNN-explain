@@ -8,16 +8,18 @@ from typing import Any, Dict, Tuple
 import numpy as np
 
 model_hash = "40e65407aa"
-model_name = "NoFilter()-TextSequenceAtomic()-CV-F(True)-ENC[256x1+64,lower256x64,upper256x64]-FINE[2]-emb4-lstmcellIN256-lstmH256-initTrue-catTrue-drop0-compFalse-d256-32b-0.0005lr"
+model_name = "NoFilter()-TextSequenceAtomic()-CV-F(True)-ENC[512x3+32,lower512x1+16,upper512x1+16]-FINE[1]-emb4-lstmcellIN8-lstmH8-initTrue-catTrue-drop0-compFalse-d256-32b-0.001lr"
 evaluation_path = os.path.join(
     "results",
     "v4",
     "crossfold_raw",
     model_hash,
-    "text+encoder",
+    "text+base_v2+encoder_v2",
     "evaluation",
     model_name,
 )
+
+limit_iterations = 1
 
 
 def extract_metrics(
@@ -54,6 +56,9 @@ def extract_metrics(
 
 
 for i in range(1, 5 + 1):
+    if i > limit_iterations:
+        break
+
     cv_path = os.path.join(evaluation_path, f"CV{i}")
     cv_grouped_path = os.path.join(evaluation_path, f"CV{i}_grouped")
     os.makedirs(cv_grouped_path, exist_ok=True)
