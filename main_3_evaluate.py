@@ -108,7 +108,7 @@ def _write_evaluate_for_formulas(
 
 
 def evaluate_crossfolds(
-    encoder_config: MinModelConfig,
+    encoder_config: Optional[MinModelConfig],
     decoder_config: LSTMConfig,
     data_config: NetworkDataConfig,
     crossfold_config: CrossFoldConfiguration,
@@ -154,9 +154,6 @@ def evaluate_crossfolds(
     vocab_size = len(vocabulary)
     logger.debug(f"vocab size of {vocab_size} detected")
 
-    encoder_config["input_dim"] = input_shape[0]
-    decoder_config["vocab_size"] = vocab_size
-
     logger.info(f"Total Dataset size: {cv_data_splitter.dataset_size}")
 
     trainer = RecurrentTrainer(
@@ -168,12 +165,19 @@ def evaluate_crossfolds(
     )
 
     if encoder_configs_filename is None:
+        assert encoder_config is not None
+        encoder_config["input_dim"] = input_shape[0]
+        decoder_config["vocab_size"] = vocab_size
+
         logger.info("Using base encoder")
         trainer.init_encoder(use_encoder=False, **encoder_config)
     else:
         assert encoder_configs_path is not None
         assert encoder_configs_filename is not None
         logger.info("Using complex encoder")
+
+        input_size = input_shape[0]
+
         with open(
             os.path.join(
                 encoder_configs_path, encoder_configs_filename.format(encoder_target_cf)
@@ -184,7 +188,7 @@ def evaluate_crossfolds(
         trainer.init_encoder(
             use_encoder=True,
             model_helper=encoder_helper,
-            model_input_size=input_shape[0],
+            model_input_size=input_size,
         )
 
     trainer.init_decoder(**decoder_config)
@@ -350,12 +354,13 @@ def main():
     label_logic = TextSequenceLabeler()
     labeler = SequenceLabelerApply(labeler=label_logic)
 
-    skip_semantic_evaluation = True
+    skip_semantic_evaluation = False
 
-    hidden_layer_size = 256
-    number_of_layers = 1
+    hidden_layer_size = 512
+    number_of_layers = 3
     mlp_hidden_layers = [hidden_layer_size] * number_of_layers
-    encoder_output_size = 256
+    encoder_output_size = 8
+    lstm_hidden = 8
 
     encoder_config: MinModelConfig = {
         "num_layers": 3,
@@ -369,7 +374,7 @@ def main():
         "name": "lstmcell",
         "encoder_dim": encoder_output_size,
         "embedding_dim": 4,
-        "hidden_dim": 256,
+        "hidden_dim": lstm_hidden,
         "vocab_size": None,
         "dropout_prob": 0,
         # * works best with
@@ -401,7 +406,8 @@ def main():
         "force_preaggregated": True,
     }
 
-    base_folder = "text+encoder"
+    base_folder = "text+encoder_v2"
+    model_filename = "NoFilter()-TextSequenceAtomic()-CV-F(True)-ENC[512x3+32,lower512x1+16,upper512x1+16]-FINE[1]-emb4-lstmcellIN8-lstmH8-initTrue-catTrue-drop0-compFalse-d256-32b-0.001lr"
 
     model_path = os.path.join(
         "results",
@@ -411,12 +417,13 @@ def main():
         base_folder,
         "models",
     )
-    base_model_filename = "NoFilter()-TextSequenceAtomic()-CV-F(True)-ENC[256x3+256,lower256x64,upper256x64]-FINE[2]-emb4-lstmcellIN256-lstmH256-initTrue-catTrue-drop0-compFalse-d256-32b-0.0005lr_cf{}.pt"
+    base_model_filename = f"{model_filename}_cf{{}}.pt"
 
     encoder_configs_path = os.path.join(
         "results", "v4", "crossfold_raw", model_hash, base_folder, "enc_conf"
     )
-    encoder_configs_filename = "NoFilter()-TextSequenceAtomic()-CV-F(True)-ENC[256x3+256,lower256x64,upper256x64]-FINE[2]-emb4-lstmcellIN256-lstmH256-initTrue-catTrue-drop0-compFalse-d256-32b-0.0005lr_cf{}.conf.json"
+    # encoder_configs_filename = None
+    encoder_configs_filename = f"{model_filename}_cf{{}}.conf.json"
 
     crossfold_path = os.path.join(
         "results",
@@ -426,7 +433,7 @@ def main():
         base_folder,
         "info",
     )
-    crossfold_filename = "NoFilter()-TextSequenceAtomic()-CV-F(True)-ENC[256x3+256,lower256x64,upper256x64]-FINE[2]-emb4-lstmcellIN256-lstmH256-initTrue-catTrue-drop0-compFalse-d256-32b-0.0005lr.folds"
+    crossfold_filename = f"{model_filename}.folds"
 
     labeler_path = os.path.join(
         "results",
@@ -436,7 +443,7 @@ def main():
         base_folder,
         "labelers",
     )
-    labeler_filename = "NoFilter()-TextSequenceAtomic()-CV-F(True)-ENC[256x3+256,lower256x64,upper256x64]-FINE[2]-emb4-lstmcellIN256-lstmH256-initTrue-catTrue-drop0-compFalse-d256-32b-0.0005lr.labeler"
+    labeler_filename = f"{model_filename}.labeler"
 
     evaluation_results_model_name = crossfold_filename.split(".folds")[0]
     evaluation_results_path = os.path.join(
