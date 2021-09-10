@@ -164,10 +164,11 @@ def evaluate_crossfolds(
         target_apply_mapping=None,
     )
 
+    decoder_config["vocab_size"] = vocab_size
+
     if encoder_configs_filename is None:
         assert encoder_config is not None
         encoder_config["input_dim"] = input_shape[0]
-        decoder_config["vocab_size"] = vocab_size
 
         logger.info("Using base encoder")
         trainer.init_encoder(use_encoder=False, **encoder_config)
@@ -359,17 +360,19 @@ def main():
     hidden_layer_size = 512
     number_of_layers = 3
     mlp_hidden_layers = [hidden_layer_size] * number_of_layers
+
     encoder_output_size = 8
     lstm_hidden = 8
 
-    encoder_config: MinModelConfig = {
-        "num_layers": 3,
-        "input_dim": None,
-        "hidden_dim": 128,
-        "hidden_layers": mlp_hidden_layers,
-        "output_dim": encoder_output_size,
-        "use_batch_norm": True,
-    }
+    encoder_config = None
+    # encoder_config: MinModelConfig = {
+    #     "num_layers": 3,
+    #     "input_dim": None,
+    #     "hidden_dim": 128,
+    #     "hidden_layers": mlp_hidden_layers,
+    #     "output_dim": encoder_output_size,
+    #     "use_batch_norm": True,
+    # }
     decoder_config: LSTMConfig = {
         "name": "lstmcell",
         "encoder_dim": encoder_output_size,
@@ -406,8 +409,8 @@ def main():
         "force_preaggregated": True,
     }
 
-    base_folder = "text+encoder_v2"
-    model_filename = "NoFilter()-TextSequenceAtomic()-CV-F(True)-ENC[512x3+32,lower512x1+16,upper512x1+16]-FINE[1]-emb4-lstmcellIN8-lstmH8-initTrue-catTrue-drop0-compFalse-d256-32b-0.001lr"
+    base_folder = "text+encoder_v2+color(rem,norep)"
+    model_filename = "NoFilter()-TextSequenceAtomic()-CV-F(True)-ENC[color256x4,lower512x1+16,upper512x1+16]-FINE[2]-emb4-lstmcellIN8-lstmH8-initTrue-catTrue-drop0-compFalse-d256-32b-0.001lr"
 
     model_path = os.path.join(
         "results",
