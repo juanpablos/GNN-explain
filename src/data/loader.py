@@ -227,6 +227,7 @@ def text_sequence_loader(
     force_preaggregated: bool = False,
     cross_fold_configuration: CrossFoldConfiguration = None,
     labeler_stored_state: Optional[Dict] = None,
+    return_list_of_datasets: bool = False,
     _legacy_load_without_batch: bool = False,
 ):
 
@@ -310,6 +311,8 @@ def text_sequence_loader(
             crossfold_config=cross_fold_configuration,
             vocabulary=vocabulary,
         )
+    elif return_list_of_datasets:
+        return_dataset = datasets
     else:
         dataset_all = TextSequenceDataset.from_iterable(datasets, vocabulary=vocabulary)
 
