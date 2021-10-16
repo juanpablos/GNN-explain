@@ -3,7 +3,7 @@ from typing import List, Optional
 from zss import Node
 
 from src.data.formulas.visitor import Visitor
-from src.graphs.foc import AND, Element, NEG, OR, Exist, Operator, Property, Role
+from src.graphs.foc import AND, NEG, OR, Element, Exist, Operator, Property, Role
 
 
 class FOC2Node(Visitor[Node]):

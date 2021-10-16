@@ -1,6 +1,7 @@
-from typing import OrderedDict
-import torch
 import os
+from typing import OrderedDict
+
+import torch
 
 
 def count_parameters(model_dict: OrderedDict) -> int:
@@ -25,6 +26,11 @@ evaluation_path = os.path.join(
 )
 
 encoder_dict, decoder_dict, _ = torch.load(evaluation_path).values()
+
+for k in encoder_dict.keys():
+    print(k)
+# print(encoder_dict["finetuner_module.batch_norms.0.weight"].requires_grad)
+# print(encoder_dict["pretrained_encoders.0.linears.0.weight"].requires_grad)
 
 
 encoder_params = count_parameters(encoder_dict)

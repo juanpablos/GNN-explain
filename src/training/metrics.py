@@ -1,5 +1,4 @@
 import logging
-from src.typing import FormulaSemanticEvaluatorType
 from typing import Dict, List, Literal, Optional, Tuple, overload
 
 import numpy as np
@@ -11,6 +10,7 @@ from src.data.auxiliary import FormulaAppliedDatasetWrapper
 from src.data.vocabulary import Vocabulary
 from src.graphs.foc import FOC
 from src.training.check_formulas import FormulaReconstruction
+from src.typing import FormulaSemanticEvaluatorType
 
 logger = logging.getLogger(__name__)
 
