@@ -2,7 +2,7 @@ import logging
 from abc import ABC, abstractmethod
 from collections import defaultdict
 from functools import cached_property
-from typing import Any, Dict, Generator, Generic, Iterable, List, Tuple
+from typing import Any, Dict, Generator, Generic, Iterable, List, Literal, Tuple
 
 import numpy as np
 from sklearn.model_selection import KFold, StratifiedKFold
@@ -561,13 +561,13 @@ class TextNetworkDatasetCrossFoldSplitter(BaseNetworkDatasetCrossFoldSplitter[Te
         )
 
     def _grouped_formulas(
-        self, cv_fold
+        self, cv_fold, dataset_name: Literal["train", "test"]
     ) -> Generator[Tuple[str, TextSequenceDataset[Tensor]], None, None]:
-        for formula_hash, network_dataset in cv_fold["test"].items():
+        for formula_hash, network_dataset in cv_fold[dataset_name].items():
             yield formula_hash, self.build_output_dataset(
                 dataset_data=[network_dataset]
             )
 
-    def group_test_formulas(self):
+    def group_formulas_per_dataset_name(self, dataset_name: Literal["train", "test"]):
         for fold in self.loaded_fold_mappings:
-            yield self._grouped_formulas(fold)
+            yield self._grouped_formulas(fold, dataset_name=dataset_name)

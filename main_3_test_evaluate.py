@@ -3,16 +3,16 @@ import json
 import logging
 import os
 from timeit import default_timer as timer
-from typing import List, Literal, Optional, Union
+from typing import List, Optional, Union
 
 import torch
 
 from src.data.auxiliary import PreloadedSingleFormulaEvaluationWrapper
 from src.data.dataset_splitter import TextNetworkDatasetCrossFoldSplitter
+from src.data.datasets import NetworkDataset
 from src.data.formula_index import FormulaMapping
 from src.data.formulas import *
 from src.data.loader import text_sequence_loader
-from src.data.utils import get_input_dim
 from src.data.vocabulary import Vocabulary
 from src.eval_heuristics import *
 from src.generate_graphs import graph_data_stream_pregenerated_graphs_test
@@ -111,20 +111,16 @@ def evaluate_crossfolds(
     encoder_config: Optional[MinModelConfig],
     decoder_config: LSTMConfig,
     data_config: NetworkDataConfig,
-    crossfold_config: CrossFoldConfiguration,
     labeler: TextSequenceLabeler,
     model_file_path: str,
     model_filename: str,
     encoder_configs_path: Optional[str],
     encoder_configs_filename: Optional[str],
     encoder_target_cf: Optional[int],
-    folds_file_path: str,
-    folds_filename: str,
     labeler_path: str,
     labeler_filename: str,
     evaluation_results_path: str,
     skip_semantic_evaluation: bool,
-    dataset_name: Literal["train", "test"],
 ):
     logger.info("Loading labeler stored state")
     with open(os.path.join(labeler_path, labeler_filename)) as f:
@@ -133,29 +129,32 @@ def evaluate_crossfolds(
     logger.info("Loading Files")
     # vocabulary: object with toked_id-token mappings
     # hash_formula: formula_hash -> formula_object
-    (cv_data_splitter, vocabulary, hash_formula, *_) = text_sequence_loader(
+    # hash_label:
+    #   single label: formula_hash -> label_id
+    #   multilabel: formula_hash -> List[label_id]
+    # data_reconstruction: point_index -> formula_object
+    # serialized_labeler: arbitrary dict of a serialized labeler classes and internals
+    (test_datasets, vocabulary, *_,) = text_sequence_loader(
         **data_config,
-        cross_fold_configuration=crossfold_config,
         labeler_stored_state=labeler_data,
+        return_list_of_datasets=True,
         graph_config={"configs": [], "_ignore": True},
         _legacy_load_without_batch=True,
     )
     labeler.preload_vocabulary(vocabulary.token2id)
 
-    if not isinstance(cv_data_splitter, TextNetworkDatasetCrossFoldSplitter):
-        raise NotImplementedError("Only cross fold splitter is supported")
+    assert isinstance(test_datasets, list), "Datasets are not a list"
+    assert all(
+        isinstance(dataset, NetworkDataset) for dataset in test_datasets
+    ), "Not all datasets are network datasets"
 
-    with open(os.path.join(folds_file_path, folds_filename)) as f:
-        precalculated_folds = json.load(f)
-    cv_data_splitter.load_precalculated_folds(fold_dict=precalculated_folds)
-
-    input_shape = get_input_dim(next(iter(cv_data_splitter))[0])
+    input_shape = test_datasets[0][0][0].shape
     assert len(input_shape) == 1, "The input dimension is different from 1"
 
     vocab_size = len(vocabulary)
     logger.debug(f"vocab size of {vocab_size} detected")
 
-    logger.info(f"Total Dataset size: {cv_data_splitter.dataset_size}")
+    logger.info(f"Total Dataset size: {sum(len(dataset) for dataset in test_datasets)}")
 
     trainer = RecurrentTrainer(
         seed=None,
@@ -199,15 +198,11 @@ def evaluate_crossfolds(
     trainer.set_device(device=device)
     trainer.init_trainer(inference=True)
 
-    n_splits = cv_data_splitter.n_splits
-    for i, grouped_cv_test_data in enumerate(
-        cv_data_splitter.group_formulas_per_dataset_name(dataset_name=dataset_name),
-        start=1,
-    ):
+    for i in range(1, 6):
         if encoder_target_cf is not None and encoder_target_cf != i:
             continue
 
-        logger.info(f"Running eval for crossfold {i}/{n_splits}")
+        logger.info(f"Running eval for crossfold {i}/{5}")
 
         cf_model_name = model_filename.format(i)
 
@@ -223,16 +218,20 @@ def evaluate_crossfolds(
         cv_evaluation_results_path = os.path.join(evaluation_results_path, f"CV{i}")
         os.makedirs(cv_evaluation_results_path, exist_ok=True)
 
-        for (
-            expected_formula_hash,
-            formula_gnns,
-        ) in grouped_cv_test_data:
-            expected_formula = hash_formula[expected_formula_hash]
+        for test_dataset in test_datasets:
+            expected_formula_hash = test_dataset.formula_hash
+            expected_formula = test_dataset.formula
             encoded_formula = labeler(expected_formula)
 
-            formula_dataset = torch.stack(formula_gnns.dataset).to(device)
+            if isinstance(test_dataset.dataset, torch.Tensor):
+                dataset = test_dataset.dataset
+            else:
+                dataset = torch.stack(test_dataset.dataset)
+
+            formula_dataset = dataset.to(device)
 
             logger.info(f"[CV{i}] Calculating inference for {expected_formula}")
+            # TODO: add bleu score for testing too?
             predictions, _ = trainer.inference(formula_dataset)
 
             logger.info(f"[CV{i}] Reconstructing formulas from gnns")
@@ -271,7 +270,6 @@ def evaluate_crossfolds_heuristics(
     folds_file_path: str,
     folds_filename: str,
     evaluation_results_path: str,
-    dataset_name: Literal["train", "test"],
 ):
     logger.info("Loading Files")
     # hash_formula: formula_hash -> formula_object
@@ -293,7 +291,7 @@ def evaluate_crossfolds_heuristics(
 
     n_splits = cv_data_splitter.n_splits
     for i, grouped_cv_test_data in enumerate(
-        cv_data_splitter.group_formulas_per_dataset_name(dataset_name=dataset_name), start=1
+        cv_data_splitter.group_test_formulas(), start=1
     ):
         logger.info(f"Running eval for crossfold {i}/{n_splits}")
 
@@ -360,8 +358,8 @@ def main():
 
     skip_semantic_evaluation = False
 
-    hidden_layer_size = 512
-    number_of_layers = 3
+    hidden_layer_size = 1024
+    number_of_layers = 5
     mlp_hidden_layers = [hidden_layer_size] * number_of_layers
 
     encoder_output_size = 8
@@ -392,17 +390,9 @@ def main():
         "compose_encoder_state": False,
         "compose_dim": 256,
     }
-    crossfold_config: CrossFoldConfiguration = {
-        "n_splits": 5,  # not used
-        "shuffle": True,  # not used
-        "random_state": None,  # not used
-        "defer_loading": True,
-        "required_train_hashes": [],
-        "use_stratified": None,
-    }
 
     data_config: NetworkDataConfig = {
-        "root": "data/gnns_v4",
+        "root": "data/gnns_v4_test",
         "model_hash": model_hash,
         "selector": selector,
         "labeler": labeler,
@@ -412,8 +402,8 @@ def main():
         "force_preaggregated": True,
     }
 
-    base_folder = "text+encoder_v2+color(rem,norep)"
-    model_filename = "NoFilter()-TextSequenceAtomic()-CV-F(True)-ENC[color256x4,lower512x1+16,upper512x1+16]-FINE[2]-emb4-lstmcellIN8-lstmH8-initTrue-catTrue-drop0-compFalse-d256-32b-0.001lr"
+    base_folder = "text+encoder_v2+color(rem,rep)"
+    model_filename = "NoFilter()-TextSequenceAtomic()-CV-F(True)-ENC[color1024x4+16,lower512x1+16,upper512x1+16]-FINE[2]-emb4-lstmcellIN8-lstmH8-initTrue-catTrue-drop0-compFalse-d256-32b-0.001lr"
 
     model_path = os.path.join(
         "results",
@@ -431,16 +421,6 @@ def main():
     # encoder_configs_filename = None
     encoder_configs_filename = f"{model_filename}_cf{{}}.conf.json"
 
-    crossfold_path = os.path.join(
-        "results",
-        "v4",
-        "crossfold_raw",
-        model_hash,
-        base_folder,
-        "info",
-    )
-    crossfold_filename = f"{model_filename}.folds"
-
     labeler_path = os.path.join(
         "results",
         "v4",
@@ -451,15 +431,14 @@ def main():
     )
     labeler_filename = f"{model_filename}.labeler"
 
-    evaluation_results_model_name = crossfold_filename.split(".folds")[0]
     evaluation_results_path = os.path.join(
         "results",
         "v4",
         "crossfold_raw",
         model_hash,
         base_folder,
-        "evaluation",
-        evaluation_results_model_name,
+        "evaluation - delete",
+        model_filename,
     )
     os.makedirs(evaluation_results_path, exist_ok=True)
 
@@ -468,20 +447,16 @@ def main():
         encoder_config=encoder_config,
         decoder_config=decoder_config,
         data_config=data_config,
-        crossfold_config=crossfold_config,
         labeler=label_logic,
         model_file_path=model_path,
         model_filename=base_model_filename,
         encoder_configs_path=encoder_configs_path,
         encoder_configs_filename=encoder_configs_filename,
         encoder_target_cf=1,
-        folds_file_path=crossfold_path,
-        folds_filename=crossfold_filename,
         labeler_path=labeler_path,
         labeler_filename=labeler_filename,
         evaluation_results_path=evaluation_results_path,
         skip_semantic_evaluation=skip_semantic_evaluation,
-        dataset_name="test",
     )
 
     end = timer()
@@ -549,7 +524,6 @@ def main_heuristic():
         folds_file_path=crossfold_path,
         folds_filename=crossfold_filename,
         evaluation_results_path=evaluation_results_path,
-        dataset_name="test",
     )
 
     end = timer()
