@@ -6,6 +6,7 @@ from timeit import default_timer as timer
 from typing import List, Optional, Union
 
 import torch
+from nltk.translate.bleu_score import corpus_bleu
 
 from src.data.auxiliary import PreloadedSingleFormulaEvaluationWrapper
 from src.data.dataset_splitter import TextNetworkDatasetCrossFoldSplitter
@@ -37,6 +38,7 @@ def _write_predicted_formulas(
     decoded_expected_formula: Optional[FOC],
     cv_evaluation_results_path: str,
     expected_formula_hash: str,
+    bleu_score: float,
 ):
     with open(
         os.path.join(cv_evaluation_results_path, expected_formula_hash + ".txt"),
@@ -44,7 +46,12 @@ def _write_predicted_formulas(
         newline="",
     ) as evaluation_file:
         expected_header = "\n".join(
-            ["-" * 20, repr(decoded_expected_formula), "-" * 20]
+            [
+                "-" * 20,
+                repr(decoded_expected_formula),
+                f"bleu score: {bleu_score}",
+                "-" * 20,
+            ]
         )
         evaluation_file.writelines([expected_header, "\n\n"])
 
@@ -62,6 +69,7 @@ def _write_evaluate_for_formulas(
     decoded_expected_formula: Optional[FOC],
     cv_evaluation_results_path: str,
     expected_formula_hash: str,
+    bleu_score: float,
 ):
     logger.debug(f"[CV{cv_fold}] Loading evaluation graphs")
     test_stream = graph_data_stream_pregenerated_graphs_test(
@@ -82,7 +90,12 @@ def _write_evaluate_for_formulas(
         newline="",
     ) as evaluation_file:
         expected_header = "\n".join(
-            ["-" * 20, repr(decoded_expected_formula), "-" * 20]
+            [
+                "-" * 20,
+                repr(decoded_expected_formula),
+                f"bleu score: {bleu_score}",
+                "-" * 20,
+            ]
         )
         evaluation_file.writelines([expected_header, "\n\n"])
 
@@ -121,6 +134,7 @@ def evaluate_crossfolds(
     labeler_filename: str,
     evaluation_results_path: str,
     skip_semantic_evaluation: bool,
+    run_only_bleu: bool = False,
 ):
     logger.info("Loading labeler stored state")
     with open(os.path.join(labeler_path, labeler_filename)) as f:
@@ -218,6 +232,13 @@ def evaluate_crossfolds(
         cv_evaluation_results_path = os.path.join(evaluation_results_path, f"CV{i}")
         os.makedirs(cv_evaluation_results_path, exist_ok=True)
 
+        # references
+        # list of references
+        all_expected_formula_tokens: List[List[List[int]]] = []
+        # hypotheses
+        # list of hypotheses
+        all_predicted_formula_tokens: List[List[int]] = []
+
         for test_dataset in test_datasets:
             expected_formula_hash = test_dataset.formula_hash
             expected_formula = test_dataset.formula
@@ -231,36 +252,66 @@ def evaluate_crossfolds(
             formula_dataset = dataset.to(device)
 
             logger.info(f"[CV{i}] Calculating inference for {expected_formula}")
-            # TODO: add bleu score for testing too?
             predictions, _ = trainer.inference(formula_dataset)
 
             logger.info(f"[CV{i}] Reconstructing formulas from gnns")
             # reconstruct formulas with the scores
             formula_reconstruction = FormulaReconstruction(vocabulary)
 
+            encoded_formula_cleaned_tokens = encoded_formula[1:]
             (decoded_expected_formula,), _ = formula_reconstruction.batch2expression(
-                batch_data=[encoded_formula[1:]]
+                batch_data=[encoded_formula_cleaned_tokens]
             )
+            predicted_formula_tokens = predictions.tolist()
             generated_formulas, _ = formula_reconstruction.batch2expression(
-                batch_data=predictions.tolist()
+                batch_data=predicted_formula_tokens
+            )
+            predicted_formula_cleaned_tokens = formula_reconstruction.batch2clean(
+                batch_data=predicted_formula_tokens
             )
 
-            if skip_semantic_evaluation:
-                _write_predicted_formulas(
-                    cv_fold=i,
-                    generated_formulas=generated_formulas,
-                    decoded_expected_formula=decoded_expected_formula,
-                    cv_evaluation_results_path=cv_evaluation_results_path,
-                    expected_formula_hash=expected_formula_hash,
-                )
-            else:
-                _write_evaluate_for_formulas(
-                    cv_fold=i,
-                    generated_formulas=generated_formulas,
-                    decoded_expected_formula=decoded_expected_formula,
-                    cv_evaluation_results_path=cv_evaluation_results_path,
-                    expected_formula_hash=expected_formula_hash,
-                )
+            n_formulas = len(predicted_formula_cleaned_tokens)
+            all_expected_formula_tokens.extend(
+                [[encoded_formula_cleaned_tokens]] * n_formulas
+            )
+            all_predicted_formula_tokens.extend(predicted_formula_cleaned_tokens)
+
+            formula_bleu_score = corpus_bleu(
+                [[encoded_formula_cleaned_tokens]] * n_formulas,
+                predicted_formula_cleaned_tokens,
+            )
+
+            if not run_only_bleu:
+                if skip_semantic_evaluation:
+                    _write_predicted_formulas(
+                        cv_fold=i,
+                        generated_formulas=generated_formulas,
+                        decoded_expected_formula=decoded_expected_formula,
+                        cv_evaluation_results_path=cv_evaluation_results_path,
+                        expected_formula_hash=expected_formula_hash,
+                        bleu_score=formula_bleu_score,
+                    )
+                else:
+                    _write_evaluate_for_formulas(
+                        cv_fold=i,
+                        generated_formulas=generated_formulas,
+                        decoded_expected_formula=decoded_expected_formula,
+                        cv_evaluation_results_path=cv_evaluation_results_path,
+                        expected_formula_hash=expected_formula_hash,
+                        bleu_score=formula_bleu_score,
+                    )
+
+            logger.info(f"[CV{i}] Calculating total bleu")
+
+        total_bleu_score = corpus_bleu(
+            all_expected_formula_tokens, all_predicted_formula_tokens
+        )
+        with open(
+            os.path.join(cv_evaluation_results_path, ".bleu.txt"),
+            "w",
+            newline="",
+        ) as bleu_file:
+            json.dump({"bleu4": total_bleu_score}, bleu_file)
 
 
 def evaluate_crossfolds_heuristics(
