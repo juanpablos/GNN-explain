@@ -66,6 +66,7 @@ for i in range(1, 5 + 1):
     formula_original_correct_count = {}
     formula_compressed_correct_count = {}
     total_formulas = 0
+    invalid_formula_count = 0
 
     for evaluation_filename in os.listdir(cv_path):
         original_grouped_formulas = defaultdict(int)
@@ -112,6 +113,9 @@ for i in range(1, 5 + 1):
                 )
 
                 total_output_formulas += 1
+
+                if formula == "None":
+                    invalid_formula_count += 1
 
         formula_precision = np.mean(grouped_metrics["precision"])
         formula_recall = np.mean(grouped_metrics["recall"])
@@ -256,6 +260,8 @@ for i in range(1, 5 + 1):
     )
 
     summary_dict = {
+        "valid_percentage": float(total_formulas - invalid_formula_count)
+        / total_formulas,
         "original_accuracy": original_model_accuracy,
         "compressed_accuracy": compressed_model_accuracy,
         "original_semantic_precision": original_model_semantic_precision,
