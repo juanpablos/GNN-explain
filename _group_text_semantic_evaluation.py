@@ -8,14 +8,15 @@ from typing import Any, Dict, Tuple
 import numpy as np
 
 model_hash = "40e65407aa"
-model_name = "NoFilter()-TextSequenceAtomic()-CV-F(True)-ENC[512x3+32,lower512x1+16,upper512x1+16]-FINE[1]-emb4-lstmcellIN8-lstmH8-initTrue-catTrue-drop0-compFalse-d256-32b-0.001lr"
+model_name = "NoFilter()-TextSequenceAtomic()-CV-512x3+8-emb4-lstmcellIN8-lstmH8-initTrue-catTrue-drop0-compFalse-d256-32b-0.001lr"
 evaluation_path = os.path.join(
     "results",
     "v4",
     "crossfold_raw",
     model_hash,
-    "text+base_v2+encoder_v2",
-    "evaluation",
+    "rafike-results",
+    "text+base_v2",
+    "evaluation - test",
     model_name,
 )
 
@@ -68,10 +69,17 @@ for i in range(1, 5 + 1):
     total_formulas = 0
     invalid_formula_count = 0
 
+    total_average_bleu = 0
+
     for evaluation_filename in os.listdir(cv_path):
+        if ".bleu" in evaluation_filename:
+            with open(os.path.join(cv_path, evaluation_filename)) as bleu_f:
+                total_average_bleu = json.load(bleu_f)["bleu4"]
+                continue
+
         original_grouped_formulas = defaultdict(int)
         compressed_grouped_formulas = defaultdict(int)
-        grouped_metrics = {"precision": [], "recall": [], "accuracy": []}
+        grouped_metrics = {"precision": [], "recall": [], "accuracy": [], "bleu": 0}
         original_formula_metrics = defaultdict(dict)
         compressed_grouped_metrics = defaultdict(lambda: defaultdict(list))
 
@@ -80,8 +88,11 @@ for i in range(1, 5 + 1):
             next(f)  # ----
             correct_formula = next(f).strip()
             correct_compressed_formula = re.sub(r"\d", "*", correct_formula)
+            bleu_score = float(next(f).split(":")[1].strip())
             next(f)  # ----
             next(f)  # blank
+
+            grouped_metrics["bleu"] = bleu_score
 
             reader = csv.DictReader(f, delimiter=";")
 
@@ -120,6 +131,7 @@ for i in range(1, 5 + 1):
         formula_precision = np.mean(grouped_metrics["precision"])
         formula_recall = np.mean(grouped_metrics["recall"])
         formula_accuracy = np.mean(grouped_metrics["accuracy"])
+        formula_bleu = grouped_metrics["bleu"]
 
         grouped_filename, file_extension = os.path.splitext(evaluation_filename)
         with open(
@@ -148,6 +160,7 @@ for i in range(1, 5 + 1):
                     f"\tAvg Precision: {formula_precision:.2}",
                     f"\tAvg Recall: {formula_recall:.2}",
                     f"\tAvg Accuracy: {formula_accuracy:.2}",
+                    f"\tAvg BLEU4: {formula_bleu:.2}",
                     "-" * 20,
                 ]
             )
@@ -262,6 +275,7 @@ for i in range(1, 5 + 1):
     summary_dict = {
         "valid_percentage": float(total_formulas - invalid_formula_count)
         / total_formulas,
+        "bleu_score": total_average_bleu,
         "original_accuracy": original_model_accuracy,
         "compressed_accuracy": compressed_model_accuracy,
         "original_semantic_precision": original_model_semantic_precision,
