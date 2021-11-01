@@ -11,14 +11,15 @@ from src.data.formulas.copy_tree import FOC2Node
 from src.graphs.foc import *
 
 model_hash = "40e65407aa"
-model_name = "NoFilter()-TextSequenceAtomic()-CV-1L512+2L512+3L512-emb4-lstmcellIN256-lstmH256-initTrue-catTrue-drop0-compFalse-d256-32b-0.0005lr"
+model_name = "NoFilter()-TextSequenceAtomic()-CV-F(True)-ENC[color1024x4,lower512x1+16,upper512x1+16]-FINE[1]-emb4-lstmcellIN8-lstmH8-initTrue-catTrue-drop0-compFalse-d256-32b-0.001lr"
 evaluation_path = os.path.join(
     "results",
     "v4",
     "crossfold_raw",
     model_hash,
-    "text+base_encoder",
-    "evaluation",
+    "rafike-results",
+    "text+encoder_v2+color(rem,norep)",
+    "evaluation - test",
     model_name,
 )
 
@@ -62,6 +63,9 @@ for i in range(1, 5 + 1):
     total_formulas = 0
 
     for evaluation_filename in os.listdir(cv_path):
+        if ".bleu" in evaluation_filename:
+            continue
+
         grouped_formula_counter = defaultdict(int)
         grouped_formula_distance = defaultdict(float)
 
@@ -69,6 +73,7 @@ for i in range(1, 5 + 1):
         with open(os.path.join(cv_path, evaluation_filename)) as f:
             next(f)  # ----
             expected_formula = next(f).strip()
+            next(f)  # bleu
             next(f)  # ----
             next(f)  # blank
 
