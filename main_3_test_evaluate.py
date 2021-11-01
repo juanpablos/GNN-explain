@@ -9,7 +9,6 @@ import torch
 from nltk.translate.bleu_score import corpus_bleu
 
 from src.data.auxiliary import PreloadedSingleFormulaEvaluationWrapper
-from src.data.dataset_splitter import TextNetworkDatasetCrossFoldSplitter
 from src.data.datasets import NetworkDataset
 from src.data.formula_index import FormulaMapping
 from src.data.formulas import *
@@ -22,12 +21,7 @@ from src.models.encoder_model_helper import EncoderModelHelper
 from src.training.check_formulas import FormulaReconstruction
 from src.training.metrics import semantic_evaluation_for_formula
 from src.training.sequence_training import RecurrentTrainer
-from src.typing import (
-    CrossFoldConfiguration,
-    LSTMConfig,
-    MinModelConfig,
-    NetworkDataConfig,
-)
+from src.typing import LSTMConfig, MinModelConfig, NetworkDataConfig
 
 logger = logging.getLogger("src")
 
@@ -316,45 +310,40 @@ def evaluate_crossfolds(
 
 def evaluate_crossfolds_heuristics(
     data_config: NetworkDataConfig,
-    crossfold_config: CrossFoldConfiguration,
     heuristic: EvalHeuristic,
-    folds_file_path: str,
-    folds_filename: str,
     evaluation_results_path: str,
+    cf_target: Optional[int],
 ):
     logger.info("Loading Files")
     # hash_formula: formula_hash -> formula_object
-    (cv_data_splitter, _, hash_formula, *_) = text_sequence_loader(
+    (test_datasets, _, hash_formula, *_) = text_sequence_loader(
         **data_config,
-        cross_fold_configuration=crossfold_config,
+        return_list_of_datasets=True,
         graph_config={"configs": [], "_ignore": True},
         _legacy_load_without_batch=True,
     )
 
-    if not isinstance(cv_data_splitter, TextNetworkDatasetCrossFoldSplitter):
-        raise NotImplementedError("Only cross fold splitter is supported")
+    assert isinstance(test_datasets, list), "Datasets are not a list"
+    assert all(
+        isinstance(dataset, NetworkDataset) for dataset in test_datasets
+    ), "Not all datasets are network datasets"
 
-    with open(os.path.join(folds_file_path, folds_filename)) as f:
-        precalculated_folds = json.load(f)
-    cv_data_splitter.load_precalculated_folds(fold_dict=precalculated_folds)
+    logger.info(f"Total Dataset size: {sum(len(dataset) for dataset in test_datasets)}")
 
-    logger.info(f"Total Dataset size: {cv_data_splitter.dataset_size}")
-
-    n_splits = cv_data_splitter.n_splits
-    for i, grouped_cv_test_data in enumerate(
-        cv_data_splitter.group_test_formulas(), start=1
-    ):
-        logger.info(f"Running eval for crossfold {i}/{n_splits}")
+    for i in range(1, 6):
+        if cf_target is not None and cf_target != i:
+            continue
+        logger.info(f"Running eval for crossfold {i}/5")
 
         cv_evaluation_heuristic_results_path = os.path.join(
-            evaluation_results_path, f"CV{i}", str(heuristic)
+            evaluation_results_path, f"CV{i}"
         )
         os.makedirs(cv_evaluation_heuristic_results_path, exist_ok=True)
 
-        for (
-            expected_formula_hash,
-            formula_gnns,
-        ) in grouped_cv_test_data:
+        for test_dataset in test_datasets:
+            expected_formula_hash = test_dataset.formula_hash
+            # expected_formula = test_dataset.formula
+
             expected_formula = FOC(hash_formula[expected_formula_hash])
 
             logger.debug(f"[CV{i}] Loading evaluation graphs")
@@ -370,6 +359,10 @@ def evaluate_crossfolds_heuristics(
             )
             cached_semantic_results = {}
 
+            heuristic_allowed_values = heuristic.extract_valid_elements(
+                formula=expected_formula
+            )
+
             with open(
                 os.path.join(
                     cv_evaluation_heuristic_results_path,
@@ -384,10 +377,12 @@ def evaluate_crossfolds_heuristics(
                 evaluation_file.writelines([expected_header, "\n\n"])
 
                 csv_writer = csv.writer(evaluation_file, delimiter=";")
-                csv_writer.writerow(["formula", "precision", "recall", "accuracy"])
+                csv_writer.writerow(
+                    ["formula", "precision", "recall", "accuracy", "match"]
+                )
 
                 logger.debug(f"[CV{i}] Running evaluation")
-                for gnn in formula_gnns.dataset:
+                for gnn in test_dataset.dataset:
                     generated_formula = heuristic.predict(weights=gnn)
                     precision, recall, accuracy = semantic_evaluation_for_formula(
                         formula=generated_formula,
@@ -395,8 +390,19 @@ def evaluate_crossfolds_heuristics(
                         cached_evaluation=cached_semantic_results,
                     )
 
+                    heuristic_matches = heuristic.match(
+                        candicate_value=generated_formula,
+                        allowed_values=heuristic_allowed_values,
+                    )
+
                     csv_writer.writerow(
-                        [repr(generated_formula), precision, recall, accuracy]
+                        [
+                            repr(generated_formula),
+                            precision,
+                            recall,
+                            accuracy,
+                            int(heuristic_matches),
+                        ]
                     )
 
 
@@ -508,6 +514,7 @@ def main():
         labeler_filename=labeler_filename,
         evaluation_results_path=evaluation_results_path,
         skip_semantic_evaluation=skip_semantic_evaluation,
+        run_only_bleu=True,
     )
 
     end = timer()
@@ -522,20 +529,12 @@ def main_heuristic():
     labeler = SequenceLabelerApply(labeler=label_logic)
 
     # heuristic = SingleFormulaHeuristic(formula=Property("RED"))
+    heuristic = MinSumFormulaHeuristic()
     # heuristic = MaxSumFormulaHeuristic()
-    heuristic = MaxDiffSumFormulaHeuristic()
-
-    crossfold_config: CrossFoldConfiguration = {
-        "n_splits": 5,  # not used
-        "shuffle": True,  # not used
-        "random_state": None,  # not used
-        "defer_loading": True,
-        "required_train_hashes": [],
-        "use_stratified": None,
-    }
+    # heuristic = MaxDiffSumFormulaHeuristic()
 
     data_config: NetworkDataConfig = {
-        "root": "data/gnns_v4",
+        "root": "data/gnns_v4_test",
         "model_hash": model_hash,
         "selector": selector,
         "labeler": labeler,
@@ -545,36 +544,23 @@ def main_heuristic():
         "force_preaggregated": True,
     }
 
-    crossfold_path = os.path.join(
-        "results",
-        "v4",
-        "crossfold_raw",
-        model_hash,
-        "text",
-        "info",
-    )
-    crossfold_filename = "NoFilter()-TextSequenceAtomic()-CV-1L256+2L256+3L256-emb4-lstmcellIN256-lstmH256-initTrue-catTrue-drop0-compFalse-d256-32b-0.0005lr.folds"
-
-    evaluation_results_model_name = crossfold_filename.split(".folds")[0]
     evaluation_results_path = os.path.join(
         "results",
         "v4",
         "crossfold_raw",
         model_hash,
-        "text",
-        "evaluation_heuristics",
-        evaluation_results_model_name,
+        "heuristics",
+        str(heuristic),
+        "test",
     )
     os.makedirs(evaluation_results_path, exist_ok=True)
 
     start = timer()
     evaluate_crossfolds_heuristics(
         data_config=data_config,
-        crossfold_config=crossfold_config,
         heuristic=heuristic,
-        folds_file_path=crossfold_path,
-        folds_filename=crossfold_filename,
         evaluation_results_path=evaluation_results_path,
+        cf_target=1,
     )
 
     end = timer()
@@ -592,5 +578,5 @@ if __name__ == "__main__":
 
     logger.addHandler(ch)
 
-    main()
-    # main_heuristic()
+    # main()
+    main_heuristic()
