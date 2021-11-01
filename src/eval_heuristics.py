@@ -1,9 +1,10 @@
 from abc import ABC, abstractmethod
-from typing import Dict, Union
+from typing import Dict, Generic, List, TypeVar, Union
 
 import torch
 from torch.functional import Tensor
 
+from src.data.formulas.extract import ColorsExtractor
 from src.graphs.foc import *
 from src.graphs.foc import Element
 
@@ -22,6 +23,8 @@ INDEX_TO_PROPERTY = {
     3: Property("BLACK"),
 }
 
+T_co = TypeVar("T_co", covariant=True)
+
 
 def _get_embedding_weights_from_tensor(weights: Tensor) -> Tensor:
     # the first 4 x 8 weights corresponds to the embedding layer
@@ -31,29 +34,43 @@ def _get_embedding_weights_from_tensor(weights: Tensor) -> Tensor:
     return embedding_weights.reshape(8, 4)
 
 
-class EvalHeuristic(ABC):
+class EvalHeuristic(ABC, Generic[T_co]):
     @abstractmethod
     def predict(self, weights: Union[Tensor, Dict[str, Tensor]]) -> FOC:
+        ...
+
+    @abstractmethod
+    def extract_valid_elements(self, formula: FOC) -> List[T_co]:
+        ...
+
+    @abstractmethod
+    def match(self, candicate_value: FOC, allowed_values: List[T_co]) -> bool:
         ...
 
     def __str__(self):
         return self.__class__.__name__
 
 
-class SingleFormulaHeuristic(EvalHeuristic):
+class SingleFormulaHeuristic(EvalHeuristic[FOC]):
     def __init__(self, formula: Union[Element, FOC]):
         if isinstance(formula, Element):
             formula = FOC(formula)
         self.formula = formula
 
-    def predict(self, weights: Union[Tensor, Dict[str, Tensor]]) -> FOC:
+    def predict(self, **kwargs) -> FOC:
         return self.formula
+
+    def extract_valid_elements(self, **kwargs) -> List[FOC]:
+        return [self.formula]
+
+    def match(self, candicate_value: FOC, **kwargs) -> bool:
+        return self.formula == candicate_value
 
     def __str__(self):
         return f"{self.__class__.__name__}({self.formula.get_hash()})"
 
 
-class WeightHeuristic(EvalHeuristic):
+class FirstColorHeuristic(EvalHeuristic[Element]):
     def get_embedding_weights(
         self, weights: Union[Tensor, Dict[str, Tensor]]
     ) -> Tensor:
@@ -61,8 +78,16 @@ class WeightHeuristic(EvalHeuristic):
             return _get_embedding_weights_from_tensor(weights)
         return weights["input_embedding.weight"]
 
+    def extract_valid_elements(self, formula: FOC) -> List[Element]:
+        return ColorsExtractor(hop=0)(formula.expression)
 
-class MaxSumFormulaHeuristic(WeightHeuristic):
+    def match(
+        self, candicate_value: FOC, allowed_values: List[Element], **kwargs
+    ) -> bool:
+        return candicate_value.expression in allowed_values
+
+
+class MaxSumFormulaHeuristic(FirstColorHeuristic):
     def predict(self, weights: Union[Tensor, Dict[str, Tensor]]) -> FOC:
         embedding_weights = self.get_embedding_weights(weights)
         per_input = embedding_weights.sum(0)
@@ -71,7 +96,7 @@ class MaxSumFormulaHeuristic(WeightHeuristic):
         return FOC(INDEX_TO_PROPERTY[color_index])
 
 
-class MinSumFormulaHeuristic(WeightHeuristic):
+class MinSumFormulaHeuristic(FirstColorHeuristic):
     def predict(self, weights: Union[Tensor, Dict[str, Tensor]]) -> FOC:
         embedding_weights = self.get_embedding_weights(weights)
         per_input = embedding_weights.sum(0)
@@ -80,7 +105,7 @@ class MinSumFormulaHeuristic(WeightHeuristic):
         return FOC(INDEX_TO_PROPERTY[color_index])
 
 
-class MaxDiffSumFormulaHeuristic(WeightHeuristic):
+class MaxDiffSumFormulaHeuristic(FirstColorHeuristic):
     def predict(self, weights: Union[Tensor, Dict[str, Tensor]]) -> FOC:
         embedding_weights = self.get_embedding_weights(weights)
         per_input = embedding_weights.sum(0)
