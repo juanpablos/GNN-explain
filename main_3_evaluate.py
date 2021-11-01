@@ -324,6 +324,7 @@ def evaluate_crossfolds_heuristics(
     folds_filename: str,
     evaluation_results_path: str,
     dataset_name: Literal["train", "test"],
+    cf_target: Optional[int],
 ):
     logger.info("Loading Files")
     # hash_formula: formula_hash -> formula_object
@@ -348,10 +349,13 @@ def evaluate_crossfolds_heuristics(
         cv_data_splitter.group_formulas_per_dataset_name(dataset_name=dataset_name),
         start=1,
     ):
+        if cf_target is not None and cf_target != i:
+            continue
+
         logger.info(f"Running eval for crossfold {i}/{n_splits}")
 
         cv_evaluation_heuristic_results_path = os.path.join(
-            evaluation_results_path, f"CV{i}", str(heuristic)
+            evaluation_results_path, f"CV{i}"
         )
         os.makedirs(cv_evaluation_heuristic_results_path, exist_ok=True)
 
@@ -374,6 +378,10 @@ def evaluate_crossfolds_heuristics(
             )
             cached_semantic_results = {}
 
+            heuristic_allowed_values = heuristic.extract_valid_elements(
+                formula=expected_formula
+            )
+
             with open(
                 os.path.join(
                     cv_evaluation_heuristic_results_path,
@@ -388,7 +396,9 @@ def evaluate_crossfolds_heuristics(
                 evaluation_file.writelines([expected_header, "\n\n"])
 
                 csv_writer = csv.writer(evaluation_file, delimiter=";")
-                csv_writer.writerow(["formula", "precision", "recall", "accuracy"])
+                csv_writer.writerow(
+                    ["formula", "precision", "recall", "accuracy", "match"]
+                )
 
                 logger.debug(f"[CV{i}] Running evaluation")
                 for gnn in formula_gnns.dataset:
@@ -399,8 +409,19 @@ def evaluate_crossfolds_heuristics(
                         cached_evaluation=cached_semantic_results,
                     )
 
+                    heuristic_matches = heuristic.match(
+                        candicate_value=generated_formula,
+                        allowed_values=heuristic_allowed_values,
+                    )
+
                     csv_writer.writerow(
-                        [repr(generated_formula), precision, recall, accuracy]
+                        [
+                            repr(generated_formula),
+                            precision,
+                            recall,
+                            accuracy,
+                            int(heuristic_matches),
+                        ]
                     )
 
 
@@ -550,8 +571,9 @@ def main_heuristic():
     labeler = SequenceLabelerApply(labeler=label_logic)
 
     # heuristic = SingleFormulaHeuristic(formula=Property("RED"))
+    heuristic = MinSumFormulaHeuristic()
     # heuristic = MaxSumFormulaHeuristic()
-    heuristic = MaxDiffSumFormulaHeuristic()
+    # heuristic = MaxDiffSumFormulaHeuristic()
 
     crossfold_config: CrossFoldConfiguration = {
         "n_splits": 5,  # not used
@@ -574,24 +596,18 @@ def main_heuristic():
     }
 
     crossfold_path = os.path.join(
-        "results",
-        "v4",
-        "crossfold_raw",
-        model_hash,
-        "text",
-        "info",
+        "results", "v4", "crossfold_raw", model_hash, "rafike-results"
     )
-    crossfold_filename = "NoFilter()-TextSequenceAtomic()-CV-1L256+2L256+3L256-emb4-lstmcellIN256-lstmH256-initTrue-catTrue-drop0-compFalse-d256-32b-0.0005lr.folds"
+    crossfold_filename = "base.folds"
 
-    evaluation_results_model_name = crossfold_filename.split(".folds")[0]
     evaluation_results_path = os.path.join(
         "results",
         "v4",
         "crossfold_raw",
         model_hash,
-        "text",
-        "evaluation_heuristics",
-        evaluation_results_model_name,
+        "heuristics",
+        str(heuristic),
+        "train",
     )
     os.makedirs(evaluation_results_path, exist_ok=True)
 
@@ -603,7 +619,8 @@ def main_heuristic():
         folds_file_path=crossfold_path,
         folds_filename=crossfold_filename,
         evaluation_results_path=evaluation_results_path,
-        dataset_name="test",
+        dataset_name="train",
+        cf_target=1,
     )
 
     end = timer()
@@ -621,5 +638,5 @@ if __name__ == "__main__":
 
     logger.addHandler(ch)
 
-    main()
-    # main_heuristic()
+    # main()
+    main_heuristic()
